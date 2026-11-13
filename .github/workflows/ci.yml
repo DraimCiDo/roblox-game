@@ -40,6 +40,9 @@ jobs:
   secrets:
     # Замена GitHub Secret Scanning (недоступен для приватных репо на бесплатном тарифе)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v5
         with:
