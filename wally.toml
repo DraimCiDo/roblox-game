@@ -1,0 +1,12 @@
+[package]
+name = "team/roblox-game"
+version = "0.1.0"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+private = true
+
+# Пакеты добавляются сюда, затем `wally install`.
+# Перед добавлением зависимости — согласовать с командой (см. AGENTS.md).
+[dependencies]
+
+[server-dependencies]

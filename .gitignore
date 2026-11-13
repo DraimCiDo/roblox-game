@@ -1,0 +1,18 @@
+# Сгенерированное
+/Packages/
+/ServerPackages/
+/DevPackages/
+sourcemap.json
+roblox.yml
+*.rbxl
+*.rbxlx
+*.rbxl.lock
+*.rbxlx.lock
+/build/
+
+# Локальные настройки
+.env
+.env.*
+.claude/settings.local.json
+.DS_Store
+Thumbs.db
