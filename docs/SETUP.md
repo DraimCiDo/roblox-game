@@ -40,4 +40,4 @@ rojo plugin install
 ## 5. ИИ-агенты
 - **Claude Code**: `npm install -g @anthropic-ai/claude-code`, затем `claude` в папке проекта. Правила подхватываются из `CLAUDE.md` → `AGENTS.md`, скиллы — из `.claude/skills/`.
 - **Codex**: `npm install -g @openai/codex`, затем `codex` в папке проекта. Правила — из `AGENTS.md`.
-- **MCP для Studio** — см. [MCP.md](MCP.md).
+- **MCP для Studio** — встроен в Studio: Assistant → `…` → Manage MCP Servers → Enable Studio as MCP server. Подробно — [MCP.md](MCP.md).
