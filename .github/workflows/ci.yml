@@ -13,7 +13,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Установить инструменты из rokit.toml
         uses: CompeyDev/setup-rokit@v0.1.2
@@ -31,7 +31,7 @@ jobs:
         run: rojo build default.project.json -o build.rbxl
 
       - name: Сохранить сборку
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: place
           path: build.rbxl

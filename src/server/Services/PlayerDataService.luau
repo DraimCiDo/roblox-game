@@ -49,7 +49,9 @@ local function load(player: Player)
 		end)
 		if not ok then
 			-- Не даём играть с пустыми данными, чтобы не перезаписать сохранение.
-			player:Kick("Не удалось загрузить данные. Попробуйте зайти позже.")
+			player:Kick(
+				"Не удалось загрузить данные. Попробуйте зайти позже."
+			)
 			return
 		end
 		if type(saved) == "table" then
