@@ -1,0 +1,13 @@
+version: 2
+updates:
+  # Обновление версий GitHub Actions в .github/workflows
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels: [chore]
+    commit-message:
+      prefix: chore(ci)
+    groups:
+      actions:
+        patterns: ["*"]

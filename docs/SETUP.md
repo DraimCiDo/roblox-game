@@ -6,6 +6,14 @@
 - **GitHub CLI** — `winget install GitHub.cli`, затем `gh auth login`.
 - **VS Code** — при открытии проекта согласиться установить рекомендованные расширения (`.vscode/extensions.json`): luau-lsp, StyLua, Selene, Rojo.
 
+## 1.1 Клонирование и git-хук (обязательно)
+```powershell
+gh repo clone DraimCiDo/roblox-game
+cd roblox-game
+git config core.hooksPath .githooks
+```
+Хук `.githooks/pre-push` запрещает прямой пуш в `main`. Без него правило держится только на дисциплине: защита веток GitHub для приватного репозитория на бесплатном тарифе недоступна.
+
 ## 2. Rokit (менеджер инструментов)
 Установка — по инструкции в репозитории https://github.com/rojo-rbx/rokit (раздел Installation, Windows).
 Затем в папке проекта:

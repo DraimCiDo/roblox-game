@@ -1,0 +1,22 @@
+# Автоматические метки PR по изменённым файлам (workflow labeler.yml)
+area:server:
+  - changed-files:
+      - any-glob-to-any-file: src/server/**
+area:client:
+  - changed-files:
+      - any-glob-to-any-file: src/client/**
+area:shared:
+  - changed-files:
+      - any-glob-to-any-file: src/shared/**
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: ["docs/**", "*.md", ".claude/skills/**"]
+chore:
+  - changed-files:
+      - any-glob-to-any-file: [".github/**", "rokit.toml", "wally.toml", "*.project.json", "selene.toml", "stylua.toml"]
+data-schema:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/shared/Types.luau
+          - src/shared/Config/GameConfig.luau
+          - src/server/Services/PlayerDataService.luau

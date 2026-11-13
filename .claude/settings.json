@@ -19,6 +19,9 @@
     "deny": [
       "Bash(git push --force:*)",
       "Bash(git push -f:*)",
+      "Bash(git push origin main:*)",
+      "Bash(git push --no-verify:*)",
+      "Bash(gh pr merge:*)",
       "Bash(git reset --hard:*)",
       "Read(./.env)",
       "Read(./.env.*)",

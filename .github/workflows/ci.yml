@@ -31,8 +31,21 @@ jobs:
         run: rojo build default.project.json -o build.rbxl
 
       - name: Сохранить сборку
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: place
           path: build.rbxl
           retention-days: 7
+
+  secrets:
+    # Замена GitHub Secret Scanning (недоступен для приватных репо на бесплатном тарифе)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Поиск секретов (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,10 @@
+#!/bin/sh
+# Запрет прямого пуша в main (на бесплатном тарифе GitHub защита веток для приватных репо недоступна).
+# Обойти в крайнем случае: git push --no-verify (только владелец, осознанно).
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    echo "pre-push: прямой пуш в main запрещён. Создайте ветку и PR (см. docs/WORKFLOW.md)." >&2
+    exit 1
+  fi
+done
+exit 0

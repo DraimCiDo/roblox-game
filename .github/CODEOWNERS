@@ -1,0 +1,13 @@
+# Владельцы кода: их автоматически просят на ревью PR.
+# Добавляйте участников команды по областям, например:
+#   /src/server/   @логин-серверщика
+#   /src/client/   @логин-клиентщика
+
+*                                   @DraimCiDo
+
+# Критичные места — всегда ревью владельца проекта
+/AGENTS.md                          @DraimCiDo
+/CLAUDE.md                          @DraimCiDo
+/.claude/                           @DraimCiDo
+/.github/                           @DraimCiDo
+/src/server/Services/PlayerDataService.luau @DraimCiDo
