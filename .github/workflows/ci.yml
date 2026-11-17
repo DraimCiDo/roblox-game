@@ -13,10 +13,10 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Установить инструменты из rokit.toml
-        uses: CompeyDev/setup-rokit@v0.1.2
+        uses: CompeyDev/setup-rokit@v0.2.1
 
       - name: Установить Wally-пакеты
         run: wally install
@@ -31,7 +31,7 @@ jobs:
         run: rojo build default.project.json -o build.rbxl
 
       - name: Сохранить сборку
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: place
           path: build.rbxl
@@ -44,11 +44,11 @@ jobs:
       contents: read
       pull-requests: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Поиск секретов (gitleaks)
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
