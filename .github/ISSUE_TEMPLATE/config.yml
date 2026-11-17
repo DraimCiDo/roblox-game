@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Правила для ИИ-агентов (AGENTS.md)
+    url: https://github.com/DraimCiDo/roblox-game/blob/main/AGENTS.md
+    about: Как ставить задачи Codex / Claude Code и что они обязаны соблюдать
+  - name: Документация Roblox Creator Hub
+    url: https://create.roblox.com/docs
+    about: Справка по API Roblox и Luau

@@ -6,6 +6,14 @@
 - **GitHub CLI** — `winget install GitHub.cli`, затем `gh auth login`.
 - **VS Code** — при открытии проекта согласиться установить рекомендованные расширения (`.vscode/extensions.json`): luau-lsp, StyLua, Selene, Rojo.
 
+## 1.1 Клонирование и git-хук (обязательно)
+```powershell
+gh repo clone DraimCiDo/roblox-game
+cd roblox-game
+git config core.hooksPath .githooks
+```
+Хук `.githooks/pre-push` запрещает прямой пуш в `main`. Без него правило держится только на дисциплине: защита веток GitHub для приватного репозитория на бесплатном тарифе недоступна.
+
 ## 2. Rokit (менеджер инструментов)
 Установка — по инструкции в репозитории https://github.com/rojo-rbx/rokit (раздел Installation, Windows).
 Затем в папке проекта:
@@ -32,4 +40,4 @@ rojo plugin install
 ## 5. ИИ-агенты
 - **Claude Code**: `npm install -g @anthropic-ai/claude-code`, затем `claude` в папке проекта. Правила подхватываются из `CLAUDE.md` → `AGENTS.md`, скиллы — из `.claude/skills/`.
 - **Codex**: `npm install -g @openai/codex`, затем `codex` в папке проекта. Правила — из `AGENTS.md`.
-- **MCP для Studio** — см. [MCP.md](MCP.md).
+- **MCP для Studio** — встроен в Studio: Assistant → `…` → Manage MCP Servers → Enable Studio as MCP server. Подробно — [MCP.md](MCP.md).
