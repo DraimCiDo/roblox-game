@@ -37,6 +37,7 @@ local REMOTE_ACTIONS: { [string]: boolean } = {
 	quickSell = true,
 	quickCollect = true,
 	skipTutorial = true,
+	setVolume = true,
 }
 
 local SimulatorService = {}
@@ -75,6 +76,8 @@ local function view(player: Player): Types.View?
 		Opened = data.Opened,
 		OrderPrice = Economy.orderPrice(data),
 		DailyReward = Economy.dailyReward(data),
+		VolumeUi = data.VolumeUi,
+		VolumeWorld = data.VolumeWorld,
 		Inventory = data.Inventory,
 		Collections = data.Collections,
 		Displays = data.Displays,
@@ -738,6 +741,18 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 				data.Coins -= cost
 				data.Perks[argument] = level + 1
 				Audio.to(player, "perk")
+				updated = true
+			end
+		elseif action == "setVolume" then
+			-- Громкость хранится в данных игрока; значение проверяется и округляется до шага 5%.
+			local value = if extra then tonumber(extra) else nil
+			if value and (argument == "ui" or argument == "world") then
+				value = math.clamp(math.round(value * 20) / 20, 0, 1)
+				if argument == "ui" then
+					data.VolumeUi = value
+				else
+					data.VolumeWorld = value
+				end
 				updated = true
 			end
 		elseif action == "skipTutorial" then

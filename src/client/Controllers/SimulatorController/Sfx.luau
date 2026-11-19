@@ -14,6 +14,8 @@ local random = Random.new()
 local failed: { [string]: boolean } = {}
 local lastPlayed: { [string]: number } = {}
 local MIN_GAP = 0.04
+-- Громкость берётся из настроек игрока (0..1): отдельно для интерфейса и для мира.
+local volumes = { ui = 0.6, world = 0.6 }
 local LIFETIME = 8
 
 local function make(name: string, pitch: number?): Sound?
@@ -30,7 +32,7 @@ local function make(name: string, pitch: number?): Sound?
 	else
 		sound.SoundId = `rbxassetid://{cue.Id}`
 	end
-	sound.Volume = cue.Volume
+	sound.Volume = cue.Volume * (if cue.Range then volumes.world else volumes.ui)
 	local jitter = cue.Jitter or 0.08
 	sound.PlaybackSpeed = speed * (pitch or 1) * (1 + (random:NextNumber() - 0.5) * jitter)
 	return sound
@@ -43,6 +45,12 @@ local function throttled(name: string): boolean
 	end
 	lastPlayed[name] = now
 	return false
+end
+
+-- Задаёт громкость интерфейса и/или мира; nil оставляет значение без изменений.
+function Sfx.setVolumes(ui: number?, world: number?): ()
+	volumes.ui = math.clamp(ui or volumes.ui, 0, 1)
+	volumes.world = math.clamp(world or volumes.world, 0, 1)
 end
 
 -- Звук интерфейса без позиции.

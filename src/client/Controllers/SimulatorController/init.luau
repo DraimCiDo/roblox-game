@@ -21,6 +21,7 @@ local Inventory = require(script.Screens.Inventory)
 local Loot = require(script.Screens.Loot)
 local Perks = require(script.Screens.Perks)
 local Showcase = require(script.Screens.Showcase)
+local Settings = require(script.Screens.Settings)
 local Terminal = require(script.Screens.Terminal)
 local Sfx = require(script.Sfx)
 local Style = require(script.Style)
@@ -33,6 +34,7 @@ local TITLES: { [string]: string } = {
 	perks = "Древо перков",
 	daily = "Ежедневная награда",
 	dial = "Взлом сейфа",
+	settings = "Настройки",
 }
 local CAPTIONS: { [string]: string } = {
 	terminal = "Случайные контейнеры и очередь доставки",
@@ -42,6 +44,7 @@ local CAPTIONS: { [string]: string } = {
 	perks = "Выберите узел, чтобы посмотреть улучшение",
 	daily = "Награда за время в лаборатории",
 	dial = "Три штифта: каждый следующий быстрее",
+	settings = "Громкость звуков",
 }
 local ACCENTS: { [string]: Color3 } = {
 	terminal = Style.Signal,
@@ -51,6 +54,7 @@ local ACCENTS: { [string]: Color3 } = {
 	perks = Style.Amber,
 	daily = Style.Amber,
 	dial = Style.Cyan,
+	settings = Style.Cyan,
 }
 local ICONS: { [string]: Icons.IconName } = {
 	terminal = "screen",
@@ -60,6 +64,7 @@ local ICONS: { [string]: Icons.IconName } = {
 	perks = "star",
 	daily = "gift",
 	dial = "lock",
+	settings = "gear",
 }
 local DIAL_CLOSE_DELAY = 0.7
 local STOP_LOCK = 1.5
@@ -216,6 +221,8 @@ local function refresh(preserveScroll: boolean?): ()
 		Loot.render(data)
 	elseif key == "daily" then
 		Daily.render()
+	elseif key == "settings" then
+		Settings.render(data)
 	elseif key == "dial" then
 		local current = round
 		if current then
@@ -261,6 +268,7 @@ selectMenu = function(key: string?): ()
 		Inventory.reset()
 		Collections.reset()
 		Perks.reset()
+		Settings.reset()
 	end
 	signature = if state then fingerprint(state) else ""
 	bindStop(key == "dial")
@@ -303,6 +311,9 @@ local function build(): ()
 		end,
 		Reward = function()
 			toggle("daily")
+		end,
+		Settings = function()
+			toggle("settings")
 		end,
 	})
 
@@ -482,7 +493,10 @@ function SimulatorController:Start(): ()
 		state = data
 		local _, _, canClaim = Components.dailyState(data, Workspace:GetServerTimeNow())
 		Hud.update(data, canClaim)
-		if menu and menu ~= "dial" then
+		if not Settings.isDragging() then
+			Sfx.setVolumes(data.VolumeUi, data.VolumeWorld)
+		end
+		if menu and menu ~= "dial" and menu ~= "settings" then
 			local current = fingerprint(data)
 			if current ~= signature then
 				signature = current

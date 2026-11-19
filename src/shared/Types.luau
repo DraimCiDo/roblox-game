@@ -20,6 +20,9 @@ export type PlayerData = {
 	Earned: number,
 	Opened: number,
 	TutorialDone: boolean,
+	-- Громкость звуков интерфейса и мира, 0..1.
+	VolumeUi: number,
+	VolumeWorld: number,
 	StarterGranted: boolean,
 	Inventory: { Item },
 	Collections: { [string]: Item },
@@ -35,6 +38,8 @@ export type View = {
 	Opened: number,
 	OrderPrice: number,
 	DailyReward: number,
+	VolumeUi: number,
+	VolumeWorld: number,
 	Inventory: { Item },
 	Collections: { [string]: Item },
 	Displays: { [string]: Item },

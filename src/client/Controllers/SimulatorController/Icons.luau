@@ -27,6 +27,7 @@ export type IconName =
 	| "gem"
 	| "magnet"
 	| "check"
+	| "gear"
 
 local Icons = {}
 
@@ -191,6 +192,12 @@ function Icons.draw(parent: Instance, name: IconName, color: Color3?, accent: Co
 		shape(holder, main, 0.5, 0.24, 0.66, 0.2, 0.4)
 		shape(holder, second, 0.3, 0.82, 0.22, 0.14, 0.2)
 		shape(holder, second, 0.7, 0.82, 0.22, 0.14, 0.2)
+	elseif name == "gear" then
+		for index = 0, 3 do
+			shape(holder, main, 0.5, 0.5, 0.2, 0.92, 0.25, index * 45)
+		end
+		shape(holder, main, 0.5, 0.5, 0.7, 0.7, 0.5)
+		shape(holder, darker(main, 0.75), 0.5, 0.5, 0.3, 0.3, 0.5)
 	elseif name == "check" then
 		shape(holder, main, 0.36, 0.62, 0.2, 0.46, 0.2, -45)
 		shape(holder, main, 0.62, 0.5, 0.2, 0.74, 0.2, 40)

@@ -11,7 +11,7 @@ local Icons = require(script.Parent.Icons)
 local Sfx = require(script.Parent.Sfx)
 local Style = require(script.Parent.Style)
 
-export type Callbacks = { Perks: () -> (), Reward: () -> () }
+export type Callbacks = { Perks: () -> (), Reward: () -> (), Settings: () -> () }
 
 local MAX_TOASTS = 3
 local TOAST_SECONDS = 3.4
@@ -155,6 +155,19 @@ function Hud.build(gui: ScreenGui, callbacks: Callbacks): ()
 	levelCount.ZIndex = 2
 	queueLabel = label(card, "", 15, Style.Text)
 	Components.place(queueLabel, 12, 62, UDim.new(1, -24), 24)
+
+	-- Настройки: шестерёнка слева сверху, под значками Roblox.
+	local settings = Style.button(gui, "", callbacks.Settings, true, "neutral")
+	settings.Name = "Настройки"
+	settings.AnchorPoint = Vector2.new(0, 0)
+	settings.Position = UDim2.fromOffset(12, 8)
+	settings.Size = UDim2.fromOffset(56, 56)
+	Style.round(settings, 18)
+	local gearHolder = Style.frame(settings)
+	gearHolder.AnchorPoint = Vector2.new(0.5, 0.5)
+	gearHolder.Position = UDim2.fromScale(0.5, 0.5)
+	gearHolder.Size = UDim2.fromOffset(34, 34)
+	Icons.draw(gearHolder, "gear", Style.Amber, Style.Text)
 
 	-- Перки и награда: справа внизу крупными кнопками, у большого пальца.
 	local offset = sideOffset()
