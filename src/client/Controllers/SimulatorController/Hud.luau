@@ -39,6 +39,7 @@ local rewardButton: TextButton
 local perksButton: TextButton
 local pulseRing: Frame?
 local rewardBadge: Frame
+local perksBadge: Frame
 local toasts: Frame
 local toastSerial = 0
 local lastCoins: number?
@@ -184,6 +185,12 @@ function Hud.build(gui: ScreenGui, callbacks: Callbacks): ()
 	sideLayout.Parent = side
 	perksButton = iconButton(side, "star", "Перки", "P", callbacks.Perks)
 	perksButton.LayoutOrder = 1
+	perksBadge = Style.frame(perksButton, Style.Signal, 10)
+	perksBadge.AnchorPoint = Vector2.new(1, 0)
+	perksBadge.Position = UDim2.new(1, 2, 0, -2)
+	perksBadge.Size = UDim2.fromOffset(22, 22)
+	perksBadge.Visible = false
+	Style.outline(perksBadge, Style.Edge, 3)
 	rewardButton = iconButton(side, "gift", "Награда", "G", callbacks.Reward)
 	rewardButton.LayoutOrder = 2
 	rewardBadge = Style.frame(rewardButton, Style.Warning, 10)
@@ -235,6 +242,15 @@ function Hud.update(data: Types.View, canClaim: boolean): ()
 	end
 	lastLevel = level
 	queueLabel.Text = `ЗАКАЗЫ {data.Orders}/{1 + (data.Perks.orders or 0)}`
+	-- Зелёная точка на «Перках», когда есть навык, который можно улучшить.
+	local upgradable = false
+	for _, perk in Catalog.Perks do
+		if Catalog.perkReady(perk, data.Perks, data.Coins, data.Opened, data.OrderPrice) then
+			upgradable = true
+			break
+		end
+	end
+	perksBadge.Visible = upgradable
 	Hud.setReward(canClaim)
 end
 

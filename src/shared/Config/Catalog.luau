@@ -713,6 +713,22 @@ function Catalog.perkCost(perk: Perk, level: number, perks: { [string]: number }
 	return math.round(base * (1 - Catalog.Effects.GrantStep * (perks.grant or 0)) / 10) * 10
 end
 
+-- Можно ли купить следующий уровень навыка прямо сейчас: условия выполнены, монет хватает и остаётся на заказ.
+function Catalog.perkReady(
+	perk: Perk,
+	perks: { [string]: number },
+	coins: number,
+	opened: number,
+	orderPrice: number
+): boolean
+	local level = math.min(perks[perk.Key] or 0, #perk.Costs)
+	local cost = Catalog.perkCost(perk, level, perks)
+	if not cost or Catalog.perkLock(perk, level, perks, opened) then
+		return false
+	end
+	return coins >= cost and coins - cost >= orderPrice
+end
+
 -- Проверка условий открытия уровня навыка: родитель, дополнительные навыки и число открытых контейнеров.
 -- Возвращает причину отказа или nil, если навык доступен.
 function Catalog.perkLock(perk: Perk, level: number, perks: { [string]: number }, opened: number): string?

@@ -2,6 +2,7 @@
 local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
@@ -99,6 +100,8 @@ type NodeState = {
 	Cost: number?,
 	Locked: boolean,
 	Reason: string?,
+	-- Можно улучшить прямо сейчас: навык открыт, хватает монет и остаётся запас на заказ.
+	Ready: boolean,
 	Color: Color3,
 }
 type NodeWidget = { Button: TextButton, Apply: (boolean) -> (), State: NodeState }
@@ -136,6 +139,7 @@ local function stateFor(perk: Catalog.Perk, data: Types.View): NodeState
 		Cost = cost,
 		Locked = lock ~= nil,
 		Reason = reason,
+		Ready = cost ~= nil and reason == nil,
 		Color = BRANCH_COLORS[perk.Branch] or Style.Cyan,
 	}
 end
@@ -185,6 +189,18 @@ end
 local function drawNode(parent: Frame, state: NodeState, position: Vector2, diameter: number): NodeWidget
 	local perk = state.Perk
 	local color = state.Color
+	-- Узел, который можно улучшить сейчас, окружён пульсирующим кольцом.
+	if state.Ready then
+		local ring = Style.frame(parent, nil, diameter + 16)
+		ring.AnchorPoint = Vector2.new(0.5, 0.5)
+		ring.Position = UDim2.fromOffset(position.X, position.Y)
+		ring.Size = UDim2.fromOffset(diameter + 16, diameter + 16)
+		ring.ZIndex = 3
+		local glow = Style.outline(ring, color, 5)
+		TweenService:Create(glow, TweenInfo.new(0.7, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+			Transparency = 0.85,
+		}):Play()
+	end
 	local button = Instance.new("TextButton")
 	button.Name = `Перк:{perk.Key}`
 	button.Size = UDim2.fromOffset(diameter, diameter)
@@ -216,6 +232,18 @@ local function drawNode(parent: Frame, state: NodeState, position: Vector2, diam
 		lock.ZIndex = 7
 	end
 
+	if state.Ready then
+		local badge = Style.frame(button, Style.Signal, 12)
+		badge.AnchorPoint = Vector2.new(1, 0)
+		badge.Position = UDim2.fromScale(1.02, -0.02)
+		badge.Size = UDim2.fromOffset(24, 24)
+		badge.ZIndex = 8
+		Style.outline(badge, Style.Edge, 2)
+		local plus = Icons.draw(badge, "plus", Style.Ink)
+		plus.Size = UDim2.fromScale(0.72, 0.72)
+		plus.ZIndex = 9
+	end
+
 	local pill = Style.frame(parent, BOARD, 9)
 	pill.AnchorPoint = Vector2.new(0.5, 0.5)
 	pill.Position = UDim2.fromOffset(position.X, position.Y + diameter / 2 + 4)
@@ -237,7 +265,11 @@ local function drawNode(parent: Frame, state: NodeState, position: Vector2, diam
 	local function apply(selected: boolean): ()
 		border.Color = if selected then Style.Text elseif state.Locked then RAIL else color
 		border.Thickness = if selected then 4 else 3
-		button.BackgroundColor3 = if state.Level > 0 then color elseif selected then PANEL:Lerp(color, 0.3) else BOARD
+		button.BackgroundColor3 = if state.Level > 0
+			then color
+			elseif selected then PANEL:Lerp(color, 0.3)
+			elseif state.Ready then BOARD:Lerp(color, 0.25)
+			else BOARD
 	end
 	apply(false)
 	return { Button = button, Apply = apply, State = state }
@@ -433,7 +465,7 @@ function Perks.render(data: Types.View, _wide: boolean): ()
 	local states: { [string]: NodeState } = {}
 	local branches: { [string]: string } = {}
 	local spent: { [string]: number } = {}
-	local owned, total = 0, 0
+	local owned, total, ready = 0, 0, 0
 	for _, branch in Catalog.Branches do
 		branches[branch.Key] = branch.Name
 		spent[branch.Key] = 0
@@ -444,6 +476,9 @@ function Perks.render(data: Types.View, _wide: boolean): ()
 		spent[perk.Branch] += state.Level
 		owned += state.Level
 		total += #perk.Costs
+		if state.Ready then
+			ready += 1
+		end
 	end
 	local map: Layout = cachedLayout or layout()
 	cachedLayout = map
@@ -647,9 +682,17 @@ function Perks.render(data: Types.View, _wide: boolean): ()
 		control.TextSize = 24
 		control.ZIndex = 10
 	end
-	local summary = Components.text(view, `Изучено {owned} из {total}`, 13, Style.Muted, true)
+	local summary = Components.text(
+		view,
+		if ready > 0
+			then `Изучено {owned} из {total} · можно улучшить: {ready}`
+			else `Изучено {owned} из {total}`,
+		13,
+		Style.Muted,
+		true
+	)
 	summary.Position = UDim2.fromOffset(14, 10)
-	summary.Size = UDim2.fromOffset(220, 20)
+	summary.Size = UDim2.fromOffset(360, 20)
 	summary.TextWrapped = false
 	summary.ZIndex = 10
 	Style.textStroke(summary, 2)
