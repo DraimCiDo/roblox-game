@@ -18,6 +18,7 @@ export type PlayerData = {
 	Version: number,
 	Coins: number,
 	Earned: number,
+	Opened: number,
 	StarterGranted: boolean,
 	Inventory: { Item },
 	Collections: { [string]: Item },

@@ -41,6 +41,7 @@ local sessions: { [Player]: Session } = {}
 local occupants: { [number]: Player } = {}
 local lastProfileQuery: { [Player]: number } = {}
 local dialStages: { [Player]: number } = {}
+local stats: { [Player]: { Coins: IntValue, Opened: IntValue } } = {}
 local plots: { World.Plot } = {}
 local perks: { [string]: Catalog.Perk } = {}
 for _, perk in Catalog.Perks do
@@ -83,7 +84,31 @@ local function view(player: Player): Types.View?
 	}
 end
 
+-- Папка leaderstats показывается в списке игроков Roblox: баланс и число открытых контейнеров.
+local function updateStats(player: Player, data: Types.PlayerData): ()
+	local values = stats[player]
+	if not values then
+		local folder = Instance.new("Folder")
+		folder.Name = "leaderstats"
+		local coins = Instance.new("IntValue")
+		coins.Name = "Монеты"
+		coins.Parent = folder
+		local opened = Instance.new("IntValue")
+		opened.Name = "Открыто"
+		opened.Parent = folder
+		folder.Parent = player
+		values = { Coins = coins, Opened = opened }
+		stats[player] = values
+	end
+	values.Coins.Value = data.Coins
+	values.Opened.Value = data.Opened
+end
+
 local function publish(player: Player): ()
+	local data = Data:Get(player)
+	if data then
+		updateStats(player, data)
+	end
 	local output = view(player)
 	if output then
 		changed:FireClient(player, output)
@@ -579,6 +604,9 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 			end
 		elseif action == "open" and order then
 			updated, scatter = openOrder(player, plot, order, argument, physical)
+			if scatter then
+				data.Opened += 1
+			end
 		elseif action == "perk" and argument then
 			local perk = perks[argument]
 			local level = data.Perks[argument] or 0
@@ -618,10 +646,11 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 	end
 end
 
-local function boardText(title: string, entries: { { Name: string, Score: number } }): string
+local function boardText(title: string, entries: { { Name: string, Score: number, Note: string? } }): string
 	local lines = { title }
 	for index, entry in entries do
-		table.insert(lines, `{index}. {entry.Name}  ·  {entry.Score}`)
+		local note = if entry.Note then `  ·  {entry.Note}` else ""
+		table.insert(lines, `{index}. {entry.Name}  ·  {entry.Score}{note}`)
 	end
 	if #entries == 0 then
 		table.insert(lines, "Пока пусто")
@@ -660,7 +689,11 @@ local function startRankings(): ()
 			for player in sessions do
 				local data = Data:Get(player)
 				if data then
-					table.insert(entries, { Name = player.DisplayName, Score = data.Earned })
+					table.insert(entries, {
+						Name = player.DisplayName,
+						Score = data.Earned,
+						Note = `открыто {data.Opened}`,
+					})
 				end
 			end
 			table.sort(entries, function(first, second)
@@ -709,6 +742,8 @@ function SimulatorService:Start(): ()
 	Players.PlayerAdded:Connect(occupy)
 	Players.PlayerRemoving:Connect(function(player)
 		lastProfileQuery[player] = nil
+		dialStages[player] = nil
+		stats[player] = nil
 		local session = sessions[player]
 		if session then
 			World.Clear(session.Plot)
