@@ -101,8 +101,11 @@ local Containers: { [string]: Container } = {
 local Economy = {}
 Economy.DailyReward = 5000
 Economy.VariantChance = 5
-Economy.DialPeriod = 3
-Economy.DialTolerance = 0.12
+-- Взлом сейфа идёт в три этапа: с каждым этапом указатель быстрее, а сектор уже.
+Economy.DialStages = 3
+Economy.DialTimeLimit = 20
+local DIAL_PERIODS = { 3, 2.4, 1.9 }
+local DIAL_TOLERANCES = { 0.12, 0.1, 0.08 }
 
 local random = Random.new()
 local prices: { [string]: number } = {}
@@ -117,6 +120,15 @@ for _, collection in Catalog.Collections do
 	for _, kind in collection.Items do
 		collectionIndex[kind] = collection.Items
 	end
+end
+
+-- Параметры этапа взлома: цель (0..1), период оборота указателя и допуск попадания.
+function Economy.dial(order: Types.Order, stage: number): (number, number, number)
+	local target = order.Target
+	if stage > 1 then
+		target = 0.12 + ((order.Target + (stage - 1) * 0.3819) % 1) * 0.76
+	end
+	return target, DIAL_PERIODS[stage], DIAL_TOLERANCES[stage]
 end
 
 function Economy.capacity(data: Types.PlayerData): number

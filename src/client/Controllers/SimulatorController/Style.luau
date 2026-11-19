@@ -54,6 +54,15 @@ function Style.gloss(parent: GuiObject): ()
 	gradient.Parent = parent
 end
 
+-- Едва заметный градиент для карточек и панелей: сверху светлее, снизу темнее.
+function Style.soft(parent: GuiObject, strength: number?): ()
+	local gradient = Instance.new("UIGradient")
+	local low = 1 - (strength or 0.14)
+	gradient.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.new(low, low, low))
+	gradient.Rotation = 90
+	gradient.Parent = parent
+end
+
 function Style.frame(parent: Instance, color: Color3?, radius: number?): Frame
 	local frame = Instance.new("Frame")
 	frame.BorderSizePixel = 0
@@ -112,7 +121,7 @@ function Style.button(
 	control.Name = caption
 	control.BorderSizePixel = 0
 	control.Font = Style.Display
-	control.TextSize = 16
+	control.TextSize = 18
 	control.TextWrapped = true
 	control.Text = caption
 	Style.setButton(control, enabled ~= false, tone or "primary")

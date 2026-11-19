@@ -8,7 +8,7 @@ local ItemPreview = require(script.Parent.ItemPreview)
 local Style = require(script.Parent.Style)
 
 export type DailyWidgets = { Time: TextLabel, Caption: TextLabel, Fill: Frame, Button: TextButton }
-export type DialWidgets = { Needle: Frame, Time: TextLabel }
+export type DialWidgets = { Needle: Frame, Time: TextLabel, Glow: UIStroke }
 export type LiveWidgets = { Delivery: TextLabel?, Daily: DailyWidgets?, Dial: DialWidgets? }
 export type TileOptions = {
 	Caption: string?,
@@ -195,32 +195,34 @@ function Components.text(parent: Instance, value: string, size: number, color: C
 end
 
 function Components.heading(value: string): ()
-	local field = Components.text(content, value, 19, Style.Text, true)
-	field.Size = UDim2.new(1, -9, 0, 30)
+	local field = Components.text(content, value, 21, Style.Text, true)
+	field.Size = UDim2.new(1, -9, 0, 32)
 	Components.append(field)
 end
 
 function Components.paragraph(value: string, color: Color3?): ()
-	local field = Components.text(content, value, 14, color or Style.Muted)
+	local field = Components.text(content, value, 15, color or Style.Muted)
 	field.AutomaticSize = Enum.AutomaticSize.Y
 	field.Size = UDim2.new(1, -9, 0, 0)
 	Components.append(field)
 end
 
 function Components.card(height: number, color: Color3?): Frame
-	local result = Style.frame(content, color or Style.Card, 12)
+	local result = Style.frame(content, color or Style.Card, 14)
 	result.Size = UDim2.new(1, -9, 0, height)
 	Style.outline(result)
+	Style.soft(result)
 	Components.append(result)
 	return result
 end
 
 -- Карточка с автовысотой: внутрь кладут заголовок и сетку слотов.
 function Components.group(): Frame
-	local result = Style.frame(content, Style.Card, 12)
+	local result = Style.frame(content, Style.Card, 14)
 	result.AutomaticSize = Enum.AutomaticSize.Y
 	result.Size = UDim2.new(1, -9, 0, 0)
 	Style.outline(result)
+	Style.soft(result)
 	local layout = Instance.new("UIListLayout")
 	layout.Padding = UDim.new(0, 8)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -246,8 +248,8 @@ end
 
 function Components.command(value: string, callback: () -> (), enabled: boolean?, tone: Style.ButtonTone?): TextButton
 	local control = Style.button(content, value, callback, enabled, tone)
-	control.TextSize = 18
-	control.Size = UDim2.new(1, -9, 0, 52)
+	control.TextSize = 20
+	control.Size = UDim2.new(1, -9, 0, 58)
 	Components.append(control)
 	Components.prefer(control)
 	return control
@@ -334,9 +336,9 @@ end
 
 -- Строка списка: иконка слева, название и подробности, кнопка справа.
 function Components.row(options: RowOptions): ()
-	local entry = Components.card(76)
-	local badge = Style.frame(entry, Style.Track, 10)
-	Components.place(badge, 8, 8, UDim.new(0, 60), 60)
+	local entry = Components.card(84)
+	local badge = Style.frame(entry, Style.Track, 12)
+	Components.place(badge, 8, 8, UDim.new(0, 68), 68)
 	if options.Kind then
 		local icon = ItemPreview.draw(badge, options.Kind)
 		icon.Size = UDim2.fromScale(1, 1)
@@ -348,12 +350,12 @@ function Components.row(options: RowOptions): ()
 	end
 	Style.outline(badge, options.Tint, 2)
 
-	local reserved = if options.Caption then -178 else -84
-	local headline = Components.text(entry, options.Name, 16, Style.Text, true)
-	Components.place(headline, 78, 9, UDim.new(1, reserved), 24)
+	local reserved = if options.Caption then -192 else -92
+	local headline = Components.text(entry, options.Name, 18, Style.Text, true)
+	Components.place(headline, 88, 9, UDim.new(1, reserved), 26)
 	headline.TextTruncate = Enum.TextTruncate.AtEnd
-	local sub = Components.text(entry, options.Details, 12, Style.Muted)
-	Components.place(sub, 78, 35, UDim.new(1, reserved), 34)
+	local sub = Components.text(entry, options.Details, 13, Style.Muted)
+	Components.place(sub, 88, 38, UDim.new(1, reserved), 40)
 	sub.TextYAlignment = Enum.TextYAlignment.Top
 
 	local callback = options.Callback
@@ -362,7 +364,7 @@ function Components.row(options: RowOptions): ()
 		control.Name = options.FocusKey or options.Name
 		control.AnchorPoint = Vector2.new(1, 0.5)
 		control.Position = UDim2.new(1, -10, 0.5, 0)
-		control.Size = UDim2.fromOffset(104, 48)
+		control.Size = UDim2.fromOffset(110, 52)
 		Components.prefer(control)
 	end
 end

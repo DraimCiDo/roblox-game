@@ -1,4 +1,5 @@
 --!strict
+local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -11,6 +12,7 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Data = require(script.Parent.DataController)
 local Components = require(script.Components)
 local Hud = require(script.Hud)
+local Icons = require(script.Icons)
 local Collections = require(script.Screens.Collections)
 local Daily = require(script.Screens.Daily)
 local Dial = require(script.Screens.Dial)
@@ -28,7 +30,7 @@ local TITLES: { [string]: string } = {
 	loot = "Управление добычей",
 	perks = "Древо перков",
 	daily = "Ежедневная награда",
-	dial = "Ручка сейфа",
+	dial = "Взлом сейфа",
 }
 local CAPTIONS: { [string]: string } = {
 	terminal = "Случайные контейнеры и очередь доставки",
@@ -37,7 +39,7 @@ local CAPTIONS: { [string]: string } = {
 	loot = "Операции с открытым контейнером",
 	perks = "Улучшайте сектор за монеты",
 	daily = "Награда за время в лаборатории",
-	dial = "Остановите указатель в выделенном секторе",
+	dial = "Три штифта: каждый следующий быстрее",
 }
 local ACCENTS: { [string]: Color3 } = {
 	terminal = Style.Signal,
@@ -48,6 +50,17 @@ local ACCENTS: { [string]: Color3 } = {
 	daily = Style.Amber,
 	dial = Style.Cyan,
 }
+local ICONS: { [string]: Icons.IconName } = {
+	terminal = "screen",
+	inventory = "box",
+	collections = "grid",
+	loot = "box",
+	perks = "star",
+	daily = "gift",
+	dial = "lock",
+}
+local DIAL_CLOSE_DELAY = 0.7
+local STOP_LOCK = 1.5
 
 type DialRound = Dial.Round
 
@@ -56,11 +69,13 @@ local state: Types.View?
 local menu: string?
 local round: DialRound?
 local signature = ""
+local stopLocked = false
 
 local action: RemoteEvent
 local title: TextLabel
 local subtitle: TextLabel
-local accent: Frame
+local badge: Frame
+local badgeStroke: UIStroke
 local panel: Frame
 local panelScale: UIScale
 local backdrop: TextButton
@@ -127,6 +142,32 @@ local function updateClocks(): ()
 	end
 end
 
+-- Останавливает указатель; повторные нажатия блокируются до ответа сервера.
+local function stopDial(current: DialRound): ()
+	if stopLocked then
+		return
+	end
+	stopLocked = true
+	send("open", current.Id)
+	task.delay(STOP_LOCK, function()
+		stopLocked = false
+	end)
+end
+
+-- Пробел останавливает указатель и не вызывает прыжок, пока открыт взлом сейфа.
+local function bindStop(active: boolean): ()
+	if active then
+		ContextActionService:BindActionAtPriority("CorpaDialStop", function(_, inputState)
+			if inputState == Enum.UserInputState.Begin and round then
+				stopDial(round)
+			end
+			return Enum.ContextActionResult.Sink
+		end, false, Enum.ContextActionPriority.High.Value, Enum.KeyCode.Space)
+	else
+		ContextActionService:UnbindAction("CorpaDialStop")
+	end
+end
+
 local function refresh(preserveScroll: boolean?): ()
 	local key, data = menu, state
 	panel.Visible, backdrop.Visible = key ~= nil, key ~= nil
@@ -140,7 +181,13 @@ local function refresh(preserveScroll: boolean?): ()
 	Components.begin()
 	title.Text = TITLES[key] or `Витрина {key}`
 	subtitle.Text = CAPTIONS[key] or "Экспозиция вашего сектора"
-	accent.BackgroundColor3 = ACCENTS[key] or Style.Cyan
+	badgeStroke.Color = ACCENTS[key] or Style.Cyan
+	for _, child in badge:GetChildren() do
+		if child:IsA("Frame") then
+			child:Destroy()
+		end
+	end
+	Icons.draw(badge, ICONS[key] or "grid", ACCENTS[key] or Style.Cyan, Style.Text).Size = UDim2.fromScale(0.62, 0.62)
 
 	if not data then
 		Components.paragraph("Синхронизация данных сектора…")
@@ -160,8 +207,7 @@ local function refresh(preserveScroll: boolean?): ()
 		local current = round
 		if current then
 			Dial.render(current, function()
-				send("open", current.Id)
-				selectMenu(nil)
+				stopDial(current)
 			end)
 		end
 	else
@@ -203,6 +249,7 @@ selectMenu = function(key: string?): ()
 		Collections.reset()
 	end
 	signature = if state then fingerprint(state) else ""
+	bindStop(key == "dial")
 	refresh(previous == key)
 	if key and not previous then
 		panelScale.Scale = 0.9
@@ -212,6 +259,15 @@ selectMenu = function(key: string?): ()
 	end
 	if not key and previous and gamepadActive() then
 		GuiService.SelectedObject = nil
+	end
+end
+
+-- Открывает меню по горячей клавише; повторное нажатие закрывает его.
+local function toggle(key: string): ()
+	if menu == key then
+		selectMenu(nil)
+	elseif menu == nil then
+		selectMenu(key)
 	end
 end
 
@@ -225,10 +281,10 @@ local function build(): ()
 
 	Hud.build(gui, {
 		Perks = function()
-			selectMenu("perks")
+			toggle("perks")
 		end,
 		Reward = function()
-			selectMenu("daily")
+			toggle("daily")
 		end,
 	})
 
@@ -248,7 +304,7 @@ local function build(): ()
 		selectMenu(nil)
 	end)
 
-	panel = Style.frame(gui, Style.Panel, 18)
+	panel = Style.frame(gui, Style.Panel, 20)
 	panel.Name = "Меню сектора"
 	panel.AnchorPoint = Vector2.new(0.5, 0.5)
 	panel.Position = UDim2.fromScale(0.5, 0.5)
@@ -262,35 +318,39 @@ local function build(): ()
 	panel.SelectionBehaviorRight = Enum.SelectionBehavior.Stop
 	panel.ZIndex = 3
 	Style.outline(panel, Style.Edge, 4)
+	Style.soft(panel, 0.16)
 	local bounds = Instance.new("UISizeConstraint")
-	bounds.MaxSize = Vector2.new(580, 640)
+	bounds.MaxSize = Vector2.new(600, 660)
 	bounds.Parent = panel
 	panelScale = Instance.new("UIScale")
 	panelScale.Parent = panel
 
 	local banner = Style.frame(panel, Style.Card, 16)
 	banner.Position = UDim2.fromOffset(8, 8)
-	banner.Size = UDim2.new(1, -16, 0, 80)
-	accent = Style.frame(banner, Style.Signal, 3)
-	Components.place(accent, 14, 14, UDim.new(0, 6), 52)
-	title = Components.text(banner, "", 25, Style.Text, true)
-	Components.place(title, 30, 8, UDim.new(1, -92), 36)
+	banner.Size = UDim2.new(1, -16, 0, 84)
+	Style.outline(banner, Style.Edge, 2)
+	Style.soft(banner, 0.1)
+	badge = Style.frame(banner, Style.Track, 14)
+	Components.place(badge, 12, 12, UDim.new(0, 60), 60)
+	badgeStroke = Style.outline(badge, Style.Signal, 3)
+	title = Components.text(banner, "", 26, Style.Text, true)
+	Components.place(title, 84, 8, UDim.new(1, -148), 38)
 	title.TextTruncate = Enum.TextTruncate.AtEnd
-	subtitle = Components.text(banner, "", 12, Style.Muted)
-	Components.place(subtitle, 30, 44, UDim.new(1, -92), 32)
+	subtitle = Components.text(banner, "", 13, Style.Muted)
+	Components.place(subtitle, 84, 46, UDim.new(1, -148), 34)
 	subtitle.TextYAlignment = Enum.TextYAlignment.Top
 	close = Style.button(banner, "×", function()
 		selectMenu(nil)
 	end, true, "danger")
-	close.TextSize = 26
+	close.TextSize = 28
 	close.AnchorPoint = Vector2.new(1, 0.5)
 	close.Position = UDim2.new(1, -12, 0.5, 0)
-	close.Size = UDim2.fromOffset(48, 48)
+	close.Size = UDim2.fromOffset(52, 52)
 
 	local content = Instance.new("ScrollingFrame")
 	content.Name = "Содержимое"
-	content.Position = UDim2.fromOffset(16, 98)
-	content.Size = UDim2.new(1, -26, 1, -108)
+	content.Position = UDim2.fromOffset(16, 102)
+	content.Size = UDim2.new(1, -26, 1, -112)
 	content.BackgroundTransparency = 1
 	content.BorderSizePixel = 0
 	content.ScrollBarThickness = 6
@@ -324,8 +384,8 @@ local function build(): ()
 end
 
 local function animate(): ()
-	local widgets, current = Components.Live.Dial, round
-	if menu ~= "dial" or not widgets or not current then
+	local current = round
+	if menu ~= "dial" or not current then
 		return
 	end
 	local elapsed = math.max(0, Workspace:GetServerTimeNow() - current.Start)
@@ -334,8 +394,7 @@ local function animate(): ()
 		Hud.notice("Время вышло. Поверните ручку снова.")
 		return
 	end
-	widgets.Needle.Position = UDim2.new((elapsed % current.Period) / current.Period, 0, 0, -5)
-	widgets.Time.Text = `Осталось {math.ceil(Dial.TimeLimit - elapsed)} с`
+	Dial.update(current, elapsed)
 end
 
 function SimulatorController:Start(): ()
@@ -347,9 +406,32 @@ function SimulatorController:Start(): ()
 		elseif mode == "notice" then
 			Hud.notice(value)
 		elseif mode == "dial" then
-			local start, target, period, tolerance = ...
-			round = { Id = value, Start = start, Target = target, Period = period, Tolerance = tolerance }
+			local start, target, period, tolerance, stage, total = ...
+			stopLocked = false
+			round = {
+				Id = value,
+				Start = start,
+				Target = target,
+				Period = period,
+				Tolerance = tolerance,
+				Stage = stage or 1,
+				Total = total or 1,
+			}
+			if (stage or 1) > 1 then
+				Hud.notice(`Штифт {stage - 1} на месте!`)
+			end
 			selectMenu("dial")
+		elseif mode == "dialEnd" then
+			stopLocked = false
+			Dial.flash(value == true)
+			if value == true then
+				Hud.notice("Сейф вскрыт!")
+			end
+			task.delay(DIAL_CLOSE_DELAY, function()
+				if menu == "dial" then
+					selectMenu(nil)
+				end
+			end)
 		end
 	end)
 	Data:OnChanged(function(data)
@@ -365,8 +447,15 @@ function SimulatorController:Start(): ()
 		end
 	end)
 	UserInputService.InputBegan:Connect(function(input, consumed)
-		if not consumed and input.KeyCode == Enum.KeyCode.ButtonB and menu then
+		if consumed then
+			return
+		end
+		if input.KeyCode == Enum.KeyCode.ButtonB and menu then
 			selectMenu(nil)
+		elseif input.KeyCode == Enum.KeyCode.P then
+			toggle("perks")
+		elseif input.KeyCode == Enum.KeyCode.G then
+			toggle("daily")
 		end
 	end)
 	RunService.RenderStepped:Connect(animate)

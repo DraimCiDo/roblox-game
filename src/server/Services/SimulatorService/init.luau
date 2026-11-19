@@ -40,6 +40,7 @@ local SimulatorService = {}
 local sessions: { [Player]: Session } = {}
 local occupants: { [number]: Player } = {}
 local lastProfileQuery: { [Player]: number } = {}
+local dialStages: { [Player]: number } = {}
 local plots: { World.Plot } = {}
 local perks: { [string]: Catalog.Perk } = {}
 for _, perk in Catalog.Perks do
@@ -190,12 +191,14 @@ local function tickPlayer(player: Player, session: Session, now: number): ()
 		sync(player, session)
 	elseif order.Stage == "sealed" and order.DialStarted > 0 then
 		local elapsed = now - order.DialStarted
-		if elapsed <= 20 then
-			World.RotateDial(session.Plot, (elapsed % Economy.DialPeriod) / Economy.DialPeriod)
+		if elapsed <= Economy.DialTimeLimit then
+			local _, period = Economy.dial(order, dialStages[player] or 1)
+			World.RotateDial(session.Plot, (elapsed % period) / period)
 		else
 			Data:Update(player, function()
 				order.DialStarted = 0
 			end)
+			dialStages[player] = nil
 			World.RotateDial(session.Plot, 0)
 		end
 	elseif order.Stage == "clear" then
@@ -283,27 +286,55 @@ local function openOrder(
 				return false, false
 			end
 			order.DialStarted = Workspace:GetServerTimeNow()
+			dialStages[player] = 1
+			local target, period, tolerance = Economy.dial(order, 1)
 			interface:FireClient(
 				player,
 				"dial",
 				order.Id,
 				order.DialStarted,
-				order.Target,
-				Economy.DialPeriod,
-				Economy.DialTolerance
+				target,
+				period,
+				tolerance,
+				1,
+				Economy.DialStages
 			)
 			return true, false
 		else
 			if argument ~= order.Id or order.DialStarted <= 0 then
 				return false, false
 			end
-			local elapsed = Workspace:GetServerTimeNow() - order.DialStarted
-			local phase = (elapsed % Economy.DialPeriod) / Economy.DialPeriod
+			local stage = dialStages[player] or 1
+			local target, period, tolerance = Economy.dial(order, stage)
+			local now = Workspace:GetServerTimeNow()
+			local elapsed = now - order.DialStarted
+			local phase = (elapsed % period) / period
+			local hit = elapsed > 0.3 and elapsed <= Economy.DialTimeLimit and math.abs(phase - target) <= tolerance
+			if hit and stage < Economy.DialStages then
+				-- Штифт встал на место: сразу начинается следующий, более быстрый этап.
+				dialStages[player] = stage + 1
+				order.DialStarted = now
+				local nextTarget, nextPeriod, nextTolerance = Economy.dial(order, stage + 1)
+				interface:FireClient(
+					player,
+					"dial",
+					order.Id,
+					now,
+					nextTarget,
+					nextPeriod,
+					nextTolerance,
+					stage + 1,
+					Economy.DialStages
+				)
+				return true, false
+			end
 			order.DialStarted = 0
-			opened = elapsed > 0.3 and elapsed <= 20 and math.abs(phase - order.Target) <= Economy.DialTolerance
-			if not opened then
+			dialStages[player] = nil
+			opened = hit
+			interface:FireClient(player, "dialEnd", hit)
+			if not hit then
 				World.RotateDial(plot, 0)
-				tell(player, "Ручка вне сектора. Попробуйте ещё раз.")
+				tell(player, "Штифт сорвался. Начните взлом заново.")
 			end
 		end
 	elseif not physical then
