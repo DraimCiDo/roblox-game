@@ -6,6 +6,7 @@ local Workspace = game:GetService("Workspace")
 local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
 local Config = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Types = require(ReplicatedStorage.Shared.Types)
+local Containers = require(script.Parent.Containers)
 
 local STEEL = Color3.fromRGB(45, 56, 68)
 local ICE = Color3.fromRGB(91, 232, 222)
@@ -478,143 +479,15 @@ local function clickToOpen(body: Part, use: Use): ()
 end
 
 local function containerModel(plot: Plot, order: Types.Order, use: Use): Model
-	local model = Instance.new("Model")
-	model.Name = if order.Variant then Catalog.Variants[order.Kind] else Catalog.Containers[order.Kind]
-	plot.OpenParts = {}
-	local function component(name: string, cf: CFrame, size: Vector3, color: Color3, material: Enum.Material?): Part
-		return part(model, name, cf, size, color, material)
-	end
-	if order.Kind == "cargo" then
-		local blue = if order.Variant then Color3.fromRGB(85, 108, 148) else Color3.fromRGB(59, 97, 130)
-		component("Пол контейнера", CFrame.new(0, 0.15, 0), Vector3.new(14, 0.3, 15.9), blue)
-		component("Крыша", CFrame.new(0, 7.1, 0), Vector3.new(14, 0.4, 16), blue)
-		component("Задняя стенка", CFrame.new(0, 3.6, 7.8), Vector3.new(14, 7, 0.4), blue)
-		for _, side in { -1, 1 } do
-			component("Борт", CFrame.new(6.8 * side, 3.6, 0), Vector3.new(0.4, 7, 16), blue)
-			for z = -6, 6, 2 do
-				component("Ребро", CFrame.new(7 * side, 3.6, z), Vector3.new(0.34, 6.6, 0.32), STEEL)
-			end
-			local door =
-				component("Створка", CFrame.new(3.45 * side, 3.6, -7.8), Vector3.new(6.85, 6.9, 0.35), blue)
-			table.insert(plot.OpenParts, door)
-			local lock =
-				component("Фиксатор", CFrame.new(2.2 * side, 3.3, -8.16), Vector3.new(0.42, 2.7, 0.36), AMBER)
-			table.insert(plot.OpenParts, lock)
-			prompt(lock, "Разблокировать", model.Name, use, "open", tostring(if side == -1 then 1 else 2))
-		end
-		local handle =
-			component("Открыть створки", CFrame.new(0, 3.5, -8.16), Vector3.new(0.65, 1, 0.35), ICE)
-		table.insert(plot.OpenParts, handle)
-		prompt(handle, "Открыть створки", model.Name, use, "open", "doors")
-	else
-		local colors: { [string]: Color3 } = {
-			box = Color3.fromRGB(155, 108, 67),
-			crate = Color3.fromRGB(116, 82, 57),
-			safe = Color3.fromRGB(78, 94, 108),
-			secret = Color3.fromRGB(79, 53, 115),
-		}
-		local height = if order.Kind == "box" then 2.7 else 4.2
-		local width = if order.Kind == "box" then 4.6 else 6
-		local body = component(
-			"Корпус",
-			CFrame.new(0, height * 0.5, 0),
-			Vector3.new(width, height, width),
-			colors[order.Kind],
-			if order.Kind == "crate" then Enum.Material.WoodPlanks else nil
-		)
-		for _, side in { -1, 1 } do
-			component(
-				"Кромка",
-				CFrame.new(side * (width / 2 - 0.17), height - 0.2, 0),
-				Vector3.new(0.25, 0.25, width),
-				if order.Variant then ICE else STEEL
-			)
-		end
-		if order.Kind == "box" then
-			for index = 1, 4 do
-				local tape = component(
-					"Скотч",
-					CFrame.new(0, height + 0.035, (index - 2.5) * 1.08),
-					Vector3.new(0.65, 0.08, 1.09),
-					AMBER,
-					Enum.Material.SmoothPlastic
-				)
-				table.insert(plot.OpenParts, tape)
-			end
-			prompt(body, "Отклеить скотч", model.Name, use, "open", nil, 10)
-			clickToOpen(body, use)
-		elseif order.Kind == "crate" then
-			for index = 1, 4 do
-				local x = if index % 2 == 1 then -2.2 else 2.2
-				local z = if index <= 2 then -3.1 else 3.1
-				local fastener =
-					component("Крепление", CFrame.new(x, 2.6, z), Vector3.new(0.48, 0.74, 0.28), AMBER)
-				table.insert(plot.OpenParts, fastener)
-				local interaction =
-					prompt(fastener, "Сломать крепление", model.Name, use, "open", tostring(index), 7)
-				interaction.KeyboardKeyCode = if index % 2 == 1 then Enum.KeyCode.E else Enum.KeyCode.F
-				interaction.GamepadKeyCode = if index % 2 == 1 then Enum.KeyCode.ButtonX else Enum.KeyCode.ButtonY
-			end
-		elseif order.Kind == "safe" then
-			local door = component(
-				"Дверца сейфа",
-				CFrame.new(0, height / 2, -3.04),
-				Vector3.new(width - 0.45, height - 0.45, 0.26),
-				STEEL
-			)
-			table.insert(plot.OpenParts, door)
-			local dial = component(
-				"Ручка",
-				CFrame.new(0.8, 2.3, -3.28) * CFrame.Angles(0, math.pi / 2, 0),
-				Vector3.new(0.3, 0.92, 0.92),
-				AMBER
-			)
-			dial.Shape = Enum.PartType.Cylinder
-			local marker =
-				component("Метка ручки", CFrame.new(0.8, 2.62, -3.46), Vector3.new(0.12, 0.17, 0.045), INK)
-			marker.CanCollide = false
-			table.insert(plot.OpenParts, marker)
-			table.insert(plot.OpenParts, dial)
-			prompt(dial, "Вращать ручку", model.Name, use, "open", nil, 9)
-		else
-			local orb = component(
-				"Заряд",
-				CFrame.new(0, height + 0.15, 0),
-				Vector3.new(3.6, 0.35, 3.6),
-				Color3.fromRGB(146, 87, 208),
-				Enum.Material.Neon
-			)
-			table.insert(plot.OpenParts, orb)
-			local glow = Instance.new("PointLight")
-			glow.Color = orb.Color
-			glow.Range = 14
-			glow.Brightness = 0.4
-			glow.Parent = orb
-			prompt(body, "Усилить свечение", model.Name, use, "open", nil, 10)
-			clickToOpen(body, use)
-		end
-	end
-	model.WorldPivot = CFrame.new()
+	local model, openParts = Containers.build(order, use, { Part = part, Prompt = prompt, Click = clickToOpen })
+	plot.OpenParts = openParts
 	model.Parent = plot.Model
 	return model
 end
 
 function World.RotateDial(plot: Plot, phase: number): ()
-	local marker = plot.OpenParts[2]
-	if marker then
-		local center = plot.Pad * CFrame.new(0.8, 3.35, -3.46)
-		marker.CFrame = center * CFrame.Angles(0, 0, -math.pi * 2 * phase) * CFrame.new(0, 0.32, 0)
-	end
-end
-
-local function progress(order: Types.Order, marker: number): boolean
-	return bit32.btest(order.Progress, bit32.lshift(1, marker - 1))
-end
-
-local function enabled(partObject: Part, active: boolean): ()
-	local action = partObject:FindFirstChildOfClass("ProximityPrompt")
-	if action then
-		action.Enabled = active
+	if plot.Active then
+		Containers.rotateDial(plot.Active, plot.Pad * CFrame.new(0, 1.05, 0), phase)
 	end
 end
 
@@ -657,7 +530,6 @@ function World.Sync(plot: Plot, order: Types.Order?, use: Use, scatter: boolean,
 	end
 	local base = plot.Pad * CFrame.new(0, 1.05, 0)
 	local delivering = order.Stage == "delivery"
-	local opened = order.Stage == "open" or order.Stage == "clear"
 	if plot.OrderId ~= order.Id then
 		World.Clear(plot)
 		local model = containerModel(plot, order, function(player, action, key)
@@ -679,8 +551,11 @@ function World.Sync(plot: Plot, order: Types.Order?, use: Use, scatter: boolean,
 	if not delivering then
 		moveGate(plot, "upper", false)
 	end
+	local lead = 0
 	local visual = `{order.Stage}:{order.Progress}`
 	if plot.VisualState ~= visual then
+		-- Анимации проигрываем, только если контейнер уже был показан; при восстановлении состояние ставится сразу.
+		local live = plot.VisualState ~= nil
 		plot.VisualState = visual
 		for _, child in model:GetDescendants() do
 			if child:IsA("ProximityPrompt") then
@@ -689,62 +564,7 @@ function World.Sync(plot: Plot, order: Types.Order?, use: Use, scatter: boolean,
 				child.MaxActivationDistance = if order.Stage == "sealed" then 10 else 0
 			end
 		end
-		if order.Kind == "box" or order.Kind == "crate" then
-			for index, piece in plot.OpenParts do
-				local removed = if order.Kind == "box" then index <= order.Progress else progress(order, index)
-				piece.Transparency = if removed then 1 else 0
-				piece.CanCollide = not removed
-				if removed then
-					enabled(piece, false)
-				end
-			end
-		elseif order.Kind == "cargo" then
-			for index = 1, 2 do
-				local door, lock = plot.OpenParts[index * 2 - 1], plot.OpenParts[index * 2]
-				local removed = progress(order, index)
-				lock.Transparency = if removed then 1 else 0
-				lock.CanCollide = not removed
-				enabled(lock, not removed and order.Stage == "sealed")
-				if opened then
-					door.CanCollide = false
-					local side = if index == 1 then -1 else 1
-					local goal = base * CFrame.new(6.85 * side, 3.6, -11.2) * CFrame.Angles(0, math.pi / 2, 0)
-					if scatter then
-						TweenService:Create(door, TweenInfo.new(0.45), { CFrame = goal }):Play()
-					else
-						door.CFrame = goal
-					end
-				end
-			end
-			local handle = plot.OpenParts[5]
-			handle.CanCollide = false
-			handle.Transparency = if opened then 1 else 0
-			enabled(handle, order.Progress == 3 and order.Stage == "sealed")
-		elseif order.Kind == "secret" then
-			local orb = plot.OpenParts[1]
-			local glow = orb:FindFirstChildOfClass("PointLight")
-			if glow then
-				glow.Brightness = 0.4 + order.Progress * 0.75
-			end
-		end
-		if opened and order.Kind ~= "cargo" then
-			local body = model:FindFirstChild("Корпус") :: Part
-			body.Size = Vector3.new(body.Size.X, 0.5, body.Size.Z)
-			body.CFrame = base * CFrame.new(0, 0.25, 0)
-			body.CanCollide = false
-			for _, object in model:GetChildren() do
-				if object:IsA("BasePart") and object ~= body then
-					object.CanCollide = false
-					object.Transparency = if order.Kind == "safe" and object.Name == "Дверца сейфа"
-						then 0
-						else 1
-				end
-			end
-			if order.Kind == "safe" then
-				local door = plot.OpenParts[1]
-				door.CFrame = base * CFrame.new(-2.8, 2.1, -5.8) * CFrame.Angles(0, -math.pi / 2, 0)
-			end
-		end
+		lead = Containers.update(model, order, base, live, plot.OpenParts)
 	end
 	local shouldExist: { [string]: boolean } = {}
 	for _, loot in order.Loot do
@@ -769,7 +589,13 @@ function World.Sync(plot: Plot, order: Types.Order?, use: Use, scatter: boolean,
 				)
 			end
 			if scatter and order.Kind ~= "cargo" then
-				animate(prop, base * CFrame.new(0, 2.1, 0), target, 0.55, 2.3)
+				local from = base * CFrame.new(0, 2.1, 0)
+				prop:PivotTo(from)
+				task.delay(lead, function()
+					if prop.Parent then
+						animate(prop, from, target, 0.55, 2.3)
+					end
+				end)
 			else
 				prop:PivotTo(target)
 			end
