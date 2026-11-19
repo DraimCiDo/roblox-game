@@ -10,6 +10,7 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Data = require(script.Parent.PlayerDataService)
 local Economy = require(script.Economy)
 local World = require(script.World)
+local Tutorial = require(script.Tutorial)
 local ItemAssets = require(script.ItemAssets)
 
 type Session = {
@@ -34,6 +35,7 @@ local REMOTE_ACTIONS: { [string]: boolean } = {
 	removeDisplay = true,
 	quickSell = true,
 	quickCollect = true,
+	skipTutorial = true,
 }
 
 local SimulatorService = {}
@@ -42,6 +44,7 @@ local occupants: { [number]: Player } = {}
 local lastProfileQuery: { [Player]: number } = {}
 local dialStages: { [Player]: number } = {}
 local stats: { [Player]: { Coins: IntValue, Opened: IntValue } } = {}
+local guides: { [Player]: { Id: string, Target: Instance? } } = {}
 local plots: { World.Plot } = {}
 local perks: { [string]: Catalog.Perk } = {}
 for _, perk in Catalog.Perks do
@@ -122,6 +125,35 @@ local function tell(player: Player, text: string): ()
 	interface:FireClient(player, "notice", text)
 end
 
+-- Отправляет клиенту текущую подсказку обучения; повторно только при смене шага или цели.
+local function updateGuide(player: Player, session: Session, data: Types.PlayerData): ()
+	if data.TutorialDone then
+		return
+	end
+	local step = Tutorial.evaluate(data, session.Plot)
+	local last = guides[player]
+	if not step then
+		guides[player] = nil
+		Data:Update(player, function(current)
+			current.TutorialDone = true
+		end)
+		interface:FireClient(player, "guide", nil)
+		-- Поздравление только тем, кто проходил обучение; опытные игроки завершают его молча.
+		if last then
+			tell(
+				player,
+				"Обучение пройдено! Собирайте коллекции и выставляйте находки на витрины."
+			)
+		end
+		return
+	end
+	if last and last.Id == step.Id and last.Target == step.Target then
+		return
+	end
+	guides[player] = { Id = step.Id, Target = step.Target }
+	interface:FireClient(player, "guide", step.Text, step.Target, step.Pulse)
+end
+
 local function sync(player: Player, session: Session, scatter: boolean?): ()
 	local data = Data:Get(player)
 	if not data then
@@ -155,6 +187,7 @@ local function sync(player: Player, session: Session, scatter: boolean?): ()
 		1 + (data.Perks.orders or 0)
 	)
 	World.UpdateDisplays(session.Plot, data.Displays)
+	updateGuide(player, session, data)
 	publish(player)
 end
 
@@ -649,6 +682,11 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 				data.Perks[argument] = level + 1
 				updated = true
 			end
+		elseif action == "skipTutorial" then
+			data.TutorialDone = true
+			guides[player] = nil
+			interface:FireClient(player, "guide", nil)
+			updated = true
 		elseif action == "daily" then
 			local day = math.floor(now / 86400)
 			if data.DailyClaim >= day then
@@ -762,6 +800,7 @@ function SimulatorService:Start(): ()
 		lastProfileQuery[player] = nil
 		dialStages[player] = nil
 		stats[player] = nil
+		guides[player] = nil
 		local session = sessions[player]
 		if session then
 			World.Clear(session.Plot)

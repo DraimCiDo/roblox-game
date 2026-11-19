@@ -6,6 +6,7 @@ local DEFAULT_DATA: Types.PlayerData = {
 	Coins = 2500,
 	Earned = 0,
 	Opened = 0,
+	TutorialDone = false,
 	StarterGranted = false,
 	Inventory = {},
 	Collections = {},

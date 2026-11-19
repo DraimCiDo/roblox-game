@@ -1,6 +1,7 @@
 --!strict
 local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
@@ -34,6 +35,8 @@ local levelFill: Frame
 local levelCount: TextLabel
 local queueLabel: TextLabel
 local rewardButton: TextButton
+local perksButton: TextButton
+local pulseRing: Frame?
 local rewardBadge: Frame
 local toasts: Frame
 local toastSerial = 0
@@ -165,8 +168,8 @@ function Hud.build(gui: ScreenGui, callbacks: Callbacks): ()
 	sideLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	sideLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
 	sideLayout.Parent = side
-	local perks = iconButton(side, "star", "Перки", "P", callbacks.Perks)
-	perks.LayoutOrder = 1
+	perksButton = iconButton(side, "star", "Перки", "P", callbacks.Perks)
+	perksButton.LayoutOrder = 1
 	rewardButton = iconButton(side, "gift", "Награда", "G", callbacks.Reward)
 	rewardButton.LayoutOrder = 2
 	rewardBadge = Style.frame(rewardButton, Style.Warning, 10)
@@ -267,6 +270,26 @@ function Hud.notice(message: string): ()
 		task.wait(0.3)
 		toast:Destroy()
 	end)
+end
+
+-- Мигающая рамка вокруг кнопки: key = "perks" подсвечивает «Перки», nil убирает подсветку.
+function Hud.pulse(key: string?): ()
+	if pulseRing then
+		pulseRing:Destroy()
+		pulseRing = nil
+	end
+	if key ~= "perks" then
+		return
+	end
+	local ring = Style.frame(perksButton, nil, 24)
+	ring.AnchorPoint = Vector2.new(0.5, 0.5)
+	ring.Position = UDim2.fromScale(0.5, 0.5)
+	ring.Size = UDim2.new(1, 12, 1, 12)
+	local stroke = Style.outline(ring, Style.Amber, 5)
+	TweenService:Create(stroke, TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+		Transparency = 0.85,
+	}):Play()
+	pulseRing = ring
 end
 
 function Hud.setReward(canClaim: boolean): ()

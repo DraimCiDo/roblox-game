@@ -11,6 +11,7 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Data = require(script.Parent.DataController)
 local Components = require(script.Components)
+local Guide = require(script.Guide)
 local Hud = require(script.Hud)
 local Icons = require(script.Icons)
 local Collections = require(script.Screens.Collections)
@@ -300,6 +301,11 @@ local function build(): ()
 		end,
 	})
 
+	Guide.build(gui, function()
+		send("skipTutorial")
+		Guide.hide()
+	end, Hud.pulse)
+
 	backdrop = Instance.new("TextButton")
 	backdrop.Name = "Затемнение"
 	backdrop.Size = UDim2.fromScale(1, 1)
@@ -441,6 +447,13 @@ function SimulatorController:Start(): ()
 				Hud.notice(`Штифт {stage - 1} на месте!`)
 			end
 			selectMenu("dial")
+		elseif mode == "guide" then
+			if value then
+				local target, pulse = ...
+				Guide.show(value, target, pulse)
+			else
+				Guide.hide()
+			end
 		elseif mode == "dialEnd" then
 			stopLocked = false
 			Dial.flash(value == true)

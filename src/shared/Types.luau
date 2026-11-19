@@ -19,6 +19,7 @@ export type PlayerData = {
 	Coins: number,
 	Earned: number,
 	Opened: number,
+	TutorialDone: boolean,
 	StarterGranted: boolean,
 	Inventory: { Item },
 	Collections: { [string]: Item },
