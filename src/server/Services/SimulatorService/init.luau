@@ -10,6 +10,7 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Data = require(script.Parent.PlayerDataService)
 local Economy = require(script.Economy)
 local World = require(script.World)
+local ItemAssets = require(script.ItemAssets)
 
 type Session = {
 	Plot: World.Plot,
@@ -646,6 +647,7 @@ end
 function SimulatorService:Start(): ()
 	changed = Remotes.event(Remotes.Events.DataChanged)
 	interface = Remotes.event(Remotes.Events.Interface)
+	ItemAssets.preload()
 	plots = World.Build(function(index, player, action, argument)
 		local session = sessions[player]
 		if session and session.Plot.Rank == index then

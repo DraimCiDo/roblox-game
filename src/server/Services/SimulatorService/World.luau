@@ -7,6 +7,7 @@ local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
 local Config = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Containers = require(script.Parent.Containers)
+local ItemAssets = require(script.Parent.ItemAssets)
 
 local STEEL = Color3.fromRGB(45, 56, 68)
 local ICE = Color3.fromRGB(91, 232, 222)
@@ -321,6 +322,13 @@ end
 
 local function makeItem(item: Types.Item): Model
 	local definition = Catalog.Items[item.Kind]
+	local stored = ItemAssets.clone(item.Kind)
+	if stored then
+		stored.Name = definition.Name
+		stored:SetAttribute("ItemId", item.Id)
+		stored:SetAttribute("Quality", item.Quality)
+		return stored
+	end
 	local color = definition.Color
 	local model = Instance.new("Model")
 	model.Name = definition.Name

@@ -12,6 +12,8 @@ local TOAST_SECONDS = 3.4
 -- Фрагменты без первой буквы, чтобы не зависеть от регистра.
 local WARNING_HINTS =
 	{ "аполнен", "едостаточ", "ельзя", "ремя вышло", "е хватает", "лишком" }
+-- Боковые панели лежат по краям по вертикали в центре: там свободно и на телефоне, и на ПК, и на консоли.
+local SIDE_MARGIN = 10
 
 local Hud = {}
 
@@ -25,52 +27,83 @@ local rewardBadge: Frame
 local toasts: Frame
 local toastSerial = 0
 
-function Hud.build(gui: ScreenGui, callbacks: Callbacks): ()
-	local hud = Style.frame(gui)
-	hud.Name = "Сектор"
-	hud.AnchorPoint = Vector2.new(0.5, 0)
-	hud.Position = UDim2.new(0.5, 0, 0, 8)
-	hud.Size = UDim2.new(1, -20, 0, 124)
-	local bounds = Instance.new("UISizeConstraint")
-	bounds.MaxSize = Vector2.new(400, 124)
-	bounds.Parent = hud
+local function sideButton(parent: Instance, caption: string, order: number, callback: () -> ()): TextButton
+	local control = Style.button(parent, caption, callback, true, "neutral")
+	control.LayoutOrder = order
+	control.Size = UDim2.fromOffset(88, 54)
+	control.TextSize = 15
+	return control
+end
 
-	local status = Style.frame(hud, Style.Ink, 14)
-	status.Size = UDim2.new(1, 0, 0, 72)
+function Hud.build(gui: ScreenGui, callbacks: Callbacks): ()
+	-- Статус заказа: компактная плашка сверху по центру.
+	local status = Style.frame(gui, Style.Ink, 14)
+	status.Name = "Статус"
+	status.AnchorPoint = Vector2.new(0.5, 0)
+	status.Position = UDim2.new(0.5, 0, 0, 8)
+	status.Size = UDim2.new(1, -24, 0, 62)
 	Style.outline(status, Style.Edge, 3)
+	local bounds = Instance.new("UISizeConstraint")
+	bounds.MaxSize = Vector2.new(360, 62)
+	bounds.Parent = status
 	signal = Style.frame(status, Style.Amber, 3)
-	Components.place(signal, 10, 12, UDim.new(0, 6), 48)
-	heading = Components.text(status, "Синхронизация сектора…", 16, Style.Text, true)
-	Components.place(heading, 24, 6, UDim.new(1, -92), 32)
+	Components.place(signal, 10, 11, UDim.new(0, 6), 40)
+	heading = Components.text(status, "Синхронизация сектора…", 15, Style.Text, true)
+	Components.place(heading, 24, 6, UDim.new(1, -84), 26)
 	heading.TextTruncate = Enum.TextTruncate.AtEnd
 	hint = Components.text(status, "", 12, Style.Muted)
-	Components.place(hint, 24, 38, UDim.new(1, -36), 30)
+	Components.place(hint, 24, 32, UDim.new(1, -36), 26)
+	hint.TextYAlignment = Enum.TextYAlignment.Top
 	queue = Components.text(status, "", 14, Style.Cyan, true)
 	queue.AnchorPoint = Vector2.new(1, 0)
 	queue.Position = UDim2.new(1, -10, 0, 8)
-	queue.Size = UDim2.fromOffset(62, 24)
+	queue.Size = UDim2.fromOffset(52, 22)
 	queue.TextXAlignment = Enum.TextXAlignment.Right
 
-	local pill = Style.frame(hud, Style.Ink, 20)
-	pill.Position = UDim2.fromOffset(0, 80)
-	pill.Size = UDim2.new(0.42, -4, 0, 40)
-	Style.outline(pill, Style.Amber, 2)
-	local coin = Style.frame(pill, Style.Amber, 11)
-	Components.place(coin, 9, 9, UDim.new(0, 22), 22)
+	-- Баланс: слева по центру экрана.
+	local pill = Style.frame(gui, Style.Ink, 22)
+	pill.Name = "Баланс"
+	pill.AnchorPoint = Vector2.new(0, 0.5)
+	pill.Position = UDim2.new(0, SIDE_MARGIN, 0.5, 0)
+	pill.AutomaticSize = Enum.AutomaticSize.X
+	pill.Size = UDim2.fromOffset(0, 44)
+	Style.outline(pill, Style.Amber, 3)
+	local pillLayout = Instance.new("UIListLayout")
+	pillLayout.FillDirection = Enum.FillDirection.Horizontal
+	pillLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	pillLayout.Padding = UDim.new(0, 8)
+	pillLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	pillLayout.Parent = pill
+	local pillPadding = Instance.new("UIPadding")
+	pillPadding.PaddingLeft = UDim.new(0, 10)
+	pillPadding.PaddingRight = UDim.new(0, 14)
+	pillPadding.Parent = pill
+	local coin = Style.frame(pill, Style.Amber, 12)
+	coin.LayoutOrder = 1
+	coin.Size = UDim2.fromOffset(24, 24)
 	Style.outline(coin, Style.Edge, 2)
-	balance = Components.text(pill, "", 16, Style.Amber, true)
-	Components.place(balance, 38, 0, UDim.new(1, -44), 40)
-	balance.TextTruncate = Enum.TextTruncate.AtEnd
+	balance = Components.text(pill, "", 18, Style.Amber, true)
+	balance.LayoutOrder = 2
+	balance.AutomaticSize = Enum.AutomaticSize.X
+	balance.Size = UDim2.fromOffset(0, 44)
+	balance.TextWrapped = false
 
-	local perkButton = Style.button(hud, "Перки", callbacks.Perks, true, "neutral")
-	perkButton.Position = UDim2.new(0.42, 4, 0, 80)
-	perkButton.Size = UDim2.new(0.25, -4, 0, 40)
-	rewardButton = Style.button(hud, "Награда", callbacks.Reward, true, "neutral")
-	rewardButton.Position = UDim2.new(0.67, 4, 0, 80)
-	rewardButton.Size = UDim2.new(0.33, -4, 0, 40)
+	-- Перки и награда: справа по центру, большими кнопками для пальца.
+	local side = Style.frame(gui)
+	side.Name = "Меню"
+	side.AnchorPoint = Vector2.new(1, 0.5)
+	side.Position = UDim2.new(1, -SIDE_MARGIN, 0.5, 0)
+	side.AutomaticSize = Enum.AutomaticSize.XY
+	side.Size = UDim2.fromOffset(0, 0)
+	local sideLayout = Instance.new("UIListLayout")
+	sideLayout.Padding = UDim.new(0, 10)
+	sideLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	sideLayout.Parent = side
+	sideButton(side, "Перки", 1, callbacks.Perks)
+	rewardButton = sideButton(side, "Награда", 2, callbacks.Reward)
 	rewardBadge = Style.frame(rewardButton, Style.Warning, 8)
 	rewardBadge.AnchorPoint = Vector2.new(1, 0)
-	rewardBadge.Position = UDim2.new(1, 4, 0, -4)
+	rewardBadge.Position = UDim2.new(1, -2, 0, 2)
 	rewardBadge.Size = UDim2.fromOffset(16, 16)
 	rewardBadge.Visible = false
 	Style.outline(rewardBadge, Style.Edge, 2)

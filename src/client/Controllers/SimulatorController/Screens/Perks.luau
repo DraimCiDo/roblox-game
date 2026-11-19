@@ -6,7 +6,8 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Components = require(script.Parent.Parent.Components)
 local Style = require(script.Parent.Parent.Style)
 
-local NODE_HEIGHT = 140
+-- Узел состоит из четырёх строк с жёстко заданными зонами, поэтому элементы не наезжают друг на друга.
+local NODE_HEIGHT = 156
 local LINK_WIDTH = 28
 local BRANCH_COLORS: { [string]: Color3 } = {
 	storage = Style.Cyan,
@@ -45,19 +46,29 @@ local function node(parent: Frame, perk: Catalog.Perk, data: Types.View, color: 
 
 	local frame = Style.frame(parent, Style.Card, 14)
 	frame.Size = UDim2.fromScale(1, 1)
+	frame.ClipsDescendants = true
 	Style.outline(frame, if affordable then accent else Style.Edge, if affordable then 3 else 2)
 
+	-- Зона 1: название. Зона 2: описание. Зона 3: уровни. Зона 4: кнопка у нижнего края.
 	local name = Components.text(frame, perk.Name, 17, if unlocked then Style.Text else Style.Muted, true)
-	Components.place(name, 10, 7, UDim.new(1, -20), 22)
+	Components.place(name, 10, 8, UDim.new(1, -20), 22)
 	name.TextTruncate = Enum.TextTruncate.AtEnd
 	local detail = if unlocked
 		then benefit(perk, level)
 		else `Нужен «{NAMES[perk.Parent or ""] or "?"}» · ур. {parentLevel}`
 	local info = Components.text(frame, detail, 12, if unlocked then Style.Muted else Style.Warning)
-	Components.place(info, 10, 30, UDim.new(1, -20), 32)
+	Components.place(info, 10, 32, UDim.new(1, -20), 32)
 	info.TextYAlignment = Enum.TextYAlignment.Top
+	info.TextTruncate = Enum.TextTruncate.AtEnd
+
+	-- Деления компактные (6 px) и занимают лишь левую часть строки; справа счётчик уровня.
+	local counter = Components.text(frame, `{level}/{#perk.Costs}`, 12, accent, true)
+	counter.AnchorPoint = Vector2.new(1, 0)
+	counter.Position = UDim2.new(1, -10, 0, 70)
+	counter.Size = UDim2.fromOffset(40, 14)
+	counter.TextXAlignment = Enum.TextXAlignment.Right
 	local pips = Components.pips(frame, #perk.Costs, level, accent)
-	Components.place(pips, 10, 68, UDim.new(1, -20), 8)
+	Components.place(pips, 10, 74, UDim.new(1, -64), 6)
 
 	local caption = if cost then Components.coin(cost) else "Максимум"
 	local buy = Style.button(frame, caption, function()
@@ -66,7 +77,7 @@ local function node(parent: Frame, perk: Catalog.Perk, data: Types.View, color: 
 	buy.Name = perk.Key
 	buy.AnchorPoint = Vector2.new(0.5, 1)
 	buy.Position = UDim2.new(0.5, 0, 1, -8)
-	buy.Size = UDim2.new(1, -20, 0, 46)
+	buy.Size = UDim2.new(1, -20, 0, 42)
 	Components.prefer(buy)
 end
 
@@ -87,15 +98,19 @@ function Perks.render(data: Types.View): ()
 			local follower = children[perk.Key]
 			local branch = Components.strip(NODE_HEIGHT)
 
-			local root = Style.frame(branch)
-			root.Size = if follower then UDim2.new(0.5, -LINK_WIDTH / 2, 1, 0) else UDim2.fromScale(1, 1)
-			node(root, perk, data, color)
+			-- Соединитель создаём первым, чтобы он лежал под узлами и не перекрывал их.
 			if follower then
 				local unlocked = (data.Perks[perk.Key] or 0) >= (follower.Required or 1)
 				local link = Style.frame(branch, if unlocked then color else Style.Track, 3)
 				link.AnchorPoint = Vector2.new(0.5, 0.5)
 				link.Position = UDim2.fromScale(0.5, 0.5)
-				link.Size = UDim2.fromOffset(LINK_WIDTH + 6, 6)
+				link.Size = UDim2.fromOffset(LINK_WIDTH, 6)
+			end
+
+			local root = Style.frame(branch)
+			root.Size = if follower then UDim2.new(0.5, -LINK_WIDTH / 2, 1, 0) else UDim2.fromScale(1, 1)
+			node(root, perk, data, color)
+			if follower then
 				local child = Style.frame(branch)
 				child.AnchorPoint = Vector2.new(1, 0)
 				child.Position = UDim2.fromScale(1, 0)
