@@ -9,6 +9,7 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Containers = require(script.Parent.Containers)
 local ItemModels = require(ReplicatedStorage.Shared.ItemModels)
 local Sector = require(script.Parent.Sector)
+local SurfaceFinish = require(script.Parent.SurfaceFinish)
 local ItemAssets = require(script.Parent.ItemAssets)
 
 local STEEL = Color3.fromRGB(45, 56, 68)
@@ -302,6 +303,15 @@ local function downlight(fixture: Part, color: Color3, brightness: number, range
 	light.Parent = fixture
 end
 
+local function ageSideWalls(parent: Instance, name: string): ()
+	for _, wall in authoredParts(parent, name) do
+		local innerFace = if wall.CFrame:PointToObjectSpace(Vector3.zero).X > 0
+			then Enum.NormalId.Right
+			else Enum.NormalId.Left
+		SurfaceFinish.wall(wall, innerFace)
+	end
+end
+
 local function dressSector(model: Model): ()
 	local reception = requirePart(model, "Лицевая панель приёмки")
 	local displays = requirePart(model, "Панель экспозиции")
@@ -311,6 +321,14 @@ local function dressSector(model: Model): ()
 	surfaceLabel(displays, "ВИТРИНЫ", 34, Enum.NormalId.Left)
 	surfaceLabel(order, "ЗАКАЗЫ", 34, Enum.NormalId.Right)
 	surfaceLabel(storage, "СКЛАД", 34, Enum.NormalId.Right)
+
+	surfaceLabel(requirePart(model, "Паспорт шкафа образцов"), "ПРОБЫ", 13)
+	ageSideWalls(model, "Бортовая стена внешнего сектора")
+	SurfaceFinish.wall(
+		requirePart(model, "Торцевая стена внешнего сектора"),
+		Enum.NormalId.Front
+	)
+	SurfaceFinish.floor(requirePart(model, "Настил · Вход и приёмка"))
 
 	for _, fixture in authoredParts(model, "Светильник рабочей зоны") do
 		downlight(fixture, Color3.fromRGB(229, 239, 233), 0.48, 22, 115)
@@ -350,6 +368,7 @@ end
 function World.Build(useForPlot: (number, Player, string, string?) -> ()): { Plot }
 	local root = Workspace:WaitForChild("CORPA — испытательная лаборатория", 10)
 	assert(root, "[World] Не найдена модель лаборатории Roblox Studio")
+	ageSideWalls(root, "Стена соединительного перехода")
 	for _, name in { "Светильник перехода", "Светильник подхода" } do
 		local hall = name == "Светильник подхода"
 		for _, fixture in authoredParts(root, name) do
