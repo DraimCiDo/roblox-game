@@ -137,6 +137,16 @@ local function sync(player: Player, session: Session, scatter: boolean?): ()
 	)
 	World.UpdateStorage(session.Plot, Economy.capacity(data), data.Inventory)
 	World.UpdateCollections(session.Plot, data.Collections)
+	local active = data.Orders[1]
+	local revealed = active ~= nil and active.Stage ~= "queued" and active.Stage ~= "delivery"
+	World.UpdateStatus(
+		session.Plot,
+		if not active then nil elseif revealed then active.Kind else "?",
+		if active then active.Stage else nil,
+		if active then #active.Loot else 0,
+		#data.Inventory,
+		Economy.capacity(data)
+	)
 	World.UpdateInfo(
 		session.Plot,
 		Catalog.level(data.Opened),
@@ -758,6 +768,7 @@ function SimulatorService:Start(): ()
 			World.UpdateDisplays(session.Plot, {})
 			World.UpdateStorage(session.Plot, 15, {})
 			World.UpdateCollections(session.Plot, {})
+			World.UpdateStatus(session.Plot, nil, nil, 0, 0, 15)
 			World.Owner(session.Plot, nil)
 			occupants[session.Plot.Rank] = nil
 			sessions[player] = nil

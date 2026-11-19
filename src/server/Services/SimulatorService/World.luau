@@ -625,6 +625,20 @@ function World.UpdateCollections(plot: Plot, collections: { [string]: Types.Item
 	Sector.setCollections(plot.Kit, collections)
 end
 
+-- Живые табло и голограмма сектора: заказ, добыча и заполнение склада.
+function World.UpdateStatus(
+	plot: Plot,
+	orderState: string?,
+	stage: string?,
+	remaining: number,
+	count: number,
+	capacity: number
+): ()
+	Sector.setOrder(plot.Kit, orderState)
+	Sector.setLoot(plot.Kit, stage, remaining)
+	Sector.setStorageInfo(plot.Kit, count, capacity)
+end
+
 function World.UpdateInfo(plot: Plot, level: number, price: number, orders: number, maximum: number): ()
 	Sector.setInfo(plot.Kit, level, price, orders, maximum)
 end
