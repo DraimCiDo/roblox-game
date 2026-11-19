@@ -1,18 +1,25 @@
 --!strict
--- Глобальные настройки игры. Никаких секретов: этот модуль реплицируется клиенту.
 local Types = require(script.Parent.Parent.Types)
 
 local DEFAULT_DATA: Types.PlayerData = {
-	Version = 1,
-	Coins = 0,
+	Version = 2,
+	Coins = 2500,
+	Earned = 0,
+	StarterGranted = false,
+	Inventory = {},
+	Collections = {},
+	Displays = {},
+	Perks = {},
+	Orders = {},
+	DailyClaim = -1,
 }
 
-local GameConfig = table.freeze({
-	-- Меняйте имя хранилища/версию схемы только вместе с миграцией (скилл datastore-change)
+return table.freeze({
 	DataStoreName = "PlayerData_v1",
-	DataSchemaVersion = 1,
+	DataSchemaVersion = 2,
 	DefaultData = table.freeze(DEFAULT_DATA),
-	AutosaveInterval = 120,
+	AutosaveInterval = 45,
+	MaxPlayers = 6,
+	OrderPrice = 2500,
+	DailySeconds = 900,
 })
-
-return GameConfig
