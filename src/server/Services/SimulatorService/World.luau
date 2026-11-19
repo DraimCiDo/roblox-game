@@ -292,6 +292,16 @@ local function authoredParts(parent: Instance, name: string): { Part }
 	return found
 end
 
+local function downlight(fixture: Part, color: Color3, brightness: number, range: number, angle: number): ()
+	local light = Instance.new("SurfaceLight")
+	light.Face = Enum.NormalId.Bottom
+	light.Color = color
+	light.Brightness = brightness
+	light.Range = range
+	light.Angle = angle
+	light.Parent = fixture
+end
+
 local function dressSector(model: Model): ()
 	local reception = requirePart(model, "Лицевая панель приёмки")
 	local displays = requirePart(model, "Панель экспозиции")
@@ -303,13 +313,13 @@ local function dressSector(model: Model): ()
 	surfaceLabel(storage, "СКЛАД", 34, Enum.NormalId.Right)
 
 	for _, fixture in authoredParts(model, "Светильник рабочей зоны") do
-		local light = Instance.new("SurfaceLight")
-		light.Face = Enum.NormalId.Bottom
-		light.Angle = 115
-		light.Brightness = 0.65
-		light.Range = 22
-		light.Color = Color3.fromRGB(228, 235, 227)
-		light.Parent = fixture
+		downlight(fixture, Color3.fromRGB(229, 239, 233), 0.48, 22, 115)
+	end
+	for _, fixture in authoredParts(model, "Рассеиватель витрин") do
+		downlight(fixture, Color3.fromRGB(255, 229, 187), 0.65, 10, 85)
+	end
+	for _, fixture in authoredParts(model, "Рассеиватель сервисного поста") do
+		downlight(fixture, Color3.fromRGB(218, 239, 234), 0.5, 11, 95)
 	end
 end
 
@@ -343,13 +353,7 @@ function World.Build(useForPlot: (number, Player, string, string?) -> ()): { Plo
 	for _, name in { "Светильник перехода", "Светильник подхода" } do
 		local hall = name == "Светильник подхода"
 		for _, fixture in authoredParts(root, name) do
-			local light = Instance.new("SurfaceLight")
-			light.Face = Enum.NormalId.Bottom
-			light.Angle = 120
-			light.Brightness = if hall then 0.8 else 0.65
-			light.Range = if hall then 32 else 16
-			light.Color = Color3.fromRGB(224, 236, 232)
-			light.Parent = fixture
+			downlight(fixture, Color3.fromRGB(224, 236, 232), if hall then 0.7 else 0.55, if hall then 32 else 16, 120)
 		end
 	end
 	local leaderboardParts = authoredParts(root, "Терминал рейтинга")
