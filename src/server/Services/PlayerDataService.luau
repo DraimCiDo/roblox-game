@@ -4,6 +4,7 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config.GameConfig)
 local TableUtil = require(ReplicatedStorage.Shared.Util.TableUtil)
@@ -59,9 +60,13 @@ local function migrate(saved: any): Types.PlayerData
 	return TableUtil.reconcile(saved, Config.DefaultData) :: Types.PlayerData
 end
 
+local function useCloudInStudio(): boolean
+	return game.PlaceId ~= 0 and Workspace:GetAttribute("UseCloudDataInStudio") == true
+end
+
 local function load(player: Player): ()
 	local sessionId = HttpService:GenerateGUID(false)
-	local memoryOnly = RunService:IsStudio() and (game.PlaceId == 0 or player.UserId <= 0)
+	local memoryOnly = RunService:IsStudio() and (not useCloudInStudio() or player.UserId <= 0)
 	local currentStore = if memoryOnly then nil else store
 	if currentStore == nil and not memoryOnly then
 		player:Kick(
@@ -179,6 +184,9 @@ local function save(player: Player, closing: boolean)
 end
 
 function PlayerDataService:Init(): ()
+	if RunService:IsStudio() and not useCloudInStudio() then
+		return
+	end
 	local ok, result = pcall(function()
 		return DataStoreService:GetDataStore(Config.DataStoreName)
 	end)
@@ -187,15 +195,13 @@ function PlayerDataService:Init(): ()
 	else
 		warn(`[PlayerDataService] DataStore недоступен: {result}`)
 	end
-	if not RunService:IsStudio() then
-		local rankingOk, rankingStore = pcall(function()
-			return DataStoreService:GetOrderedDataStore("LifetimeCoinsEarned_v1")
-		end)
-		if rankingOk then
-			ordered = rankingStore
-		else
-			warn(`[PlayerDataService] Хранилище рейтинга недоступно: {rankingStore}`)
-		end
+	local rankingOk, rankingStore = pcall(function()
+		return DataStoreService:GetOrderedDataStore("LifetimeCoinsEarned_v1")
+	end)
+	if rankingOk then
+		ordered = rankingStore
+	else
+		warn(`[PlayerDataService] Хранилище рейтинга недоступно: {rankingStore}`)
 	end
 end
 

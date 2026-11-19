@@ -1,5 +1,4 @@
 --!strict
-local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
@@ -9,7 +8,6 @@ local Config = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Types = require(ReplicatedStorage.Shared.Types)
 
 local STEEL = Color3.fromRGB(45, 56, 68)
-local FLOOR = Color3.fromRGB(25, 37, 48)
 local ICE = Color3.fromRGB(91, 232, 222)
 local AMBER = Color3.fromRGB(255, 181, 86)
 local INK = Color3.fromRGB(11, 20, 29)
@@ -35,12 +33,12 @@ export type Plot = {
 	Upper: { Part },
 	Lower: { Part },
 	Gates: { [string]: string },
+	GateFrames: { [Part]: CFrame },
 	Spawn: SpawnLocation,
 	OpenParts: { Part },
 }
 
 local World = {}
-local plots: { Plot } = {}
 local boards: { [string]: TextLabel } = {}
 
 local function part(
@@ -98,7 +96,7 @@ local function prompt(
 	key: string?,
 	range: number?
 ): ProximityPrompt
-	local result = Instance.new("ProximityPrompt")
+	local result = parent:FindFirstChildWhichIsA("ProximityPrompt") or Instance.new("ProximityPrompt")
 	result.Name = command
 	result.ActionText = action
 	result.ObjectText = title
@@ -111,44 +109,6 @@ local function prompt(
 	return result
 end
 
-local function station(parent: Instance, frame: CFrame, name: string, key: string, color: Color3, use: Use): Part
-	local base = part(parent, name, frame, Vector3.new(4.4, 3.6, 2.4), STEEL)
-	part(
-		parent,
-		"Панель",
-		frame * CFrame.new(0, 1.15, -1.25),
-		Vector3.new(3.8, 0.55, 0.13),
-		color,
-		Enum.Material.Neon
-	)
-	label(base, name, UDim2.fromScale(5.7, 1.05), Vector3.new(0, 2.45, 0))
-	prompt(base, "Открыть", name, use, "menu", key)
-	return base
-end
-
-local function gate(model: Model, pad: CFrame, y: number): { Part }
-	local shutters = {}
-	for _, side in { -1, 1 } do
-		local panel = part(
-			model,
-			"Створка шлюза",
-			pad * CFrame.new(4.4 * side, y, 0),
-			Vector3.new(8.8, 0.65, 17.6),
-			STEEL
-		)
-		table.insert(shutters, panel)
-		part(
-			model,
-			"Направляющая",
-			pad * CFrame.new(9.2 * side, y, 0),
-			Vector3.new(0.45, 0.8, 17.6),
-			ICE,
-			Enum.Material.Neon
-		)
-	end
-	return shutters
-end
-
 local function moveGate(plot: Plot, name: string, open: boolean): ()
 	local state = if open then "open" else "closed"
 	if plot.Gates[name] == state then
@@ -156,264 +116,109 @@ local function moveGate(plot: Plot, name: string, open: boolean): ()
 	end
 	plot.Gates[name] = state
 	local pieces: { Part } = if name == "upper" then plot.Upper else plot.Lower
-	local y = if name == "upper" then 12 else 0.7
 	for index, piece in pieces do
 		local side = if index == 1 then -1 else 1
 		if name == "lower" then
 			piece.CanCollide = not open
 		end
-		local target = plot.Pad * CFrame.new((if open then 13.4 else 4.4) * side, y, 0)
+		local closed = plot.GateFrames[piece]
+		local travel = if open then side * (piece.Size.X + 0.2) else 0
+		local target = closed * CFrame.new(travel, 0, 0)
 		TweenService:Create(piece, TweenInfo.new(0.36, Enum.EasingStyle.Quad), { CFrame = target }):Play()
 	end
 end
 
+local function requirePart(parent: Instance, name: string): Part
+	local child = parent:FindFirstChild(name)
+	assert(child and child:IsA("Part"), `[World] В {parent.Name} отсутствует деталь «{name}»`)
+	return child
+end
+
+local function requireSign(parent: Instance): TextLabel
+	local text = parent:FindFirstChildWhichIsA("TextLabel", true)
+	assert(text, `[World] В {parent.Name} отсутствует надпись`)
+	return text
+end
+
+local function authoredParts(parent: Instance, name: string): { Part }
+	local found = {}
+	for _, child in parent:GetChildren() do
+		if child:IsA("Part") and child.Name == name then
+			table.insert(found, child)
+		end
+	end
+	return found
+end
+
+local function findGates(model: Model): (CFrame, { Part }, { Part }, { [Part]: CFrame })
+	local shutters = authoredParts(model, "Створка шлюза")
+	assert(#shutters == 4, `[World] В {model.Name} требуется четыре створки`)
+	table.sort(shutters, function(first, second)
+		return first.Position.Y < second.Position.Y
+	end)
+	local lower = { shutters[1], shutters[2] }
+	local upper = { shutters[3], shutters[4] }
+	local center = (lower[1].Position + lower[2].Position) / 2
+	local pad = (CFrame.new(center) * lower[1].CFrame.Rotation) * CFrame.new(0, -0.7, 0)
+	local gateFrames = {}
+	for _, halves in { lower, upper } do
+		table.sort(halves, function(first, second)
+			return pad:PointToObjectSpace(first.Position).X < pad:PointToObjectSpace(second.Position).X
+		end)
+		for _, shutter in halves do
+			gateFrames[shutter] = shutter.CFrame
+		end
+	end
+	return pad, upper, lower, gateFrames
+end
+
 function World.Build(useForPlot: (number, Player, string, string?) -> ()): { Plot }
-	Lighting.Ambient = Color3.fromRGB(140, 152, 167)
-	Lighting.OutdoorAmbient = Color3.fromRGB(135, 153, 173)
-	Lighting.Brightness = 2
-	Lighting.ExposureCompensation = 0.3
-	Lighting.ClockTime = 0
-	local root = Instance.new("Folder")
-	root.Name = "CORPA — испытательная лаборатория"
-	root.Parent = Workspace
+	local root = Workspace:WaitForChild("CORPA — испытательная лаборатория", 10)
+	assert(root, "[World] Не найдена модель лаборатории Roblox Studio")
+	local leaderboardParts = authoredParts(root, "Терминал рейтинга")
+	assert(#leaderboardParts == 2, "[World] Требуются два терминала рейтинга")
+	table.sort(leaderboardParts, function(first, second)
+		return first.Position.X < second.Position.X
+	end)
+	boards.localLobby = requireSign(leaderboardParts[1])
+	boards.global = requireSign(leaderboardParts[2])
 
-	local corners = {
-		Vector3.new(-49, 0, -57),
-		Vector3.new(49, 0, -57),
-		Vector3.new(75, 0, -41),
-		Vector3.new(75, 0, 41),
-		Vector3.new(49, 0, 57),
-		Vector3.new(-49, 0, 57),
-		Vector3.new(-75, 0, 41),
-		Vector3.new(-75, 0, -41),
-	}
-	part(root, "Пол лаборатории", CFrame.new(0, -3, 0), Vector3.new(152, 2, 115), FLOOR)
-	for index, from in corners do
-		local to = corners[index % #corners + 1]
-		local center = (from + to) / 2
-		local frame = CFrame.lookAt(center, to)
-		part(
-			root,
-			"Стена октагона",
-			frame * CFrame.new(0, 8, 0),
-			Vector3.new(1.8, 22, (to - from).Magnitude + 1),
-			STEEL
-		)
-		part(
-			root,
-			"Световая полоса",
-			frame * CFrame.new(0, 13.7, 0),
-			Vector3.new(1.95, 0.24, (to - from).Magnitude - 1),
-			ICE,
-			Enum.Material.Neon
-		)
-	end
-	part(root, "Перекрытие", CFrame.new(0, 19.5, 0), Vector3.new(153, 1, 115), INK).CastShadow = false
-	part(
-		root,
-		"Главный коридор",
-		CFrame.new(0, -0.6, 0),
-		Vector3.new(145, 1.2, 18),
-		FLOOR,
-		Enum.Material.Slate
-	)
-	for _, z in { -8.7, 8.7 } do
-		part(
-			root,
-			"Разметка коридора",
-			CFrame.new(0, 0.02, z),
-			Vector3.new(138, 0.04, 0.2),
-			ICE,
-			Enum.Material.Neon
-		).CanCollide =
-			false
-	end
-	for _, x in { -52, -26, 0, 26, 52 } do
-		local beam = part(
-			root,
-			"Рабочий свет",
-			CFrame.new(x, 18.6, 0),
-			Vector3.new(2, 0.4, 15),
-			ICE,
-			Enum.Material.Neon
-		)
-		local light = Instance.new("PointLight")
-		light.Range = 52
-		light.Brightness = 2
-		light.Color = Color3.fromRGB(204, 232, 255)
-		light.Parent = beam
-	end
-	local boardPositions: { [string]: number } = { localLobby = -21, global = 21 }
-	for key, x in boardPositions do
-		local frame = CFrame.new(x, 1.6, 0)
-		local stand = part(root, "Терминал рейтинга", frame, Vector3.new(8, 3.2, 2.4), STEEL)
-		boards[key] = label(stand, "", UDim2.fromScale(14, 8.5), Vector3.new(0, 6.2, 0))
-	end
-
+	local plots = {}
 	for index = 1, Config.MaxPlayers do
-		local row = if index <= 3 then 1 else -1
-		local x = ((index - 1) % 3 - 1) * 44
-		local origin = CFrame.new(x, 0, row * 30) * CFrame.Angles(0, if row == 1 then 0 else math.pi, 0)
-		local pad = origin * CFrame.new(1.8, -0.525, 2)
-		local model = Instance.new("Model")
-		model.Name = `Сектор 0{index}`
-		model.Parent = root
+		local model = root:FindFirstChild(`Сектор 0{index}`)
+		assert(model and model:IsA("Model"), `[World] Не найден сектор 0{index}`)
 		local function use(player: Player, action: string, key: string?)
 			useForPlot(index, player, action, key)
 		end
-		local color = if row == 1 then ICE else AMBER
-		local fixture = part(
-			model,
-			"Освещение сектора",
-			origin * CFrame.new(-6, 16, 0),
-			Vector3.new(2, 0.24, 19),
-			Color3.fromRGB(221, 241, 255),
-			Enum.Material.Neon
-		)
-		local light = Instance.new("SurfaceLight")
-		light.Face = Enum.NormalId.Bottom
-		light.Angle = 145
-		light.Range = 33
-		light.Brightness = 2.8
-		light.Color = fixture.Color
-		light.Parent = fixture
-		-- Пол состоит из плит вокруг проёма нижнего шлюза.
-		for _, strip in
-			{
-				{ -13.5, 0, 13, 36 },
-				{ 15.3, 0, 9.4, 36 },
-				{ 1.8, -12.4, 17.6, 11.2 },
-				{ 1.8, 14.4, 17.6, 7.2 },
-			}
-		do
-			part(
-				model,
-				"Настил сектора",
-				origin * CFrame.new(strip[1], -0.45, strip[2]),
-				Vector3.new(strip[3], 0.9, strip[4]),
-				FLOOR,
-				Enum.Material.DiamondPlate
-			)
-		end
-		for _, side in { -1, 1 } do
-			part(
-				model,
-				"Граница сектора",
-				origin * CFrame.new(20 * side, 1.3, 0),
-				Vector3.new(0.26, 2.6, 36),
-				STEEL
-			)
-			part(
-				model,
-				"Разметка",
-				origin * CFrame.new(19.65 * side, 0.05, 0),
-				Vector3.new(0.16, 0.1, 35),
-				color,
-				Enum.Material.Neon
-			)
-		end
-		part(model, "Перекладина", origin * CFrame.new(0, 8, -17), Vector3.new(39, 1, 1), STEEL)
-		local ownerPart = part(
-			model,
-			"Табло сектора",
-			origin * CFrame.new(0, 7.6, -17.4),
-			Vector3.new(12, 0.3, 0.6),
-			color,
-			Enum.Material.Neon
-		)
-		local owner = label(
-			ownerPart,
-			`СЕКТОР 0{index} · СВОБОДЕН`,
-			UDim2.fromScale(14, 1.5),
-			Vector3.new(0, 1.3, 0)
-		)
-		part(
-			model,
-			"Входной настил",
-			origin * CFrame.new(-4.2, -0.4, -19.5),
-			Vector3.new(12, 0.8, 3.1),
-			FLOOR,
-			Enum.Material.DiamondPlate
-		)
-		local spawn = Instance.new("SpawnLocation")
-		spawn.Name = `Вход 0{index}`
-		spawn.CFrame = origin * CFrame.new(-4.2, 0.2, -15) * CFrame.Angles(0, math.pi, 0)
-		spawn.Size = Vector3.new(3, 0.4, 3)
-		spawn.Anchored = true
-		spawn.CanCollide = false
-		spawn.Transparency = 1
-		spawn.Duration = 0
-		spawn.Parent = model
-		local stations = {
-			terminal = station(model, origin * CFrame.new(-15.5, 1.8, -7), "Заказы", "terminal", color, use),
-			inventory = station(model, origin * CFrame.new(-15.5, 1.8, 0), "Склад", "inventory", color, use),
-			collections = station(
-				model,
-				origin * CFrame.new(-15.5, 1.8, 7),
-				"Коллекции",
-				"collections",
-				color,
-				use
-			),
+		local owner = requireSign(requirePart(model, "Табло сектора"))
+		local spawn = model:FindFirstChildWhichIsA("SpawnLocation")
+		assert(spawn, `[World] В {model.Name} отсутствует вход`)
+		local stations: { [string]: Part } = {
+			terminal = requirePart(model, "Заказы"),
+			inventory = requirePart(model, "Склад"),
+			collections = requirePart(model, "Коллекции"),
 		}
-		local storage = {}
-		for i = 1, 10 do
-			local shelf = part(
-				model,
-				"Складской модуль",
-				origin * CFrame.new(-18.6, 0.8 + ((i - 1) % 5) * 1.55, 2.1 + 3 * math.floor((i - 1) / 5)),
-				Vector3.new(1.4, 1.4, 2.6),
-				STEEL
-			)
-			table.insert(storage, shelf)
+		for key, terminal in stations do
+			prompt(terminal, "Открыть", terminal.Name, use, "menu", key, 4.2)
 		end
-		local stands = {}
-		for slot, size in Catalog.DisplaySizes do
-			local isSmall = size == "small"
-			local standX = if isSmall then 12.9 + ((slot - 1) % 2) * 4.3 else if slot == 7 then -6.6 else 5
-			local standZ = if isSmall then -10 + math.floor((slot - 1) / 2) * 5 else 14.5
-			local width = if isSmall then 3.4 else if slot == 7 then 5 else 8
-			local base = part(
-				model,
-				`Витрина {slot}`,
-				origin * CFrame.new(standX, 0.65, standZ),
-				Vector3.new(width, 1.3, if isSmall then 3.5 else 5.5),
-				STEEL
-			)
-			part(
-				model,
-				"Подсветка витрины",
-				base.CFrame * CFrame.new(0, -0.48, 0),
-				Vector3.new(width + 0.08, 0.13, base.Size.Z + 0.08),
-				color,
-				Enum.Material.Neon
-			)
-			prompt(base, "Управлять", `Витрина {slot}`, use, "menu", tostring(slot), 7)
-			stands[slot] = base
-		end
-		local clear = part(
-			model,
-			"Индикация шлюза",
-			pad * CFrame.new(0, 0.88, -8.5),
-			Vector3.new(16.8, 0.08, 0.18),
-			color,
-			Enum.Material.Neon
-		)
-		clear.CanCollide = false
-		local button =
-			part(model, "Пульт добычи", pad * CFrame.new(-9.2, 1.9, -7), Vector3.new(1, 2.2, 1), STEEL)
-		prompt(button, "Добыча", "Управление добычей", use, "menu", "loot")
-		for _, xPost in { -9, 9 } do
-			for _, zPost in { -9, 9 } do
-				part(
-					model,
-					"Стойка шлюза",
-					pad * CFrame.new(xPost, 6.2, zPost),
-					Vector3.new(0.5, 12, 0.5),
-					STEEL
-				)
+		local storage = authoredParts(model, "Складской модуль")
+		assert(#storage == 10, `[World] В {model.Name} требуется 10 складских модулей`)
+		table.sort(storage, function(first, second)
+			if first.Position.Y ~= second.Position.Y then
+				return first.Position.Y < second.Position.Y
 			end
+			return spawn.CFrame:PointToObjectSpace(first.Position).Z
+				> spawn.CFrame:PointToObjectSpace(second.Position).Z
+		end)
+		local stands = {}
+		for slot in Catalog.DisplaySizes do
+			local stand = requirePart(model, `Витрина {slot}`)
+			prompt(stand, "Управлять", stand.Name, use, "menu", tostring(slot), 7)
+			stands[slot] = stand
 		end
+		local button = requirePart(model, "Пульт добычи")
+		prompt(button, "Добыча", "Управление добычей", use, "menu", "loot")
+		local pad, upper, lower, gateFrames = findGates(model)
 		table.insert(plots, {
 			Model = model,
 			Pad = pad,
@@ -429,11 +234,12 @@ function World.Build(useForPlot: (number, Player, string, string?) -> ()): { Plo
 			Releasing = false,
 			Loot = {},
 			LootPositions = {},
-			Clear = clear,
+			Clear = requirePart(model, "Индикация шлюза"),
 			Button = button,
-			Upper = gate(model, pad, 12),
-			Lower = gate(model, pad, 0.7),
+			Upper = upper,
+			Lower = lower,
 			Gates = {},
+			GateFrames = gateFrames,
 			Spawn = spawn,
 			OpenParts = {},
 		})
@@ -794,7 +600,7 @@ local function containerModel(plot: Plot, order: Types.Order, use: Use): Model
 end
 
 function World.RotateDial(plot: Plot, phase: number): ()
-	local marker = plot.OpenParts[3]
+	local marker = plot.OpenParts[2]
 	if marker then
 		local center = plot.Pad * CFrame.new(0.8, 3.35, -3.46)
 		marker.CFrame = center * CFrame.Angles(0, 0, -math.pi * 2 * phase) * CFrame.new(0, 0.32, 0)
