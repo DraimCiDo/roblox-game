@@ -1,7 +1,6 @@
 --!strict
 -- Детализированный декор сектора игрока: витрины, ячейки склада, панели коллекций, указатели и табло.
--- Всё строится в локальных координатах сектора (система координат спавна), поэтому одинаково работает
--- во всех шести секторах. Сцена из Studio остаётся основой; здесь только наполнение.
+-- Панели, экспонаты и ячейки привязаны к деталям сцены Roblox Studio.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
@@ -41,7 +40,7 @@ export type Kit = {
 	Root: Folder,
 	-- Высота, на которую выставленный предмет приподнят над верхом витрины.
 	Lift: { [number]: number },
-	-- Поворот предмета на витрине (градусы), чтобы лицевая сторона смотрела на посетителей.
+	-- Поворот предмета (градусы) относительно лицевой стороны витрины.
 	Yaw: { [number]: number },
 	Accents: { [number]: { Part } },
 	Lights: { [number]: PointLight },
@@ -180,16 +179,14 @@ local function hideChildren(stand: Part): ()
 end
 
 local function buildStand(kit: Kit, slot: number, stand: Part): ()
-	local F = kit.Frame
-	local local_ = F:PointToObjectSpace(stand.Position)
-	local top = local_.Y + stand.Size.Y / 2
+	local top = stand.Size.Y / 2
 	local size = Catalog.DisplaySizes[slot]
 	local folder = Instance.new("Folder")
 	folder.Name = `Витрина {slot}`
 	folder.Parent = kit.Root
 	hideChildren(stand)
 	local at = function(dy: number): CFrame
-		return F * CFrame.new(local_.X, top + dy, local_.Z)
+		return stand.CFrame * CFrame.new(0, top + dy, 0)
 	end
 
 	local accent = if size == "small" then CYAN elseif size == "large" then VIOLET else AMBER
@@ -304,7 +301,7 @@ local function buildStand(kit: Kit, slot: number, stand: Part): ()
 		brick(
 			folder,
 			"Контур",
-			F * CFrame.new(local_.X, local_.Y - stand.Size.Y / 2 + 0.06, local_.Z),
+			stand.CFrame * CFrame.new(0, -top + 0.06, 0),
 			Vector3.new(stand.Size.X + 0.1, 0.05, stand.Size.Z + 0.1),
 			accent,
 			Enum.Material.Neon
@@ -641,28 +638,7 @@ function Sector.setCollections(kit: Kit, collections: { [string]: Types.Item }):
 	kit.CollectionLabel.Text = `Собрано {everyOwned}/{everything}`
 end
 
--- ============ Указатели, кольцо зоны добычи, табло ============
-
-local function buildPadRing(kit: Kit): ()
-	local folder = Instance.new("Folder")
-	folder.Name = "Зона открытия"
-	folder.Parent = kit.Root
-	local center = Vector3.new(-6, 0.4, -17)
-	for index = 0, 47 do
-		local angle = index * math.pi * 2 / 48
-		local frame = kit.Frame
-			* CFrame.new(center + Vector3.new(math.cos(angle) * 7.6, 0, math.sin(angle) * 7.6))
-			* CFrame.Angles(0, -angle + math.pi / 2, 0)
-		brick(
-			folder,
-			"Дуга",
-			frame,
-			Vector3.new(1.0, 0.04, 0.16),
-			if index % 2 == 0 then AMBER else CYAN,
-			Enum.Material.Neon
-		)
-	end
-end
+-- ============ Табло и индикация ============
 
 function Sector.setInfo(kit: Kit, level: number, price: number, orders: number, maximum: number): ()
 	kit.Info.Text = `Заказы · ур. {level}\n{price} монет   ·   {orders}/{maximum} в очереди`
@@ -679,7 +655,7 @@ function Sector.setDisplay(kit: Kit, slot: number, item: Types.Item?): ()
 		piece.Color = color
 	end
 	light.Color = if item then color:Lerp(WARM, 0.5) else WARM
-	light.Brightness = if item then 1.4 else 0
+	light.Brightness = if item then 0.75 else 0
 end
 
 function Sector.setOrder(kit: Kit, state: string?): ()
@@ -739,20 +715,6 @@ local function mountedScreen(root: Folder, anchor: Part, name: string, offset: V
 	return screen
 end
 
-local function markShowcase(root: Folder, stand: Part): ()
-	local frame = stand.CFrame * CFrame.new(8.45, 4.55, 1.25) * CFrame.Angles(0, math.pi / 2, 0)
-	local plate =
-		brick(root, "Настенный указатель витрин", frame, Vector3.new(5.6, 0.90, 0.32), DEEP)
-	sign(plate, Enum.NormalId.Front, "ВИТРИНЫ", WARM, 72, 32)
-	brick(
-		root,
-		"Вставка указателя",
-		frame * CFrame.new(0, -0.45, -0.16),
-		Vector3.new(5.30, 0.07, 0.04),
-		CYAN
-	)
-end
-
 function Sector.build(
 	model: Model,
 	spawn: SpawnLocation,
@@ -803,7 +765,7 @@ function Sector.build(
 		root,
 		signs.LootControl,
 		"Экран добычи",
-		Vector3.new(0, signs.LootControl.Size.Y / 2 + 0.69, -0.07),
+		Vector3.new(0, signs.LootControl.Size.Y / 2 + 0.53, -0.12),
 		Vector3.new(2.3, 0.78, 0.24)
 	)
 	local lootLabel = sign(lootMonitor, Enum.NormalId.Front, "", WARM, 86, 20)
@@ -839,8 +801,6 @@ function Sector.build(
 		table.insert(kit.Cells, buildCell(kit, module))
 	end
 	buildCollectionRack(kit, signs.CollectionDesk)
-	markShowcase(root, stands[1])
-	buildPadRing(kit)
 
 	Sector.setStorage(kit, 15, {})
 	Sector.setCollections(kit, {})

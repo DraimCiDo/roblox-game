@@ -20,6 +20,7 @@ local MUTED = Color3.fromRGB(155, 177, 184)
 local GATE_MOVE_TIME = 0.36
 local DISPOSAL_TRAVEL_TIME = 1.05
 local PIPE_TRAVEL_FRACTION = 0.55
+local CONTAINER_PIVOT_HEIGHT = 1.05
 
 export type Use = (Player, string, string?) -> ()
 export type RankingEntry = { Name: string, Score: number, Opened: number? }
@@ -291,6 +292,27 @@ local function authoredParts(parent: Instance, name: string): { Part }
 	return found
 end
 
+local function dressSector(model: Model): ()
+	local reception = requirePart(model, "Лицевая панель приёмки")
+	local displays = requirePart(model, "Панель экспозиции")
+	local order = requirePart(model, "Панель заказов")
+	local storage = requirePart(model, "Панель склада")
+	surfaceLabel(reception, "ПРИЁМКА КОНТЕЙНЕРОВ", 31)
+	surfaceLabel(displays, "ВИТРИНЫ", 34, Enum.NormalId.Left)
+	surfaceLabel(order, "ЗАКАЗЫ", 34, Enum.NormalId.Right)
+	surfaceLabel(storage, "СКЛАД", 34, Enum.NormalId.Right)
+
+	for _, fixture in authoredParts(model, "Светильник рабочей зоны") do
+		local light = Instance.new("SurfaceLight")
+		light.Face = Enum.NormalId.Bottom
+		light.Angle = 115
+		light.Brightness = 0.65
+		light.Range = 22
+		light.Color = Color3.fromRGB(228, 235, 227)
+		light.Parent = fixture
+	end
+end
+
 local function findGates(model: Model): (CFrame, { Part }, { Part }, { [Part]: CFrame })
 	local shutters = authoredParts(model, "Створка шлюза")
 	assert(#shutters == 4, `[World] В {model.Name} требуется четыре створки`)
@@ -300,7 +322,9 @@ local function findGates(model: Model): (CFrame, { Part }, { Part }, { [Part]: C
 	local lower = { shutters[1], shutters[2] }
 	local upper = { shutters[3], shutters[4] }
 	local center = (lower[1].Position + lower[2].Position) / 2
-	local pad = (CFrame.new(center) * lower[1].CFrame.Rotation) * CFrame.new(0, -0.7, 0)
+	local support = requirePart(model, "Опора над шахтой")
+	local floorY = support.Position.Y + support.Size.Y / 2
+	local pad = CFrame.new(center.X, floorY + 0.025 - CONTAINER_PIVOT_HEIGHT, center.Z) * lower[1].CFrame.Rotation
 	local gateFrames = {}
 	for _, halves in { lower, upper } do
 		table.sort(halves, function(first, second)
@@ -353,6 +377,7 @@ function World.Build(useForPlot: (number, Player, string, string?) -> ()): { Plo
 	for index = 1, Config.MaxPlayers do
 		local model = root:FindFirstChild(`Сектор 0{index}`)
 		assert(model and model:IsA("Model"), `[World] Не найден сектор 0{index}`)
+		dressSector(model)
 		local function use(player: Player, action: string, key: string?)
 			useForPlot(index, player, action, key)
 		end
@@ -508,7 +533,7 @@ function World.RecoverFromShaft(player: Player, plots: { Plot }): ()
 	for _, plot in plots do
 		local offset = plot.Pad:PointToObjectSpace(position)
 		if offset.Y < 0 and offset.Y > -14 and math.abs(offset.X) <= 9.5 and math.abs(offset.Z) <= 9.5 then
-			character:PivotTo(plot.Pad * CFrame.new(0, 3.6, -12.2))
+			character:PivotTo(plot.Pad * CFrame.new(0, 4.0, -12.2))
 			local root = character:FindFirstChild("HumanoidRootPart")
 			if root and root:IsA("BasePart") then
 				root.AssemblyLinearVelocity = Vector3.zero
@@ -665,7 +690,9 @@ function World.UpdateDisplays(plot: Plot, items: { [string]: Types.Item }): ()
 			local model = makeItem(item)
 			local lift = plot.Kit.Lift[slot] or 0
 			model:PivotTo(
-				stand.CFrame * CFrame.new(0, 0.67 + lift, 0) * CFrame.Angles(0, math.rad(plot.Kit.Yaw[slot] or 0), 0)
+				stand.CFrame
+					* CFrame.new(0, stand.Size.Y / 2 + 0.02 + lift, 0)
+					* CFrame.Angles(0, math.rad(plot.Kit.Yaw[slot] or 0), 0)
 			)
 			Sector.setDisplay(plot.Kit, slot, item)
 			model.Parent = plot.Model
@@ -693,7 +720,7 @@ end
 
 function World.RotateDial(plot: Plot, phase: number): ()
 	if plot.Active then
-		Containers.rotateDial(plot.Active, plot.Pad * CFrame.new(0, 1.05, 0), phase)
+		Containers.rotateDial(plot.Active, plot.Pad * CFrame.new(0, CONTAINER_PIVOT_HEIGHT, 0), phase)
 	end
 end
 
@@ -745,7 +772,7 @@ function World.Sync(plot: Plot, order: Types.Order?, use: Use, scatter: boolean,
 		end
 		return
 	end
-	local base = plot.Pad * CFrame.new(0, 1.05, 0)
+	local base = plot.Pad * CFrame.new(0, CONTAINER_PIVOT_HEIGHT, 0)
 	local delivering = order.Stage == "delivery"
 	if plot.OrderId ~= order.Id then
 		World.Clear(plot)
