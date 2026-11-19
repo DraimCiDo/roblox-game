@@ -332,6 +332,8 @@ local function build(): ()
 	backdrop.AutoButtonColor = false
 	backdrop.Selectable = false
 	backdrop.Visible = false
+	-- Modal освобождает курсор, пока меню открыто: иначе в режиме первого лица мышь заперта в центре экрана.
+	backdrop.Modal = true
 	backdrop.ZIndex = 2
 	backdrop.Parent = gui
 	backdrop.Activated:Connect(function()
