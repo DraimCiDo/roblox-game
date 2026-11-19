@@ -6,7 +6,7 @@ local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
 local Types = require(ReplicatedStorage.Shared.Types)
 
 type Drop = { Kind: string, Price: number, Weight: number }
-type Container = { Min: number, Max: number, Deliver: number, Drops: { Drop }, Extra: Drop }
+type Container = { Min: number, Max: number, Deliver: number, OpenSteps: number, Drops: { Drop }, Extra: Drop }
 
 local function drop(kind: string, price: number, weight: number): Drop
 	return { Kind = kind, Price = price, Weight = weight }
@@ -17,6 +17,7 @@ local Containers: { [string]: Container } = {
 		Min = 1,
 		Max = 2,
 		Deliver = 2,
+		OpenSteps = 4,
 		Drops = {
 			drop("ball", 3200, 13),
 			drop("trash", 2800, 16),
@@ -35,6 +36,7 @@ local Containers: { [string]: Container } = {
 		Min = 2,
 		Max = 4,
 		Deliver = 2.5,
+		OpenSteps = 4,
 		Drops = {
 			drop("flower", 5500, 15),
 			drop("meteor", 14000, 4),
@@ -53,6 +55,7 @@ local Containers: { [string]: Container } = {
 		Min = 3,
 		Max = 4,
 		Deliver = 3,
+		OpenSteps = 1,
 		Drops = {
 			drop("gold", 44000, 10),
 			drop("dollars", 32000, 15),
@@ -71,6 +74,7 @@ local Containers: { [string]: Container } = {
 		Min = 2,
 		Max = 3,
 		Deliver = 4,
+		OpenSteps = 3,
 		Drops = {
 			drop("rover", 360000, 12),
 			drop("coupe", 560000, 6),
@@ -83,6 +87,7 @@ local Containers: { [string]: Container } = {
 		Min = 3,
 		Max = 4,
 		Deliver = 3.5,
+		OpenSteps = 5,
 		Drops = {
 			drop("diamond", 125000, 10),
 			drop("core", 950000, 10),
@@ -179,6 +184,23 @@ end
 
 function Economy.deliveryTime(order: Types.Order): number
 	return Containers[order.Kind].Deliver
+end
+
+function Economy.openingGoal(order: Types.Order): number
+	return Containers[order.Kind].OpenSteps
+end
+
+function Economy.openingProgress(order: Types.Order): number
+	if order.Kind ~= "crate" and order.Kind ~= "cargo" then
+		return order.Progress
+	end
+	local count = 0
+	for index = 0, Economy.openingGoal(order) - 1 do
+		if bit32.btest(order.Progress, bit32.lshift(1, index)) then
+			count += 1
+		end
+	end
+	return count
 end
 
 local function quality(): number

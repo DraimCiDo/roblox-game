@@ -19,6 +19,8 @@ type Profile = {
 	SessionId: string,
 }
 local profiles: { [Player]: Profile } = {}
+local loading: { [Player]: boolean } = {}
+local studioProgress: { [number]: Types.PlayerData } = {}
 local store: DataStore?
 local ordered: OrderedDataStore?
 local shuttingDown = false
@@ -67,7 +69,7 @@ local function load(player: Player): ()
 		)
 		return
 	end
-	local data = migrate(nil)
+	local data = if memoryOnly then migrate(studioProgress[player.UserId]) else migrate(nil)
 	if currentStore then
 		local deadline = os.clock() + 12
 		repeat
@@ -115,6 +117,9 @@ local function load(player: Player): ()
 			end)
 		end
 		return
+	end
+	if memoryOnly then
+		studioProgress[player.UserId] = nil
 	end
 	profiles[player] =
 		{ Data = data, Store = currentStore, Busy = false, Closing = false, Ranked = 0, SessionId = sessionId }
@@ -164,6 +169,8 @@ local function save(player: Player, closing: boolean)
 				warn(`[PlayerDataService] Не удалось обновить рейтинг: {err}`)
 			end
 		end
+	elseif closing then
+		studioProgress[player.UserId] = snapshot
 	end
 	profile.Busy = false
 	if closing then
@@ -193,17 +200,26 @@ function PlayerDataService:Init(): ()
 end
 
 local function loadProfile(player: Player): ()
-	if shuttingDown then
+	if shuttingDown or loading[player] or profiles[player] or player.Parent ~= Players then
 		return
 	end
+	loading[player] = true
 	pendingLoads += 1
-	load(player)
+	local ok, err = pcall(load :: (Player) -> any, player)
 	pendingLoads -= 1
+	loading[player] = nil
+	if not ok and player.Parent == Players then
+		warn(`[PlayerDataService] Не удалось подготовить профиль {player.UserId}: {err}`)
+		player:Kick(
+			"Не удалось загрузить прогресс. Попробуйте ещё раз позже."
+		)
+	end
 end
 
 function PlayerDataService:Start(): ()
 	Players.PlayerAdded:Connect(loadProfile)
 	Players.PlayerRemoving:Connect(function(player)
+		loading[player] = nil
 		save(player, true)
 	end)
 	for _, player in Players:GetPlayers() do

@@ -14,10 +14,25 @@ local World = require(script.World)
 type Session = {
 	Plot: World.Plot,
 	ReadyAt: number,
-	LastAction: number,
+	RemoteAt: number,
+	PhysicalAt: { [string]: number },
 	Initialized: boolean,
 	ReleaseAt: number?,
 	Use: World.Use,
+}
+
+local ACTION_INTERVAL = 0.14
+local REMOTE_ACTIONS: { [string]: boolean } = {
+	buy = true,
+	open = true,
+	perk = true,
+	daily = true,
+	sell = true,
+	collection = true,
+	display = true,
+	removeDisplay = true,
+	quickSell = true,
+	quickCollect = true,
 }
 
 local SimulatorService = {}
@@ -40,6 +55,7 @@ local function view(player: Player): Types.View?
 	end
 	local order = data.Orders[1]
 	local visible = order and order.Stage ~= "queued" and order.Stage ~= "delivery"
+	local showProgress = order and order.Stage == "sealed" and order.Kind ~= "safe"
 	local prices = {}
 	for _, item in data.Inventory do
 		prices[item.Id] = Economy.price(data, item)
@@ -55,6 +71,9 @@ local function view(player: Player): Types.View?
 		OrderStage = if order then order.Stage else nil,
 		OrderKind = if visible then order.Kind else nil,
 		OrderVariant = if visible then order.Variant else nil,
+		OrderProgress = if showProgress then Economy.openingProgress(order) else nil,
+		OrderGoal = if showProgress then Economy.openingGoal(order) else nil,
+		OrderDeadline = if order and order.Stage == "delivery" then order.Deadline else nil,
 		RemainingLoot = if order then #order.Loot else 0,
 		Prices = prices,
 		DailyReadyAt = session.ReadyAt,
@@ -111,7 +130,8 @@ local function occupy(player: Player): ()
 	local session: Session = {
 		Plot = owned,
 		ReadyAt = Workspace:GetServerTimeNow() + Config.DailySeconds,
-		LastAction = -math.huge,
+		RemoteAt = -math.huge,
+		PhysicalAt = {},
 		Initialized = false,
 		ReleaseAt = nil,
 		Use = function(actingPlayer, action, argument)
@@ -241,7 +261,7 @@ local function openOrder(
 		local index = member(argument, 2)
 		targetPart = if index then plot.OpenParts[index * 2] else if argument == "doors" then plot.OpenParts[5] else nil
 	elseif kind == "safe" then
-		targetPart = plot.OpenParts[2]
+		targetPart = plot.OpenParts[3]
 	else
 		local body = plot.Active:FindFirstChild("Корпус")
 		targetPart = if body and body:IsA("Part") then body else nil
@@ -250,11 +270,17 @@ local function openOrder(
 		not targetPart
 		or (position - targetPart.Position).Magnitude > (if kind == "cargo" or kind == "crate" then 8 else 11)
 	then
+		if not physical and kind == "safe" and argument == order.Id then
+			tell(player, "Подойдите к сейфу и поверните ручку снова.")
+		end
 		return false, false
 	end
 	local opened = false
 	if kind == "safe" then
-		if physical and not argument then
+		if physical then
+			if argument then
+				return false, false
+			end
 			order.DialStarted = Workspace:GetServerTimeNow()
 			interface:FireClient(
 				player,
@@ -266,7 +292,10 @@ local function openOrder(
 				Economy.DialTolerance
 			)
 			return true, false
-		elseif not physical and argument == order.Id and order.DialStarted > 0 then
+		else
+			if argument ~= order.Id or order.DialStarted <= 0 then
+				return false, false
+			end
 			local elapsed = Workspace:GetServerTimeNow() - order.DialStarted
 			local phase = (elapsed % Economy.DialPeriod) / Economy.DialPeriod
 			order.DialStarted = 0
@@ -275,17 +304,15 @@ local function openOrder(
 				World.RotateDial(plot, 0)
 				tell(player, "Ручка вне сектора. Попробуйте ещё раз.")
 			end
-		else
-			return false, false
 		end
 	elseif not physical then
 		return false, false
 	elseif kind == "box" or kind == "secret" then
 		order.Progress += 1
-		opened = order.Progress >= (if kind == "box" then 4 else 5)
+		opened = order.Progress >= Economy.openingGoal(order)
 	elseif kind == "crate" or kind == "cargo" then
 		if argument == "doors" then
-			if kind ~= "cargo" or order.Progress ~= 3 then
+			if kind ~= "cargo" or Economy.openingProgress(order) ~= Economy.openingGoal(order) - 1 then
 				return false, false
 			end
 			opened = true
@@ -299,7 +326,7 @@ local function openOrder(
 				return false, false
 			end
 			order.Progress = bit32.bor(order.Progress, mask)
-			opened = kind == "crate" and order.Progress == 15
+			opened = kind == "crate" and Economy.openingProgress(order) == Economy.openingGoal(order)
 		end
 	end
 	if opened then
@@ -319,7 +346,11 @@ local function inventoryAction(
 	if action == "removeDisplay" then
 		local stand = standPart(plot, slotKey)
 		local displayed = slotKey and data.Displays[slotKey]
-		if not stand or not slotKey or not displayed or not World.Near(player, stand, 9) then
+		if not stand or not slotKey or not displayed then
+			return false
+		end
+		if not World.Near(player, stand, 9) then
+			tell(player, "Подойдите к своей витрине.")
 			return false
 		end
 		if #data.Inventory >= Economy.capacity(data) then
@@ -338,30 +369,49 @@ local function inventoryAction(
 		end
 	end
 	if not itemIndex then
+		tell(player, "Этой находки больше нет на складе.")
 		return false
 	end
 	local item = data.Inventory[itemIndex]
-	if action == "sell" and World.Near(player, plot.Stations.inventory, 11) then
+	if action == "sell" then
+		if not World.Near(player, plot.Stations.inventory, 11) then
+			tell(player, "Подойдите к складу, чтобы продать находку.")
+			return false
+		end
 		local total = Economy.price(data, item)
 		Economy.credit(data, total)
 		tell(player, `Продано · +{total} монет`)
-	elseif
-		action == "collection"
-		and World.Near(player, plot.Stations.collections, 11)
-		and Economy.collectible(item.Kind)
-	then
+	elseif action == "collection" then
+		if not Economy.collectible(item.Kind) then
+			return false
+		end
+		if not World.Near(player, plot.Stations.collections, 11) then
+			tell(player, "Подойдите к терминалу коллекций.")
+			return false
+		end
+		local replaced = data.Collections[item.Kind] ~= nil
 		data.Collections[item.Kind] = item
-		tell(player, "Экземпляр внесён в коллекцию.")
+		tell(
+			player,
+			if replaced
+				then "Экземпляр в коллекции заменён."
+				else "Экземпляр внесён в коллекцию."
+		)
 	elseif action == "display" and slotKey then
 		local stand = standPart(plot, slotKey)
 		local index = member(slotKey, #Catalog.DisplaySizes)
-		if not stand or not index or data.Displays[slotKey] or not World.Near(player, stand, 9) then
+		if not stand or not index or data.Displays[slotKey] then
 			return false
 		end
 		if Catalog.Items[item.Kind].Size ~= Catalog.DisplaySizes[index] then
 			return false
 		end
+		if not World.Near(player, stand, 9) then
+			tell(player, "Подойдите к своей витрине.")
+			return false
+		end
 		data.Displays[slotKey] = item
+		tell(player, "Находка выставлена.")
 	else
 		return false
 	end
@@ -396,23 +446,24 @@ local function lootAction(
 				return false
 			end
 		end
-		if #data.Inventory >= Economy.capacity(data) then
-			tell(player, "Склад заполнен")
-			return false
-		end
 		for index, loot in order.Loot do
 			if loot.Item.Id == itemId then
+				if #data.Inventory >= Economy.capacity(data) then
+					tell(player, "Склад заполнен")
+					return false
+				end
 				table.insert(data.Inventory, loot.Item)
 				table.remove(order.Loot, index)
 				finishLoot(order)
+				tell(player, `На складе · {Catalog.Items[loot.Item.Kind].Name}`)
 				return true
 			end
 		end
-	elseif
-		(action == "quickSell" or action == "quickCollect")
-		and (data.Perks[action] or 0) > 0
-		and World.Near(player, plot.Button, 11)
-	then
+	elseif (action == "quickSell" or action == "quickCollect") and (data.Perks[action] or 0) > 0 then
+		if not World.Near(player, plot.Button, 11) then
+			tell(player, "Подойдите к пульту добычи.")
+			return false
+		end
 		if action == "quickSell" then
 			local total = 0
 			for _, loot in order.Loot do
@@ -423,6 +474,10 @@ local function lootAction(
 			tell(player, `Быстрая продажа · +{total} монет`)
 		else
 			local count = math.min(#order.Loot, Economy.capacity(data) - #data.Inventory)
+			if count <= 0 then
+				tell(player, "Склад заполнен")
+				return false
+			end
 			for _ = 1, count do
 				local loot = table.remove(order.Loot, 1)
 				if loot then
@@ -430,7 +485,9 @@ local function lootAction(
 				end
 			end
 			if #order.Loot > 0 then
-				tell(player, "Склад заполнен")
+				tell(player, `Склад заполнен · осталось {#order.Loot}`)
+			else
+				tell(player, `Собрано находок · {count}`)
 			end
 		end
 		finishLoot(order)
@@ -445,10 +502,17 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 		return
 	end
 	local now = Workspace:GetServerTimeNow()
-	if now - session.LastAction < 0.14 then
-		return
+	if physical then
+		if now - (session.PhysicalAt[action] or -math.huge) < ACTION_INTERVAL then
+			return
+		end
+		session.PhysicalAt[action] = now
+	else
+		if not REMOTE_ACTIONS[action] or now - session.RemoteAt < ACTION_INTERVAL then
+			return
+		end
+		session.RemoteAt = now
 	end
-	session.LastAction = now
 	local plot = session.Plot
 	if action == "menu" then
 		if not physical or not argument then
@@ -463,8 +527,10 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 	local updated, scatter = false, false
 	Data:Update(player, function(data)
 		local order = data.Orders[1]
-		if action == "buy" and World.Near(player, plot.Stations.terminal, 11) then
-			if #data.Orders >= 1 + (data.Perks.orders or 0) then
+		if action == "buy" then
+			if not World.Near(player, plot.Stations.terminal, 11) then
+				tell(player, "Подойдите к терминалу заказов.")
+			elseif #data.Orders >= 1 + (data.Perks.orders or 0) then
 				tell(player, "Все слоты заказов заняты.")
 			elseif data.Coins < Config.OrderPrice then
 				tell(player, "Недостаточно монет.")
@@ -472,6 +538,12 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 				data.Coins -= Config.OrderPrice
 				table.insert(data.Orders, Economy.newOrder(data, false))
 				updated = true
+				tell(
+					player,
+					if #data.Orders == 1
+						then "Заказ принят."
+						else `Заказ принят · место в очереди {#data.Orders}`
+				)
 			end
 		elseif action == "open" and order then
 			updated, scatter = openOrder(player, plot, order, argument, physical)
@@ -479,10 +551,12 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 			local perk = perks[argument]
 			local level = data.Perks[argument] or 0
 			local cost = perk and perk.Costs[level + 1]
-			if not cost or (perk.Parent and (data.Perks[perk.Parent] or 0) < (perk.Required or 1)) then
+			if not cost then
 				return
 			end
-			if data.Coins < cost then
+			if perk.Parent and (data.Perks[perk.Parent] or 0) < (perk.Required or 1) then
+				tell(player, "Сначала откройте предыдущий уровень ветки.")
+			elseif data.Coins < cost then
 				tell(player, "Недостаточно монет.")
 			else
 				data.Coins -= cost
@@ -491,7 +565,11 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 			end
 		elseif action == "daily" then
 			local day = math.floor(now / 86400)
-			if now >= session.ReadyAt and data.DailyClaim < day then
+			if data.DailyClaim >= day then
+				tell(player, "Сегодня награда уже получена.")
+			elseif now < session.ReadyAt then
+				tell(player, "Награда откроется после 15 минут в игре.")
+			else
 				data.DailyClaim = day
 				Economy.credit(data, Economy.DailyReward)
 				updated = true
