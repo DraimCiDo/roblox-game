@@ -1,5 +1,6 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 
 local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
 local Types = require(ReplicatedStorage.Shared.Types)
@@ -7,9 +8,9 @@ local Components = require(script.Parent.Parent.Components)
 local Icons = require(script.Parent.Parent.Icons)
 local Style = require(script.Parent.Parent.Style)
 
-local BOARD = Color3.fromRGB(18, 20, 45)
+local BOARD = Color3.fromRGB(10, 12, 30)
 local PANEL = Color3.fromRGB(31, 33, 65)
-local RAIL = Color3.fromRGB(62, 67, 105)
+local RAIL = Color3.fromRGB(70, 74, 108)
 local BRANCH_COLORS: { [string]: Color3 } = {
 	logistics = Style.Violet,
 	storage = Style.Cyan,
@@ -19,23 +20,71 @@ local BRANCH_COLORS: { [string]: Color3 } = {
 	collections = Color3.fromRGB(244, 140, 224),
 	lockpick = Color3.fromRGB(120, 214, 255),
 }
-local BRANCH_ICONS: { [string]: Icons.IconName } = {
-	logistics = "box",
-	storage = "grid",
-	trade = "coin",
-	luck = "star",
-	mastery = "star",
-	collections = "gift",
-	lockpick = "lock",
+-- Ветки веером от общего ствола: соседние по смыслу и по зависимостям стоят рядом (угол от вертикали, градусы).
+local BRANCH_ANGLES: { [string]: number } = {
+	logistics = -80,
+	storage = -53,
+	collections = -27,
+	trade = 0,
+	luck = 27,
+	mastery = 53,
+	lockpick = 80,
 }
+local PERK_ICONS: { [string]: Icons.IconName } = {
+	orders = "box",
+	delivery = "arrow",
+	express = "bolt",
+	discount = "tag",
+	cashback = "coin",
+	daily = "gift",
+	grant = "gem",
+	storage = "grid",
+	quickCollect = "magnet",
+	recycler = "cycle",
+	gallery = "frame",
+	sale = "coin",
+	quickSell = "bolt",
+	bulk = "stack",
+	haggle = "scale",
+	jackpot = "dice",
+	junk = "tag",
+	odds = "star",
+	quality = "eye",
+	floor = "stack",
+	perfect = "gem",
+	rarity = "sparkle",
+	bonusLoot = "plus",
+	variant = "ticket",
+	variantLoot = "plus",
+	crateLuck = "target",
+	safeLuck = "target",
+	cargoLuck = "target",
+	secretLuck = "target",
+	boxMaster = "medal",
+	crateMaster = "medal",
+	safeMaster = "medal",
+	cargoMaster = "medal",
+	secretMaster = "medal",
+	collection = "grid",
+	collElectronics = "screen",
+	collJewel = "gem",
+	collCars = "frame",
+	collLab = "sparkle",
+	museum = "frame",
+	steady = "lock",
+	slow = "clock",
+}
+local VIEW_HEIGHT = 440
 local MOBILE_DOCK = 194
--- Раскладка: каждая ветка — горизонтальное дерево; глубина задаёт колонку, листья — строки.
-local COLUMN = 122
-local ROW = 104
-local MARGIN_X = 76
-local BAND_HEADER = 34
-local BAND_GAP = 16
-local LABEL_WIDTH = 108
+-- Раскладка: расстояние от ствола задаёт глубина навыка, а соседние листья расходятся в стороны.
+local FIRST_RADIUS = 270
+local RADIUS_STEP = 140
+local LEAF_SPACING = 92
+local CANVAS_MARGIN = 130
+local ROOT_DIAMETER = 62
+local NODE_DIAMETER = 52
+local MIN_ZOOM = 0.45
+local MAX_ZOOM = 1.5
 
 type NodeState = {
 	Perk: Catalog.Perk,
@@ -45,10 +94,20 @@ type NodeState = {
 	Reason: string?,
 	Color: Color3,
 }
-type NodeWidget = { Button: TextButton, Border: UIStroke, State: NodeState }
+type NodeWidget = { Button: TextButton, Apply: (boolean) -> (), State: NodeState }
 
 local Perks = {}
 local selectedKey: string? = nil
+local zoom = 0.8
+local scroll: Vector2? = nil
+local connections: { RBXScriptConnection } = {}
+
+local function disconnect(): ()
+	for _, connection in connections do
+		connection:Disconnect()
+	end
+	table.clear(connections)
+end
 
 local function stateFor(perk: Catalog.Perk, data: Types.View): NodeState
 	local level = math.min(data.Perks[perk.Key] or 0, #perk.Costs)
@@ -72,26 +131,37 @@ local function stateFor(perk: Catalog.Perk, data: Types.View): NodeState
 	}
 end
 
-local function line(parent: Frame, a: Vector2, b: Vector2, color: Color3, thickness: number): ()
+-- Отрезок линии: скруглённая полоса нужной толщины между двумя точками.
+local function segment(parent: Frame, a: Vector2, b: Vector2, color: Color3, thickness: number): ()
 	local delta = b - a
-	local stroke = Style.frame(parent, color, 2)
-	stroke.AnchorPoint = Vector2.new(0.5, 0.5)
+	local piece = Style.frame(parent, color, thickness / 2)
+	piece.AnchorPoint = Vector2.new(0.5, 0.5)
 	local center = (a + b) / 2
-	stroke.Position = UDim2.fromOffset(center.X, center.Y)
-	stroke.Size = UDim2.fromOffset(delta.Magnitude + thickness, thickness)
-	stroke.Rotation = math.deg(math.atan2(delta.Y, delta.X))
+	piece.Position = UDim2.fromOffset(center.X, center.Y)
+	piece.Size = UDim2.fromOffset(delta.Magnitude + thickness * 0.6, thickness)
+	piece.Rotation = math.deg(math.atan2(delta.Y, delta.X))
 end
 
-local function link(parent: Frame, a: Vector2, b: Vector2, color: Color3, strong: boolean): ()
-	local delta = b - a
-	local first = a + Vector2.new(delta.X * 0.15, delta.Y * 0.68)
-	local second = b - Vector2.new(delta.X * 0.58, delta.Y * 0.11)
+-- Плавная кривая, вытекающая по направлению роста ветки: так линии выглядят как «ветви» дерева.
+local function curve(
+	parent: Frame,
+	a: Vector2,
+	b: Vector2,
+	headA: Vector2,
+	headB: Vector2,
+	color: Color3,
+	thickness: number
+): ()
+	local reach = (b - a).Magnitude * 0.42
+	local first = a + headA * reach
+	local second = b - headB * reach
+	local steps = math.clamp(math.floor((b - a).Magnitude / 14), 8, 30)
 	local previous = a
-	for i = 1, 14 do
-		local t = i / 14
+	for index = 1, steps do
+		local t = index / steps
 		local u = 1 - t
 		local at = a * (u ^ 3) + first * (3 * u * u * t) + second * (3 * u * t * t) + b * (t ^ 3)
-		line(parent, previous, at, color, if strong then 4 else 2)
+		segment(parent, previous, at, color, thickness)
 		previous = at
 	end
 end
@@ -102,81 +172,66 @@ local function centerText(parent: Instance, value: string, size: number, color: 
 	return label
 end
 
-local function drawNode(parent: Frame, perk: NodeState, position: Vector2): NodeWidget
-	local key = perk.Perk.Key
-	local diameter = if perk.Perk.Parent then 48 else 56
-	local accent = if perk.Locked then perk.Color:Lerp(Style.Muted, 0.58) else perk.Color
-	local btn = Instance.new("TextButton")
-	btn.Name = `Перк:{key}`
-	btn.Size = UDim2.fromOffset(diameter, diameter)
-	btn.Position = UDim2.fromOffset(position.X, position.Y)
-	btn.AnchorPoint = Vector2.new(0.5, 0.5)
-	btn.BackgroundColor3 = if perk.Level > 0 then BOARD:Lerp(perk.Color, 0.32) else PANEL
-	btn.BorderSizePixel = 0
-	btn.AutoButtonColor = false
-	btn.Selectable = true
-	btn.Text = ""
-	btn.ZIndex = 4
-	btn.Parent = parent
-	Style.round(btn, 50)
-	local border = Style.outline(btn, accent, 2)
-	local icon = Icons.draw(btn, BRANCH_ICONS[perk.Perk.Branch] or "star", accent, Style.Text)
-	icon.Position = UDim2.fromScale(0.50, 0.44)
-	icon.Size = UDim2.fromScale(0.60, 0.60)
-	if perk.Locked then
-		local lock = Icons.draw(btn, "lock", Style.Muted)
-		lock.Position = UDim2.fromScale(0.91, 0.13)
-		lock.Size = UDim2.fromOffset(17, 17)
-		lock.ZIndex = 6
+-- Круглый узел: изучен — залит цветом ветки, доступен — тёмный с цветным кольцом, закрыт — серый с замком.
+local function drawNode(parent: Frame, state: NodeState, position: Vector2, diameter: number): NodeWidget
+	local perk = state.Perk
+	local color = state.Color
+	local button = Instance.new("TextButton")
+	button.Name = `Перк:{perk.Key}`
+	button.Size = UDim2.fromOffset(diameter, diameter)
+	button.Position = UDim2.fromOffset(position.X, position.Y)
+	button.AnchorPoint = Vector2.new(0.5, 0.5)
+	button.BorderSizePixel = 0
+	button.AutoButtonColor = false
+	button.Selectable = true
+	button.Text = ""
+	button.ZIndex = 4
+	button.Parent = parent
+	Style.round(button, diameter)
+	local border = Style.outline(button, color, 3)
+
+	local iconColor = if state.Level > 0 then Style.Ink elseif state.Locked then RAIL:Lerp(Style.Muted, 0.35) else color
+	local icon = Icons.draw(
+		button,
+		PERK_ICONS[perk.Key] or "star",
+		iconColor,
+		if state.Level > 0 then Style.Text else Style.Muted
+	)
+	icon.Position = UDim2.fromScale(0.5, 0.5)
+	icon.Size = UDim2.fromScale(0.58, 0.58)
+	icon.ZIndex = 5
+	if state.Locked then
+		local lock = Icons.draw(button, "lock", Style.Muted)
+		lock.Position = UDim2.fromScale(0.86, 0.14)
+		lock.Size = UDim2.fromOffset(18, 18)
+		lock.ZIndex = 7
 	end
 
-	local pill = Style.frame(btn, BOARD, 8)
+	local pill = Style.frame(parent, BOARD, 9)
 	pill.AnchorPoint = Vector2.new(0.5, 0.5)
-	pill.Position = UDim2.fromScale(0.5, 0.98)
-	pill.Size = UDim2.fromOffset(37, 16)
+	pill.Position = UDim2.fromOffset(position.X, position.Y + diameter / 2 + 4)
+	pill.Size = UDim2.fromOffset(40, 17)
 	pill.ZIndex = 6
-	Style.outline(pill, accent, 1)
-	local counter = centerText(pill, `{perk.Level}/{#perk.Perk.Costs}`, 11, Style.Text, true)
+	Style.outline(pill, if state.Locked then RAIL else color, 2)
+	local counter = centerText(pill, `{state.Level}/{#perk.Costs}`, 11, Style.Text, true)
 	counter.Size = UDim2.fromScale(1, 1)
 	counter.ZIndex = 7
 
-	local label = centerText(parent, perk.Perk.Name, 11, if perk.Locked then Style.Muted else Style.Text, true)
-	label.AnchorPoint = Vector2.new(0.5, 0)
-	label.Position = UDim2.fromOffset(position.X, position.Y + diameter / 2 + 10)
-	label.Size = UDim2.fromOffset(LABEL_WIDTH, 28)
-	label.TextWrapped = true
-	label.TextYAlignment = Enum.TextYAlignment.Top
-	label.ZIndex = 5
-	return { Button = btn, Border = border, State = perk }
-end
+	local name = centerText(parent, perk.Name, 10, if state.Locked then RAIL:Lerp(Style.Muted, 0.5) else Style.Muted)
+	name.AnchorPoint = Vector2.new(0.5, 0)
+	name.Position = UDim2.fromOffset(position.X, position.Y + diameter / 2 + 16)
+	name.Size = UDim2.fromOffset(112, 26)
+	name.TextWrapped = true
+	name.TextYAlignment = Enum.TextYAlignment.Top
+	name.ZIndex = 5
 
-local function legend(parent: Frame, states: { [string]: NodeState }, wide: boolean): ()
-	local progress: { [string]: { number } } = {}
-	for _, branch in Catalog.Branches do
-		progress[branch.Key] = { 0, 0 }
+	local function apply(selected: boolean): ()
+		border.Color = if selected then Style.Text elseif state.Locked then RAIL else color
+		border.Thickness = if selected then 4 else 3
+		button.BackgroundColor3 = if state.Level > 0 then color elseif selected then PANEL:Lerp(color, 0.3) else BOARD
 	end
-	for _, state in states do
-		local total = progress[state.Perk.Branch]
-		total[1] += state.Level
-		total[2] += #state.Perk.Costs
-	end
-	local columns = if wide then 4 else 2
-	for i, branch in Catalog.Branches do
-		local index = i - 1
-		local color = BRANCH_COLORS[branch.Key]
-		local row = Style.frame(parent, PANEL, 7)
-		row.Position = UDim2.new(index % columns / columns, 3, 0, index // columns * 24)
-		row.Size = UDim2.new(1 / columns, -6, 0, 20)
-		local mark = Style.frame(row, color, 4)
-		mark.Position = UDim2.fromOffset(7, 6)
-		mark.Size = UDim2.fromOffset(8, 8)
-		local pair = progress[branch.Key]
-		local words = `{branch.Name} · {pair[1]}/{pair[2]}`
-		local field = Components.text(row, words, 11, Style.Text)
-		Components.place(field, 21, 0, UDim.new(1, -25), 20)
-		field.TextWrapped = false
-		field.TextTruncate = Enum.TextTruncate.AtEnd
-	end
+	apply(false)
+	return { Button = button, Apply = apply, State = state }
 end
 
 local function details(panel: Frame, state: NodeState, branches: { [string]: string }, wide: boolean): ()
@@ -235,45 +290,60 @@ end
 
 function Perks.reset(): ()
 	selectedKey = nil
+	scroll = nil
+	disconnect()
 end
 
-type Band = { Branch: string, Top: number, Height: number }
+type Layout = {
+	Points: { [string]: Vector2 },
+	Heading: { [string]: Vector2 },
+	Roots: { [string]: { Catalog.Perk } },
+	Titles: { { Branch: string, At: Vector2 } },
+	Hub: Vector2,
+	Size: Vector2,
+}
 
--- Расставляет навыки по веткам: колонка = глубина в дереве ветки, строка = порядок листьев.
-local function layout(): ({ [string]: Vector2 }, { Band }, Vector2)
+-- Радиальная раскладка: ветка растёт от ствола под своим углом, глубина — вдоль ветки, листья — поперёк.
+local function layout(): Layout
 	local points: { [string]: Vector2 } = {}
-	local bands: { Band } = {}
-	local top = 0
-	local deepest = 0
+	local heading: { [string]: Vector2 } = {}
+	local roots: { [string]: { Catalog.Perk } } = {}
+	local titles: { { Branch: string, At: Vector2 } } = {}
 	local own: { [string]: string } = {}
 	for _, perk in Catalog.Perks do
 		own[perk.Key] = perk.Branch
 	end
+	local low, high = Vector2.zero, Vector2.zero
+	local function track(at: Vector2): ()
+		low = Vector2.new(math.min(low.X, at.X), math.min(low.Y, at.Y))
+		high = Vector2.new(math.max(high.X, at.X), math.max(high.Y, at.Y))
+	end
 	for _, branch in Catalog.Branches do
-		local members: { Catalog.Perk } = {}
+		local angle = math.rad(BRANCH_ANGLES[branch.Key] or 0)
+		local direction = Vector2.new(math.sin(angle), -math.cos(angle))
+		local across = Vector2.new(math.cos(angle), math.sin(angle))
 		local children: { [string]: { Catalog.Perk } } = {}
-		local roots: { Catalog.Perk } = {}
+		local branchRoots: { Catalog.Perk } = {}
 		for _, perk in Catalog.Perks do
 			if perk.Branch == branch.Key then
-				table.insert(members, perk)
 				if perk.Parent and own[perk.Parent] == branch.Key then
 					children[perk.Parent] = children[perk.Parent] or {}
 					table.insert(children[perk.Parent], perk)
 				else
-					table.insert(roots, perk)
+					table.insert(branchRoots, perk)
 				end
 			end
 		end
-		local nextRow = 0
+		roots[branch.Key] = branchRoots
+		local nextLeaf = 0
 		local rows: { [string]: number } = {}
 		local depths: { [string]: number } = {}
 		local function place(perk: Catalog.Perk, depth: number): ()
 			depths[perk.Key] = depth
-			deepest = math.max(deepest, depth)
 			local list = children[perk.Key]
 			if not list then
-				rows[perk.Key] = nextRow
-				nextRow += 1
+				rows[perk.Key] = nextLeaf
+				nextLeaf += 1
 				return
 			end
 			for _, child in list do
@@ -281,121 +351,267 @@ local function layout(): ({ [string]: Vector2 }, { Band }, Vector2)
 			end
 			rows[perk.Key] = (rows[list[1].Key] + rows[list[#list].Key]) / 2
 		end
-		for _, root in roots do
+		for _, root in branchRoots do
 			place(root, 0)
 		end
-		local height = BAND_HEADER + math.max(nextRow, 1) * ROW
-		for _, perk in members do
-			points[perk.Key] = Vector2.new(
-				MARGIN_X + depths[perk.Key] * COLUMN,
-				top + BAND_HEADER + rows[perk.Key] * ROW + ROW / 2 - 8
-			)
+		local middle = (math.max(nextLeaf, 1) - 1) / 2
+		for key, depth in depths do
+			local at = direction * (FIRST_RADIUS + depth * RADIUS_STEP) + across * ((rows[key] - middle) * LEAF_SPACING)
+			points[key] = at
+			heading[key] = direction
+			track(at)
 		end
-		table.insert(bands, { Branch = branch.Key, Top = top, Height = height })
-		top += height + BAND_GAP
+		local side = if angle < 0 then -1 else 1
+		table.insert(titles, { Branch = branch.Key, At = direction * (FIRST_RADIUS * 0.45) + across * (side * 78) })
 	end
-	return points, bands, Vector2.new(MARGIN_X * 2 + deepest * COLUMN, top)
+	local hub = Vector2.new(CANVAS_MARGIN - low.X, CANVAS_MARGIN - low.Y)
+	local shifted: { [string]: Vector2 } = {}
+	for key, at in points do
+		shifted[key] = at + hub
+	end
+	for _, title in titles do
+		title.At += hub
+	end
+	return {
+		Points = shifted,
+		Heading = heading,
+		Roots = roots,
+		Titles = titles,
+		Hub = hub,
+		Size = Vector2.new(high.X - low.X + CANVAS_MARGIN * 2, high.Y - low.Y + CANVAS_MARGIN * 2),
+	}
 end
 
-function Perks.render(data: Types.View, wide: boolean): ()
+function Perks.render(data: Types.View, _wide: boolean): ()
+	disconnect()
 	local states: { [string]: NodeState } = {}
 	local branches: { [string]: string } = {}
+	local spent: { [string]: number } = {}
+	local owned, total = 0, 0
 	for _, branch in Catalog.Branches do
 		branches[branch.Key] = branch.Name
+		spent[branch.Key] = 0
 	end
 	for _, perk in Catalog.Perks do
-		states[perk.Key] = stateFor(perk, data)
+		local state = stateFor(perk, data)
+		states[perk.Key] = state
+		spent[perk.Branch] += state.Level
+		owned += state.Level
+		total += #perk.Costs
 	end
+	local map = layout()
 
-	local points, bands, chartSize = layout()
-	local columns = if wide then 4 else 2
-	local legendHeight = math.ceil(#Catalog.Branches / columns) * 24 + 12
-	local shell = Components.strip(legendHeight + chartSize.Y)
-	local graph = Style.frame(shell, BOARD, 14)
-	graph.Size = UDim2.fromScale(1, 1)
-	Style.outline(graph, Style.Edge, 1)
-	local key = Style.frame(graph, nil)
-	key.Position = UDim2.fromOffset(8, 7)
-	key.Size = UDim2.new(1, -16, 0, legendHeight - 6)
-	legend(key, states, wide)
+	local shell = Components.strip(VIEW_HEIGHT)
+	local view = Style.frame(shell, BOARD, 14)
+	view.Size = UDim2.fromScale(1, 1)
+	view.ClipsDescendants = true
+	Style.outline(view, Style.Edge, 2)
+	Style.gloss(view)
 
-	-- Дерево шире экрана: прокручивается по горизонтали, по вертикали его листает само меню.
 	local host = Instance.new("ScrollingFrame")
 	host.Name = "Дерево"
 	host.BackgroundTransparency = 1
 	host.BorderSizePixel = 0
-	host.Position = UDim2.fromOffset(0, legendHeight)
-	host.Size = UDim2.new(1, 0, 1, -legendHeight)
-	host.CanvasSize = UDim2.fromOffset(chartSize.X, 0)
-	host.ScrollingDirection = Enum.ScrollingDirection.X
-	host.ScrollBarThickness = 5
-	host.ScrollBarImageColor3 = Style.Amber
+	host.Size = UDim2.fromScale(1, 1)
+	host.ScrollingDirection = Enum.ScrollingDirection.XY
+	host.ScrollBarThickness = 0
 	host.Selectable = false
-	host.Parent = graph
+	host.Parent = view
 	local chart = Style.frame(host, nil)
-	chart.Size = UDim2.fromOffset(chartSize.X, chartSize.Y)
+	chart.Size = UDim2.fromOffset(map.Size.X, map.Size.Y)
+	local scale = Instance.new("UIScale")
+	scale.Parent = chart
 
-	for _, band in bands do
-		local color = BRANCH_COLORS[band.Branch] or Style.Cyan
-		local strip = Style.frame(chart, PANEL, 12)
-		strip.Position = UDim2.fromOffset(6, band.Top)
-		strip.Size = UDim2.fromOffset(chartSize.X - 12, band.Height)
-		strip.BackgroundTransparency = 0.45
-		local mark = Style.frame(strip, color, 3)
-		mark.Position = UDim2.fromOffset(10, 9)
-		mark.Size = UDim2.fromOffset(5, 18)
-		local title = Components.text(strip, branches[band.Branch], 15, color, true)
-		Components.place(title, 22, 7, UDim.new(0, 220), 22)
-		title.TextWrapped = false
+	local function setZoom(value: number, anchor: Vector2?): ()
+		local previous = scale.Scale
+		zoom = math.clamp(value, MIN_ZOOM, MAX_ZOOM)
+		scale.Scale = zoom
+		host.CanvasSize = UDim2.fromOffset(map.Size.X * zoom, map.Size.Y * zoom)
+		-- Масштаб относительно точки обзора, чтобы карта не «уезжала».
+		local focus = anchor or host.AbsoluteSize / 2
+		host.CanvasPosition = (host.CanvasPosition + focus) * (zoom / previous) - focus
 	end
+	scale.Scale = zoom
+	host.CanvasSize = UDim2.fromOffset(map.Size.X * zoom, map.Size.Y * zoom)
+	local function centerOnHub(): ()
+		local size = host.AbsoluteSize
+		host.CanvasPosition =
+			Vector2.new(math.max(0, map.Hub.X * zoom - size.X / 2), math.max(0, map.Hub.Y * zoom - size.Y * 0.82))
+	end
+	-- Размер окна карты известен только после первой раскладки интерфейса.
+	task.delay(0.05, function()
+		if not host.Parent then
+			return
+		end
+		if scroll then
+			host.CanvasPosition = scroll
+		else
+			centerOnHub()
+		end
+	end)
+	table.insert(
+		connections,
+		host:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+			scroll = host.CanvasPosition
+		end)
+	)
 
-	local detailPanel = Components.dock(MOBILE_DOCK)
-
+	-- Линии: ствол к корням веток, затем связи родитель → потомок и дополнительные условия.
+	for _, branch in Catalog.Branches do
+		local color = BRANCH_COLORS[branch.Key] or Style.Cyan
+		for _, root in map.Roots[branch.Key] do
+			local head = map.Heading[root.Key]
+			if not root.Parent then
+				local lit = states[root.Key].Level > 0
+				local tone = if lit then color elseif states[root.Key].Locked then RAIL else color:Lerp(RAIL, 0.55)
+				curve(chart, map.Hub, map.Points[root.Key], head, head, tone, if lit then 9 else 4)
+			end
+		end
+	end
 	for _, perk in Catalog.Perks do
 		local state = states[perk.Key]
-		local at = points[perk.Key]
+		local head = map.Heading[perk.Key]
+		local tone = if state.Level > 0 then state.Color elseif state.Locked then RAIL else state.Color:Lerp(RAIL, 0.55)
+		local thickness = if state.Level > 0 then 9 elseif state.Locked then 2 else 4
 		if perk.Parent then
-			local accent = if state.Level > 0
-				then state.Color
-				elseif state.Locked then RAIL
-				else RAIL:Lerp(state.Color, 0.62)
-			link(chart, points[perk.Parent], at, accent, state.Level > 0)
+			curve(chart, map.Points[perk.Parent], map.Points[perk.Key], map.Heading[perk.Parent], head, tone, thickness)
 		end
-		-- Дополнительные условия: тонкая линия от нужного навыка.
 		if perk.Needs then
 			for _, need in perk.Needs do
 				local met = (data.Perks[need.Key] or 0) >= need.Level
-				link(chart, points[need.Key], at, if met then state.Color else RAIL, false)
+				curve(
+					chart,
+					map.Points[need.Key],
+					map.Points[perk.Key],
+					map.Heading[need.Key],
+					head,
+					if met then state.Color else RAIL,
+					2
+				)
 			end
 		end
 	end
 
+	-- Ствол: ядро лаборатории и названия веток с суммой изученных уровней.
+	local core = Style.frame(chart, PANEL, 60)
+	core.AnchorPoint = Vector2.new(0.5, 0.5)
+	core.Position = UDim2.fromOffset(map.Hub.X, map.Hub.Y)
+	core.Size = UDim2.fromOffset(104, 104)
+	core.ZIndex = 4
+	Style.outline(core, Style.Text, 4)
+	local coreLevel = centerText(core, `Ур. {Catalog.level(data.Opened)}`, 24, Style.Text, true)
+	coreLevel.Position = UDim2.fromOffset(0, 24)
+	coreLevel.Size = UDim2.new(1, 0, 0, 30)
+	coreLevel.ZIndex = 5
+	Style.textStroke(coreLevel, 2)
+	local coreNote = centerText(core, `{data.Opened} откр.`, 12, Style.Muted)
+	coreNote.Position = UDim2.fromOffset(0, 58)
+	coreNote.Size = UDim2.new(1, 0, 0, 18)
+	coreNote.ZIndex = 5
+	for _, title in map.Titles do
+		local color = BRANCH_COLORS[title.Branch] or Style.Cyan
+		local name = centerText(chart, branches[title.Branch], 17, color, true)
+		name.AnchorPoint = Vector2.new(0.5, 0.5)
+		name.Position = UDim2.fromOffset(title.At.X, title.At.Y - 16)
+		name.Size = UDim2.fromOffset(170, 22)
+		name.TextWrapped = false
+		name.ZIndex = 3
+		Style.textStroke(name, 2)
+		local count = centerText(chart, tostring(spent[title.Branch]), 30, Style.Text, true)
+		count.AnchorPoint = Vector2.new(0.5, 0.5)
+		count.Position = UDim2.fromOffset(title.At.X, title.At.Y + 12)
+		count.Size = UDim2.fromOffset(120, 34)
+		count.ZIndex = 3
+		Style.textStroke(count, 3)
+	end
+
+	local detailPanel = Components.dock(MOBILE_DOCK)
 	local widgets: { [string]: NodeWidget } = {}
 	local function selectPerk(perkKey: string): ()
 		selectedKey = perkKey
 		for nodeKey, widget in widgets do
-			local active = nodeKey == perkKey
-			local state = widget.State
-			widget.Border.Color = if active
-				then Style.Text
-				elseif state.Locked then state.Color:Lerp(Style.Muted, 0.58)
-				else state.Color
-			widget.Border.Thickness = if active then 3 else 2
-			widget.Button.BackgroundColor3 = if active
-				then PANEL:Lerp(state.Color, 0.36)
-				elseif state.Level > 0 then BOARD:Lerp(state.Color, 0.32)
-				else PANEL
+			widget.Apply(nodeKey == perkKey)
 		end
 		details(detailPanel, states[perkKey], branches, false)
 	end
-
 	for _, perk in Catalog.Perks do
-		local widget = drawNode(chart, states[perk.Key], points[perk.Key])
+		local diameter = if perk.Parent then NODE_DIAMETER else ROOT_DIAMETER
+		local widget = drawNode(chart, states[perk.Key], map.Points[perk.Key], diameter)
 		widgets[perk.Key] = widget
 		widget.Button.Activated:Connect(function()
 			selectPerk(perk.Key)
 		end)
 	end
+
+	-- Управление картой: кнопки масштаба и центра, колесо мыши и перетаскивание.
+	local toolbar = Style.frame(view, nil)
+	toolbar.AnchorPoint = Vector2.new(1, 0)
+	toolbar.Position = UDim2.new(1, -8, 0, 8)
+	toolbar.Size = UDim2.fromOffset(46, 150)
+	toolbar.ZIndex = 10
+	local layoutList = Instance.new("UIListLayout")
+	layoutList.Padding = UDim.new(0, 6)
+	layoutList.SortOrder = Enum.SortOrder.LayoutOrder
+	layoutList.Parent = toolbar
+	local toolList: { { Caption: string, Factor: number } } = {
+		{ Caption = "+", Factor = 1.2 },
+		{ Caption = "−", Factor = 1 / 1.2 },
+		{ Caption = "⌖", Factor = 0 },
+	}
+	for index, tool in toolList do
+		local control = Style.button(toolbar, tool.Caption, function()
+			if tool.Factor == 0 then
+				setZoom(0.8)
+				centerOnHub()
+			else
+				setZoom(zoom * tool.Factor)
+			end
+		end, true, "neutral")
+		control.LayoutOrder = index
+		control.Size = UDim2.fromOffset(46, 42)
+		control.TextSize = 24
+		control.ZIndex = 10
+	end
+	local summary = Components.text(view, `Изучено {owned} из {total}`, 13, Style.Muted, true)
+	summary.Position = UDim2.fromOffset(14, 10)
+	summary.Size = UDim2.fromOffset(220, 20)
+	summary.TextWrapped = false
+	summary.ZIndex = 10
+	Style.textStroke(summary, 2)
+
+	local dragging = false
+	local function inside(): boolean
+		local mouse = UserInputService:GetMouseLocation()
+		local at, size = host.AbsolutePosition, host.AbsoluteSize
+		-- GetMouseLocation учитывает панель Roblox сверху, как и AbsolutePosition при IgnoreGuiInset = false.
+		return mouse.X >= at.X and mouse.X <= at.X + size.X and mouse.Y >= at.Y and mouse.Y <= at.Y + size.Y + 36
+	end
+	table.insert(
+		connections,
+		UserInputService.InputBegan:Connect(function(input, processed)
+			if not processed and input.UserInputType == Enum.UserInputType.MouseButton1 and inside() then
+				dragging = true
+			end
+		end)
+	)
+	table.insert(
+		connections,
+		UserInputService.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+				dragging = false
+			end
+		end)
+	)
+	table.insert(
+		connections,
+		UserInputService.InputChanged:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
+				host.CanvasPosition -= Vector2.new(input.Delta.X, input.Delta.Y)
+			elseif input.UserInputType == Enum.UserInputType.MouseWheel and inside() then
+				setZoom(zoom * (if input.Position.Z > 0 then 1.1 else 1 / 1.1))
+			end
+		end)
+	)
 
 	local first = selectedKey or Catalog.Perks[1].Key
 	selectPerk(first)

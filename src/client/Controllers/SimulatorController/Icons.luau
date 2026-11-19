@@ -1,7 +1,32 @@
 --!strict
 local Style = require(script.Parent.Style)
 
-export type IconName = "coin" | "star" | "gift" | "lock" | "box" | "grid" | "screen"
+export type IconName =
+	"coin"
+	| "star"
+	| "gift"
+	| "lock"
+	| "box"
+	| "grid"
+	| "screen"
+	| "arrow"
+	| "bolt"
+	| "tag"
+	| "cycle"
+	| "frame"
+	| "stack"
+	| "scale"
+	| "dice"
+	| "eye"
+	| "sparkle"
+	| "plus"
+	| "ticket"
+	| "target"
+	| "medal"
+	| "clock"
+	| "gem"
+	| "magnet"
+	| "check"
 
 local Icons = {}
 
@@ -85,6 +110,90 @@ function Icons.draw(parent: Instance, name: IconName, color: Color3?, accent: Co
 				shape(holder, main, x, y, 0.38, 0.38, 0.2)
 			end
 		end
+	elseif name == "arrow" then
+		shape(holder, main, 0.5, 0.62, 0.3, 0.6, 0.1)
+		shape(holder, main, 0.5, 0.3, 0.62, 0.62, 0.08, 45)
+	elseif name == "bolt" then
+		shape(holder, main, 0.56, 0.3, 0.34, 0.6, 0.1, 22)
+		shape(holder, main, 0.44, 0.7, 0.34, 0.6, 0.1, 22)
+		shape(holder, lighter(main, 0.4), 0.5, 0.5, 0.5, 0.18, 0.2, 22)
+	elseif name == "tag" then
+		shape(holder, main, 0.5, 0.5, 0.62, 0.62, 0.12, 45)
+		shape(holder, second, 0.5, 0.36, 0.2, 0.2, 0.5)
+	elseif name == "cycle" then
+		shape(holder, main, 0.5, 0.5, 0.74, 0.74, 0.5)
+		shape(holder, darker(main, 0.7), 0.5, 0.5, 0.46, 0.46, 0.5)
+		shape(holder, second, 0.78, 0.28, 0.26, 0.26, 0.1, 45)
+	elseif name == "frame" then
+		shape(holder, main, 0.5, 0.5, 0.84, 0.7, 0.08)
+		shape(holder, darker(main, 0.6), 0.5, 0.5, 0.62, 0.48, 0.05)
+		shape(holder, second, 0.38, 0.55, 0.2, 0.2, 0.5)
+		shape(holder, second, 0.62, 0.46, 0.2, 0.3, 0.1, 30)
+	elseif name == "stack" then
+		for index = 0, 2 do
+			shape(
+				holder,
+				if index == 1 then lighter(main, 0.25) else main,
+				0.5,
+				0.26 + index * 0.24,
+				0.78 - index * 0.1,
+				0.2,
+				0.2
+			)
+		end
+	elseif name == "scale" then
+		shape(holder, main, 0.5, 0.52, 0.12, 0.62, 0.2)
+		shape(holder, main, 0.5, 0.26, 0.8, 0.1, 0.3)
+		shape(holder, second, 0.2, 0.52, 0.28, 0.2, 0.5)
+		shape(holder, second, 0.8, 0.52, 0.28, 0.2, 0.5)
+		shape(holder, main, 0.5, 0.86, 0.5, 0.1, 0.3)
+	elseif name == "dice" then
+		shape(holder, main, 0.5, 0.5, 0.74, 0.74, 0.2, 12)
+		for _, spot in { { 0.34, 0.34 }, { 0.66, 0.34 }, { 0.5, 0.5 }, { 0.34, 0.66 }, { 0.66, 0.66 } } do
+			shape(holder, darker(main, 0.7), spot[1], spot[2], 0.13, 0.13, 0.5)
+		end
+	elseif name == "eye" then
+		shape(holder, main, 0.5, 0.5, 0.9, 0.52, 0.5)
+		shape(holder, second, 0.5, 0.5, 0.36, 0.36, 0.5)
+		shape(holder, darker(main, 0.8), 0.5, 0.5, 0.18, 0.18, 0.5)
+	elseif name == "sparkle" then
+		shape(holder, main, 0.5, 0.5, 0.2, 0.84, 0.5)
+		shape(holder, main, 0.5, 0.5, 0.84, 0.2, 0.5)
+		shape(holder, lighter(main, 0.35), 0.5, 0.5, 0.3, 0.3, 0.1, 45)
+	elseif name == "plus" then
+		shape(holder, main, 0.5, 0.5, 0.26, 0.8, 0.2)
+		shape(holder, main, 0.5, 0.5, 0.8, 0.26, 0.2)
+	elseif name == "ticket" then
+		shape(holder, main, 0.5, 0.5, 0.86, 0.56, 0.16)
+		shape(holder, darker(main, 0.6), 0.5, 0.5, 0.06, 0.4, 0.3)
+		shape(holder, second, 0.3, 0.5, 0.18, 0.18, 0.5)
+	elseif name == "target" then
+		shape(holder, main, 0.5, 0.5, 0.9, 0.9, 0.5)
+		shape(holder, darker(main, 0.65), 0.5, 0.5, 0.62, 0.62, 0.5)
+		shape(holder, second, 0.5, 0.5, 0.36, 0.36, 0.5)
+		shape(holder, darker(main, 0.65), 0.5, 0.5, 0.14, 0.14, 0.5)
+	elseif name == "medal" then
+		shape(holder, second, 0.34, 0.2, 0.2, 0.4, 0.1, -20)
+		shape(holder, second, 0.66, 0.2, 0.2, 0.4, 0.1, 20)
+		shape(holder, main, 0.5, 0.62, 0.58, 0.58, 0.5)
+		shape(holder, lighter(main, 0.4), 0.5, 0.62, 0.3, 0.3, 0.5)
+	elseif name == "clock" then
+		shape(holder, main, 0.5, 0.5, 0.88, 0.88, 0.5)
+		shape(holder, darker(main, 0.7), 0.5, 0.5, 0.7, 0.7, 0.5)
+		shape(holder, second, 0.5, 0.36, 0.08, 0.3, 0.4)
+		shape(holder, second, 0.62, 0.5, 0.26, 0.08, 0.4)
+	elseif name == "gem" then
+		shape(holder, main, 0.5, 0.5, 0.56, 0.56, 0.1, 45)
+		shape(holder, lighter(main, 0.4), 0.5, 0.38, 0.26, 0.26, 0.1, 45)
+	elseif name == "magnet" then
+		shape(holder, main, 0.3, 0.45, 0.22, 0.7, 0.2)
+		shape(holder, main, 0.7, 0.45, 0.22, 0.7, 0.2)
+		shape(holder, main, 0.5, 0.24, 0.66, 0.2, 0.4)
+		shape(holder, second, 0.3, 0.82, 0.22, 0.14, 0.2)
+		shape(holder, second, 0.7, 0.82, 0.22, 0.14, 0.2)
+	elseif name == "check" then
+		shape(holder, main, 0.36, 0.62, 0.2, 0.46, 0.2, -45)
+		shape(holder, main, 0.62, 0.5, 0.2, 0.74, 0.2, 40)
 	else
 		shape(holder, main, 0.5, 0.44, 0.84, 0.58, 0.1)
 		shape(holder, darker(main, 0.6), 0.5, 0.44, 0.7, 0.44, 0.06)
