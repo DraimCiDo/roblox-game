@@ -1,4 +1,6 @@
 --!strict
+local ContextActionService = game:GetService("ContextActionService")
+local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
@@ -22,13 +24,13 @@ local BRANCH_COLORS: { [string]: Color3 } = {
 }
 -- Ветки веером от общего ствола: соседние по смыслу и по зависимостям стоят рядом (угол от вертикали, градусы).
 local BRANCH_ANGLES: { [string]: number } = {
-	logistics = -80,
-	storage = -53,
-	collections = -27,
+	logistics = -86,
+	storage = -58,
+	collections = -29,
 	trade = 0,
-	luck = 27,
-	mastery = 53,
-	lockpick = 80,
+	luck = 29,
+	mastery = 58,
+	lockpick = 86,
 }
 local PERK_ICONS: { [string]: Icons.IconName } = {
 	orders = "box",
@@ -77,10 +79,14 @@ local PERK_ICONS: { [string]: Icons.IconName } = {
 local VIEW_HEIGHT = 440
 local MOBILE_DOCK = 194
 -- Раскладка: расстояние от ствола задаёт глубина навыка, а соседние листья расходятся в стороны.
-local FIRST_RADIUS = 270
+local FIRST_RADIUS = 290
 local RADIUS_STEP = 140
-local LEAF_SPACING = 92
-local CANVAS_MARGIN = 130
+local LEAF_SPACING = 104
+local CANVAS_MARGIN = 140
+-- Минимальный «габарит» узла с подписью: по горизонтали и вертикали; ближе узлы не располагаются.
+local CLEARANCE_X = 128
+local CLEARANCE_Y = 118
+local CORE_CLEARANCE = 210
 local ROOT_DIAMETER = 62
 local NODE_DIAMETER = 52
 local MIN_ZOOM = 0.45
@@ -101,12 +107,14 @@ local selectedKey: string? = nil
 local zoom = 0.8
 local scroll: Vector2? = nil
 local connections: { RBXScriptConnection } = {}
+local cachedLayout: Layout? = nil
 
 local function disconnect(): ()
 	for _, connection in connections do
 		connection:Disconnect()
 	end
 	table.clear(connections)
+	ContextActionService:UnbindAction("CorpaPerkZoom")
 end
 
 local function stateFor(perk: Catalog.Perk, data: Types.View): NodeState
@@ -364,6 +372,43 @@ local function layout(): Layout
 		local side = if angle < 0 then -1 else 1
 		table.insert(titles, { Branch = branch.Key, At = direction * (FIRST_RADIUS * 0.45) + across * (side * 78) })
 	end
+	-- Разводим пересекающиеся узлы соседних веток: попарно отталкиваем их, пока габариты не перестанут пересекаться.
+	local keys: { string } = {}
+	for key in points do
+		table.insert(keys, key)
+	end
+	table.sort(keys)
+	for _ = 1, 140 do
+		local moved = false
+		for i = 1, #keys do
+			local a = points[keys[i]]
+			local away = a.Magnitude
+			if away < CORE_CLEARANCE and away > 0 then
+				points[keys[i]] = a + a.Unit * (CORE_CLEARANCE - away)
+				moved = true
+			end
+			for j = i + 1, #keys do
+				local first, second = points[keys[i]], points[keys[j]]
+				local scaled = Vector2.new((first.X - second.X) / CLEARANCE_X, (first.Y - second.Y) / CLEARANCE_Y)
+				local gap = scaled.Magnitude
+				if gap < 1 then
+					local direction = if gap > 0.001 then scaled / gap else Vector2.new(1, 0)
+					local push = direction * ((1 - gap) * 0.5)
+					local shift = Vector2.new(push.X * CLEARANCE_X, push.Y * CLEARANCE_Y)
+					points[keys[i]] = first + shift
+					points[keys[j]] = second - shift
+					moved = true
+				end
+			end
+		end
+		if not moved then
+			break
+		end
+	end
+	low, high = Vector2.zero, Vector2.zero
+	for _, at in points do
+		track(at)
+	end
 	local hub = Vector2.new(CANVAS_MARGIN - low.X, CANVAS_MARGIN - low.Y)
 	local shifted: { [string]: Vector2 } = {}
 	for key, at in points do
@@ -399,7 +444,8 @@ function Perks.render(data: Types.View, _wide: boolean): ()
 		owned += state.Level
 		total += #perk.Costs
 	end
-	local map = layout()
+	local map: Layout = cachedLayout or layout()
+	cachedLayout = map
 
 	local shell = Components.strip(VIEW_HEIGHT)
 	local view = Style.frame(shell, BOARD, 14)
@@ -414,6 +460,8 @@ function Perks.render(data: Types.View, _wide: boolean): ()
 	host.BorderSizePixel = 0
 	host.Size = UDim2.fromScale(1, 1)
 	host.ScrollingDirection = Enum.ScrollingDirection.XY
+	-- Карту двигаем сами (мышь и касание), чтобы работало одинаково на всех платформах.
+	host.ScrollingEnabled = false
 	host.ScrollBarThickness = 0
 	host.Selectable = false
 	host.Parent = view
@@ -581,15 +629,17 @@ function Perks.render(data: Types.View, _wide: boolean): ()
 
 	local dragging = false
 	local function inside(): boolean
-		local mouse = UserInputService:GetMouseLocation()
+		local mouse = UserInputService:GetMouseLocation() - GuiService:GetGuiInset()
 		local at, size = host.AbsolutePosition, host.AbsoluteSize
-		-- GetMouseLocation учитывает панель Roblox сверху, как и AbsolutePosition при IgnoreGuiInset = false.
-		return mouse.X >= at.X and mouse.X <= at.X + size.X and mouse.Y >= at.Y and mouse.Y <= at.Y + size.Y + 36
+		return mouse.X >= at.X and mouse.X <= at.X + size.X and mouse.Y >= at.Y and mouse.Y <= at.Y + size.Y
+	end
+	local function pointer(input: InputObject): boolean
+		return input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch
 	end
 	table.insert(
 		connections,
-		UserInputService.InputBegan:Connect(function(input, processed)
-			if not processed and input.UserInputType == Enum.UserInputType.MouseButton1 and inside() then
+		host.InputBegan:Connect(function(input)
+			if pointer(input) then
 				dragging = true
 			end
 		end)
@@ -597,7 +647,7 @@ function Perks.render(data: Types.View, _wide: boolean): ()
 	table.insert(
 		connections,
 		UserInputService.InputEnded:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			if pointer(input) then
 				dragging = false
 			end
 		end)
@@ -605,13 +655,21 @@ function Perks.render(data: Types.View, _wide: boolean): ()
 	table.insert(
 		connections,
 		UserInputService.InputChanged:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
+			local moving = input.UserInputType == Enum.UserInputType.MouseMovement
+				or input.UserInputType == Enum.UserInputType.Touch
+			if dragging and moving then
 				host.CanvasPosition -= Vector2.new(input.Delta.X, input.Delta.Y)
-			elseif input.UserInputType == Enum.UserInputType.MouseWheel and inside() then
-				setZoom(zoom * (if input.Position.Z > 0 then 1.1 else 1 / 1.1))
 			end
 		end)
 	)
+	-- Колесо над картой меняет масштаб и не прокручивает меню под ней.
+	ContextActionService:BindActionAtPriority("CorpaPerkZoom", function(_, _, input)
+		if not inside() then
+			return Enum.ContextActionResult.Pass
+		end
+		setZoom(zoom * (if input.Position.Z > 0 then 1.1 else 1 / 1.1))
+		return Enum.ContextActionResult.Sink
+	end, false, Enum.ContextActionPriority.High.Value, Enum.UserInputType.MouseWheel)
 
 	local first = selectedKey or Catalog.Perks[1].Key
 	selectPerk(first)
