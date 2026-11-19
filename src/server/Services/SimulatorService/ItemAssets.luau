@@ -143,9 +143,10 @@ local function load(kind: string, assetId: number): ()
 	)
 end
 
--- Запускает фоновую загрузку всех моделей. Отключить: атрибут Workspace.UseStoreModels = false.
+-- Запускает фоновую загрузку моделей из Creator Store. Выключено по умолчанию: игра использует встроенные
+-- детализированные модели (Shared/ItemModels). Включить: атрибут Workspace.UseStoreModels = true.
 function ItemAssets.preload(): ()
-	if Workspace:GetAttribute("UseStoreModels") == false then
+	if Workspace:GetAttribute("UseStoreModels") ~= true then
 		return
 	end
 	local folder = Instance.new("Folder")

@@ -7,6 +7,7 @@ local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
 local Config = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Containers = require(script.Parent.Containers)
+local ItemModels = require(ReplicatedStorage.Shared.ItemModels)
 local ItemAssets = require(script.Parent.ItemAssets)
 
 local STEEL = Color3.fromRGB(45, 56, 68)
@@ -597,124 +598,15 @@ end
 
 local function makeItem(item: Types.Item): Model
 	local definition = Catalog.Items[item.Kind]
-	local stored = ItemAssets.clone(item.Kind)
-	if stored then
-		stored.Name = definition.Name
-		stored:SetAttribute("ItemId", item.Id)
-		stored:SetAttribute("Quality", item.Quality)
-		return stored
+	-- Модель из Creator Store подключается только по явному включению; по умолчанию рисуем свою.
+	local model = ItemAssets.clone(item.Kind) or Instance.new("Model")
+	if #model:GetChildren() == 0 then
+		ItemModels.build(item.Kind, model, { Full = true })
+		model.WorldPivot = CFrame.new()
 	end
-	local color = definition.Color
-	local model = Instance.new("Model")
 	model.Name = definition.Name
 	model:SetAttribute("ItemId", item.Id)
 	model:SetAttribute("Quality", item.Quality)
-	local scale = if definition.Size == "car" then 2 else if definition.Size == "large" then 1.55 else 1
-	local function shape(
-		x: number,
-		y: number,
-		z: number,
-		sx: number,
-		sy: number,
-		sz: number,
-		tint: Color3?,
-		kind: Enum.PartType?,
-		material: Enum.Material?
-	): Part
-		local piece = part(
-			model,
-			"Деталь",
-			CFrame.new(x * scale, y * scale, z * scale),
-			Vector3.new(sx, sy, sz) * scale,
-			tint or color,
-			material
-		)
-		piece.Shape = kind or Enum.PartType.Block
-		piece.CanCollide = false
-		return piece
-	end
-	local style = definition.Style
-	if style == "car" then
-		shape(0, 0.59, 0, 1.9, 0.55, 3.1)
-		shape(0, 1.02, 0.12, 1.48, 0.47, 1.42, INK, nil, Enum.Material.Glass)
-		for _, x in { -0.96, 0.96 } do
-			for _, z in { -0.97, 0.97 } do
-				shape(x, 0.38, z, 0.36, 0.76, 0.76, INK, Enum.PartType.Cylinder)
-			end
-			shape(x * 0.7, 0.64, -1.56, 0.33, 0.16, 0.08, ICE, nil, Enum.Material.Neon)
-		end
-	elseif style == "ball" then
-		shape(0, 0.59, 0, 1.18, 1.18, 1.18, nil, Enum.PartType.Ball)
-		if item.Kind == "ball" then
-			for i = 1, 5 do
-				local angle = i * math.pi * 0.4
-				shape(math.cos(angle) * 0.49, 0.65, math.sin(angle) * 0.49, 0.25, 0.25, 0.25, INK, Enum.PartType.Ball)
-			end
-		elseif item.Kind == "bomb" or item.Kind == "trash" then
-			shape(0, 1.27, 0, 0.17, 0.22, 0.17, if item.Kind == "bomb" then AMBER else color)
-		elseif item.Kind == "core" then
-			shape(0, 0.62, 0, 1.38, 0.105, 1.38, ICE, nil, Enum.Material.Neon)
-		end
-	elseif style == "screen" or style == "picture" then
-		local portrait = item.Kind == "phone" or item.Kind == "button"
-		local width, height = if portrait then 0.67 else 1.44, if portrait then 1.37 else 1.05
-		shape(0, height / 2, 0, width, height, if style == "picture" then 0.15 else 0.47)
-		shape(
-			0,
-			height / 2,
-			-0.25,
-			width * 0.81,
-			height * 0.76,
-			0.09,
-			if style == "screen" then INK else AMBER,
-			nil,
-			if style == "screen" then Enum.Material.Glass else nil
-		)
-	elseif style == "radio" or style == "camera" then
-		shape(0, 0.42, 0, 1.6, 0.82, 0.66)
-		local lensPositions: { number } = if style == "radio" then { -0.47, 0.47 } else { 0 }
-		for _, x in lensPositions do
-			shape(x, 0.44, -0.38, 0.2, 0.47, 0.47, INK, Enum.PartType.Cylinder).Orientation = Vector3.new(0, 90, 0)
-		end
-		shape(0, 0.92, 0, 0.69, 0.16, 0.2, STEEL)
-	elseif style == "flower" or style == "brush" or style == "fan" then
-		shape(0, 0.62, 0, 0.14, 1.2, 0.14, if style == "flower" then Color3.fromRGB(84, 172, 99) else STEEL)
-		shape(0, 0.11, 0, 0.69, 0.21, 0.69, STEEL)
-		for i = 1, (if style == "brush" then 1 else 5) do
-			local angle = i * math.pi * 0.4
-			shape(math.sin(angle) * 0.27, 1.14 + math.cos(angle) * 0.25, 0, 0.31, 0.32, 0.24, nil, Enum.PartType.Ball)
-		end
-	elseif style == "bowl" or style == "bell" or style == "hat" then
-		shape(0, 0.17, 0, 0.28, 1.05, 1.05, nil, Enum.PartType.Cylinder).Orientation = Vector3.new(0, 0, 90)
-		shape(0, 0.4, 0, 0.7, if style == "hat" then 0.95 else 0.52, 0.7, nil, Enum.PartType.Ball)
-		shape(0, if style == "hat" then 0.88 else 0.66, 0, 0.22, 0.2, 0.22, AMBER, Enum.PartType.Ball)
-	elseif style == "fish" or style == "dumbbell" then
-		shape(0, 0.42, 0, 1.17, 0.4, 0.35, nil, Enum.PartType.Ball)
-		shape(
-			-0.6,
-			0.42,
-			0,
-			0.26,
-			0.56,
-			0.44,
-			nil,
-			if style == "fish" then Enum.PartType.Wedge else Enum.PartType.Cylinder
-		)
-		shape(0.48, 0.42, 0, 0.26, 0.46, 0.43, if style == "fish" then AMBER else color, Enum.PartType.Ball)
-	elseif style == "gem" then
-		local gem = shape(0, 0.67, 0, 0.8, 0.8, 0.8, nil, nil, Enum.Material.Glass)
-		gem.Orientation = Vector3.new(25, 40, 45)
-		shape(0, 0.62, 0, 0.38, 0.38, 0.38, nil, Enum.PartType.Ball, Enum.Material.Neon)
-	elseif style == "tower" then
-		shape(0, 0.75, 0, 0.78, 1.5, 0.68)
-		shape(0, 0.83, -0.37, 0.5, 0.23, 0.09, ICE, nil, Enum.Material.Neon)
-		shape(0, 0.05, 0, 1.05, 0.1, 0.87, STEEL)
-	else
-		local height = if style == "bar" then 0.38 else 0.76
-		shape(0, height / 2, 0, 1.2, height, 0.91)
-		shape(0, height + 0.025, 0, 0.27, 0.05, 0.81, if style == "bar" then AMBER else STEEL)
-	end
-	model.WorldPivot = CFrame.new()
 	return model
 end
 
