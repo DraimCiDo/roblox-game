@@ -112,18 +112,29 @@ local PRICE_SHARE = 0.6
 local PRICE_STEP = 50
 local QUALITY_MEAN = 0.9626
 
+-- Навыки «Знаток …»: бонус к цене находок из контейнеров своего типа (индекс = тип контейнера).
+local MASTERY_PERKS = { "boxMaster", "crateMaster", "safeMaster", "cargoMaster", "secretMaster" }
+-- Редкими считаются предметы с весом выпадения не выше этого значения.
+local RARE_WEIGHT = 9
+
 local random = Random.new()
 local prices: { [string]: number } = {}
+local tierOf: { [string]: number } = {}
 local collectionIndex: { [string]: { string } } = {}
-for _, container in Containers do
+local collectionPerk: { [string]: string } = {}
+for index, name in Catalog.Kinds do
+	local container = Containers[name]
 	for _, entry in container.Drops do
 		prices[entry.Kind] = entry.Price
+		tierOf[entry.Kind] = tierOf[entry.Kind] or index
 	end
 	prices[container.Extra.Kind] = container.Extra.Price
+	tierOf[container.Extra.Kind] = tierOf[container.Extra.Kind] or index
 end
 for _, collection in Catalog.Collections do
 	for _, kind in collection.Items do
 		collectionIndex[kind] = collection.Items
+		collectionPerk[kind] = collection.Perk
 	end
 end
 
@@ -140,12 +151,15 @@ for index, kind in Catalog.Kinds do
 end
 
 -- Параметры этапа взлома: цель (0..1), период оборота указателя и допуск попадания.
-function Economy.dial(order: Types.Order, stage: number): (number, number, number)
+-- Навыки «Твёрдая рука» и «Замедление» расширяют зону и замедляют указатель.
+function Economy.dial(order: Types.Order, stage: number, perks: { [string]: number }): (number, number, number)
 	local target = order.Target
 	if stage > 1 then
 		target = 0.12 + ((order.Target + (stage - 1) * 0.3819) % 1) * 0.76
 	end
-	return target, DIAL_PERIODS[stage], DIAL_TOLERANCES[stage]
+	local tolerance = math.min(DIAL_TOLERANCES[stage] * (1 + E.SteadyStep * (perks.steady or 0)), 0.3)
+	local period = DIAL_PERIODS[stage] * (1 + E.SlowStep * (perks.slow or 0))
+	return target, period, tolerance
 end
 
 function Economy.capacity(data: Types.PlayerData): number
@@ -165,20 +179,87 @@ function Economy.collectionBonus(data: Types.PlayerData, kind: string): number
 		end
 		total += item.Quality
 	end
-	return total / #collection / 1000 * (1 + E.CollectionStep * (data.Perks.collection or 0))
+	local specific = data.Perks[collectionPerk[kind]] or 0
+	local power = 1 + E.CollectionStep * (data.Perks.collection or 0) + E.SpecialtyStep * specific
+	return total / #collection / 1000 * power
+end
+
+-- Сколько коллекций заполнено полностью.
+function Economy.completedCollections(data: Types.PlayerData): number
+	local count = 0
+	for _, collection in Catalog.Collections do
+		local complete = true
+		for _, kind in collection.Items do
+			if not data.Collections[kind] then
+				complete = false
+				break
+			end
+		end
+		if complete then
+			count += 1
+		end
+	end
+	return count
 end
 
 function Economy.collectible(kind: string): boolean
 	return collectionIndex[kind] ~= nil
 end
 
-function Economy.price(data: Types.PlayerData, item: Types.Item): number
+-- Цена предмета: аддитивно складываются качество, коллекция и навыки торговли. extra — разовая надбавка (оптовик).
+function Economy.price(data: Types.PlayerData, item: Types.Item, extra: number?): number
 	local quality = item.Quality
 	local multiplier = if quality <= 50 then 0.5 + quality * 0.01 else 1 + (quality - 50) * 0.015
-	return math.round(
-		prices[item.Kind]
-			* (multiplier + Economy.collectionBonus(data, item.Kind) + (data.Perks.sale or 0) * E.SaleStep)
-	)
+	local perks = data.Perks
+	local bonus = Economy.collectionBonus(data, item.Kind) + (perks.sale or 0) * E.SaleStep + (extra or 0)
+	if quality >= 71 then
+		bonus += (perks.haggle or 0) * E.HaggleStep
+	elseif quality <= 49 then
+		bonus += (perks.junk or 0) * E.JunkStep
+	end
+	local mastery = MASTERY_PERKS[tierOf[item.Kind]]
+	if mastery then
+		bonus += (perks[mastery] or 0) * E.MasteryStep
+	end
+	return math.round(prices[item.Kind] * (multiplier + bonus))
+end
+
+-- Выручка с продажи: цена и шанс «Джекпота» удвоить её. Использовать только при реальной продаже.
+function Economy.payout(data: Types.PlayerData, item: Types.Item, extra: number?): number
+	local value = Economy.price(data, item, extra)
+	if random:NextNumber() < E.JackpotStep * (data.Perks.jackpot or 0) then
+		return value * 2
+	end
+	return value
+end
+
+-- Надбавка к цене при быстрой продаже («Оптовик»).
+function Economy.bulkBonus(data: Types.PlayerData): number
+	return E.BulkStep * (data.Perks.bulk or 0)
+end
+
+-- Предметы качества не выше этого значения продаются сразу при сборе («Утилизатор»).
+function Economy.recycleLimit(data: Types.PlayerData): number
+	return E.RecyclerStep * (data.Perks.recycler or 0)
+end
+
+-- Возврат части цены заказа («Кэшбэк»).
+function Economy.cashback(data: Types.PlayerData, price: number): number
+	return math.round(price * E.CashbackStep * (data.Perks.cashback or 0))
+end
+
+-- Доход витрин за минуту («Галерея»), усиленный полными коллекциями («Музейный фонд»).
+function Economy.galleryIncome(data: Types.PlayerData): number
+	local level = data.Perks.gallery or 0
+	if level <= 0 then
+		return 0
+	end
+	local total = 0
+	for _, item in data.Displays do
+		total += Economy.price(data, item)
+	end
+	local museum = 1 + E.MuseumStep * (data.Perks.museum or 0) * Economy.completedCollections(data)
+	return total * E.GalleryStep * level * museum
 end
 
 function Economy.credit(data: Types.PlayerData, amount: number): ()
@@ -189,7 +270,7 @@ end
 -- Цена нового заказа зависит от уровня лаборатории (числа открытых контейнеров) и скидки.
 function Economy.orderPrice(data: Types.PlayerData): number
 	local expected = 0
-	for tier, chance in Catalog.odds(data.Opened, 0) do
+	for tier, chance in Catalog.odds(data.Opened, {}) do
 		expected += chance / 100 * tierValue[tier]
 	end
 	local base = math.max(Config.OrderPrice, math.round(expected * PRICE_SHARE / PRICE_STEP) * PRICE_STEP)
@@ -204,7 +285,7 @@ function Economy.newOrder(data: Types.PlayerData, starter: boolean): Types.Order
 	local roll = random:NextNumber() * 100
 	local kind = "box"
 	if not starter then
-		for tier, chance in Catalog.odds(data.Opened, data.Perks.odds or 0) do
+		for tier, chance in Catalog.odds(data.Opened, data.Perks) do
 			roll -= chance
 			if chance > 0 and roll <= 0 then
 				kind = Catalog.Kinds[tier]
@@ -226,7 +307,11 @@ function Economy.newOrder(data: Types.PlayerData, starter: boolean): Types.Order
 	}
 end
 
+-- Время доставки: «Быстрая доставка» сокращает его, «Срочная доставка» с шансом делает почти мгновенным.
 function Economy.deliveryTime(order: Types.Order, data: Types.PlayerData): number
+	if random:NextNumber() < E.ExpressStep * (data.Perks.express or 0) then
+		return 0.6
+	end
 	return Containers[order.Kind].Deliver * (1 - E.DeliveryStep * (data.Perks.delivery or 0))
 end
 
@@ -261,16 +346,20 @@ local function rollQuality(): number
 	return 100
 end
 
--- Перк «Удачный осмотр»: с некоторым шансом берётся лучшее из двух бросков качества.
-local function quality(luck: number): number
-	local first = rollQuality()
+-- Качество находки с учётом навыков: лучшее из двух бросков, шанс идеального качества и нижняя граница.
+local function quality(perks: { [string]: number }): number
+	local luck = perks.quality or 0
+	local value = rollQuality()
 	if luck > 0 and random:NextNumber() < E.QualityStep * luck then
-		return math.max(first, rollQuality())
+		value = math.max(value, rollQuality())
 	end
-	return first
+	if random:NextNumber() < E.PerfectStep * (perks.perfect or 0) then
+		value = 100
+	end
+	return math.max(value, math.min(E.FloorStep * (perks.floor or 0), 100))
 end
 
-local function pick(container: Container, variant: boolean): string
+local function pick(container: Container, variant: boolean, rarity: number): string
 	local pool = table.clone(container.Drops)
 	if variant then
 		table.insert(pool, container.Extra)
@@ -278,12 +367,13 @@ local function pick(container: Container, variant: boolean): string
 	local weights = {}
 	local total = 0
 	for i, entry in pool do
-		local emphasis = if variant and i <= #container.Drops and entry.Weight <= 9 then 2 else 1
-		local weight = entry.Weight * emphasis
+		local emphasis = if variant and i <= #container.Drops and entry.Weight <= RARE_WEIGHT then 2 else 1
+		local boost = if entry.Weight <= RARE_WEIGHT then 1 + E.RarityStep * rarity else 1
+		local weight = entry.Weight * emphasis * boost
 		weights[i] = weight
 		total += weight
 	end
-	local roll = random:NextInteger(1, total)
+	local roll = random:NextNumber() * total
 	for i, weight in weights do
 		roll -= weight
 		if roll <= 0 then
@@ -299,6 +389,9 @@ function Economy.open(order: Types.Order, data: Types.PlayerData): ()
 	if random:NextNumber() < E.LootStep * (data.Perks.bonusLoot or 0) then
 		count += 1
 	end
+	if order.Variant then
+		count += E.VariantLootStep * (data.Perks.variantLoot or 0)
+	end
 	for index = 1, count do
 		local x, z
 		if order.Kind == "cargo" then
@@ -311,8 +404,8 @@ function Economy.open(order: Types.Order, data: Types.PlayerData): ()
 		table.insert(order.Loot, {
 			Item = {
 				Id = HttpService:GenerateGUID(false),
-				Kind = pick(container, order.Variant),
-				Quality = quality(data.Perks.quality or 0),
+				Kind = pick(container, order.Variant, data.Perks.rarity or 0),
+				Quality = quality(data.Perks),
 			},
 			X = x,
 			Z = z,

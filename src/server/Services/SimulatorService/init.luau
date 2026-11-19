@@ -45,6 +45,8 @@ local lastProfileQuery: { [Player]: number } = {}
 local dialStages: { [Player]: number } = {}
 local stats: { [Player]: { Coins: IntValue, Opened: IntValue } } = {}
 local guides: { [Player]: { Id: string, Target: Instance? } } = {}
+local galleryAt: { [Player]: number } = {}
+local GALLERY_INTERVAL = 10
 local plots: { World.Plot } = {}
 local perks: { [string]: Catalog.Perk } = {}
 for _, perk in Catalog.Perks do
@@ -247,6 +249,27 @@ local function occupy(player: Player): ()
 	end
 end
 
+-- «Галерея»: раз в несколько секунд начисляет доход от выставленных на витринах предметов.
+local function payGallery(player: Player, session: Session, now: number): ()
+	if not session.Initialized or now - (galleryAt[player] or now) < GALLERY_INTERVAL then
+		galleryAt[player] = galleryAt[player] or now
+		return
+	end
+	galleryAt[player] = now
+	local data = Data:Get(player)
+	if not data then
+		return
+	end
+	local amount = math.round(Economy.galleryIncome(data) * GALLERY_INTERVAL / 60)
+	if amount <= 0 then
+		return
+	end
+	Data:Update(player, function(current)
+		Economy.credit(current, amount)
+	end)
+	publish(player)
+end
+
 local function tickPlayer(player: Player, session: Session, now: number): ()
 	if not session.Initialized then
 		return
@@ -271,7 +294,7 @@ local function tickPlayer(player: Player, session: Session, now: number): ()
 	elseif order.Stage == "sealed" and order.DialStarted > 0 then
 		local elapsed = now - order.DialStarted
 		if elapsed <= Economy.DialTimeLimit then
-			local _, period = Economy.dial(order, dialStages[player] or 1)
+			local _, period = Economy.dial(order, dialStages[player] or 1, data.Perks)
 			World.RotateDial(session.Plot, (elapsed % period) / period)
 		else
 			Data:Update(player, function()
@@ -366,7 +389,7 @@ local function openOrder(
 			end
 			order.DialStarted = Workspace:GetServerTimeNow()
 			dialStages[player] = 1
-			local target, period, tolerance = Economy.dial(order, 1)
+			local target, period, tolerance = Economy.dial(order, 1, data.Perks)
 			interface:FireClient(
 				player,
 				"dial",
@@ -384,7 +407,7 @@ local function openOrder(
 				return false, false
 			end
 			local stage = dialStages[player] or 1
-			local target, period, tolerance = Economy.dial(order, stage)
+			local target, period, tolerance = Economy.dial(order, stage, data.Perks)
 			local now = Workspace:GetServerTimeNow()
 			local elapsed = now - order.DialStarted
 			local phase = (elapsed % period) / period
@@ -393,7 +416,7 @@ local function openOrder(
 				-- Штифт встал на место: сразу начинается следующий, более быстрый этап.
 				dialStages[player] = stage + 1
 				order.DialStarted = now
-				local nextTarget, nextPeriod, nextTolerance = Economy.dial(order, stage + 1)
+				local nextTarget, nextPeriod, nextTolerance = Economy.dial(order, stage + 1, data.Perks)
 				interface:FireClient(
 					player,
 					"dial",
@@ -489,7 +512,7 @@ local function inventoryAction(
 			tell(player, "Подойдите к складу, чтобы продать находку.")
 			return false
 		end
-		local total = Economy.price(data, item)
+		local total = Economy.payout(data, item)
 		Economy.credit(data, total)
 		tell(player, `Продано · +{total} монет`)
 	elseif action == "collection" then
@@ -559,6 +582,15 @@ local function lootAction(
 		end
 		for index, loot in order.Loot do
 			if loot.Item.Id == itemId then
+				if loot.Item.Quality <= Economy.recycleLimit(data) then
+					-- «Утилизатор»: дешёвая находка продаётся сразу и не занимает место на складе.
+					local value = Economy.payout(data, loot.Item)
+					Economy.credit(data, value)
+					table.remove(order.Loot, index)
+					finishLoot(order)
+					tell(player, `Утилизатор · {Catalog.Items[loot.Item.Kind].Name} +{value}`)
+					return true
+				end
 				if #data.Inventory >= Economy.capacity(data) then
 					tell(player, "Склад заполнен")
 					return false
@@ -577,28 +609,43 @@ local function lootAction(
 		end
 		if action == "quickSell" then
 			local total = 0
+			local bonus = Economy.bulkBonus(data)
 			for _, loot in order.Loot do
-				total += Economy.price(data, loot.Item)
+				total += Economy.payout(data, loot.Item, bonus)
 			end
 			table.clear(order.Loot)
 			Economy.credit(data, total)
 			tell(player, `Быстрая продажа · +{total} монет`)
 		else
-			local count = math.min(#order.Loot, Economy.capacity(data) - #data.Inventory)
-			if count <= 0 then
+			local limit = Economy.recycleLimit(data)
+			local stored, sold, earned = 0, 0, 0
+			local index = 1
+			while index <= #order.Loot do
+				local loot = order.Loot[index]
+				if loot.Item.Quality <= limit then
+					earned += Economy.payout(data, loot.Item)
+					table.remove(order.Loot, index)
+					sold += 1
+				elseif #data.Inventory < Economy.capacity(data) then
+					table.insert(data.Inventory, loot.Item)
+					table.remove(order.Loot, index)
+					stored += 1
+				else
+					index += 1
+				end
+			end
+			if stored + sold == 0 then
 				tell(player, "Склад заполнен")
 				return false
 			end
-			for _ = 1, count do
-				local loot = table.remove(order.Loot, 1)
-				if loot then
-					table.insert(data.Inventory, loot.Item)
-				end
+			if earned > 0 then
+				Economy.credit(data, earned)
 			end
+			local note = if sold > 0 then ` · утилизировано {sold} (+{earned})` else ""
 			if #order.Loot > 0 then
-				tell(player, `Склад заполнен · осталось {#order.Loot}`)
+				tell(player, `Склад заполнен · осталось {#order.Loot}{note}`)
 			else
-				tell(player, `Собрано находок · {count}`)
+				tell(player, `Собрано находок · {stored}{note}`)
 			end
 		end
 		finishLoot(order)
@@ -646,15 +693,15 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 			elseif data.Coins < Economy.orderPrice(data) then
 				tell(player, "Недостаточно монет.")
 			else
-				data.Coins -= Economy.orderPrice(data)
+				local price = Economy.orderPrice(data)
+				local refund = Economy.cashback(data, price)
+				data.Coins += refund - price
 				table.insert(data.Orders, Economy.newOrder(data, false))
 				updated = true
-				tell(
-					player,
-					if #data.Orders == 1
-						then "Заказ принят."
-						else `Заказ принят · место в очереди {#data.Orders}`
-				)
+				local text = if #data.Orders == 1
+					then "Заказ принят."
+					else `Заказ принят · место в очереди {#data.Orders}`
+				tell(player, if refund > 0 then `{text} Кэшбэк +{refund}` else text)
 			end
 		elseif action == "open" and order then
 			updated, scatter = openOrder(player, plot, data, order, argument, physical)
@@ -664,14 +711,13 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 		elseif action == "perk" and argument then
 			local perk = perks[argument]
 			local level = data.Perks[argument] or 0
-			local cost = perk and perk.Costs[level + 1]
-			if not cost then
+			local cost = if perk then Catalog.perkCost(perk, level, data.Perks) else nil
+			if not perk or not cost then
 				return
 			end
-			if perk.Parent and (data.Perks[perk.Parent] or 0) < (perk.Required or 1) then
-				tell(player, "Сначала откройте предыдущий уровень ветки.")
-			elseif data.Opened < perk.Opened[level + 1] then
-				tell(player, `Нужно открыть контейнеров: {perk.Opened[level + 1]}`)
+			local lock = Catalog.perkLock(perk, level, data.Perks, data.Opened)
+			if lock then
+				tell(player, lock)
 			elseif data.Coins < cost then
 				tell(player, "Недостаточно монет.")
 			elseif data.Coins - cost < Economy.orderPrice(data) then
@@ -801,6 +847,7 @@ function SimulatorService:Start(): ()
 		dialStages[player] = nil
 		stats[player] = nil
 		guides[player] = nil
+		galleryAt[player] = nil
 		local session = sessions[player]
 		if session then
 			World.Clear(session.Plot)
@@ -822,6 +869,7 @@ function SimulatorService:Start(): ()
 		for player, session in sessions do
 			World.RecoverFromShaft(player, plots)
 			tickPlayer(player, session, now)
+			payGallery(player, session, now)
 		end
 		task.wait(0.1)
 	end

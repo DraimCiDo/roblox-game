@@ -72,7 +72,7 @@ function Terminal.render(data: Types.View): ()
 	Components.place(bar, 14, 76, UDim.new(1, -28), 10)
 
 	Components.heading("Шансы доставки")
-	Components.odds(Catalog.odds(data.Opened, data.Perks.odds or 0), nil, level)
+	Components.odds(Catalog.odds(data.Opened, data.Perks), nil, level)
 end
 
 -- Обновляет обратный отсчёт доставки без перерисовки экрана.
