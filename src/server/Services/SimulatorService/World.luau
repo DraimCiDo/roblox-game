@@ -28,7 +28,7 @@ type RankingFace = { Rows: { RankingRow }, Status: TextLabel }
 export type Plot = {
 	Model: Model,
 	Pad: CFrame,
-	Owner: TextLabel,
+	Owner: { TextLabel },
 	Storage: { Part },
 	Stations: { [string]: Part },
 	Stands: { Part },
@@ -192,9 +192,9 @@ local function rankingBoard(
 	return faces
 end
 
-local function surfaceLabel(parent: BasePart, text: string, distance: number): TextLabel
+local function surfaceLabel(parent: BasePart, text: string, distance: number, face: Enum.NormalId?): TextLabel
 	local surface = Instance.new("SurfaceGui")
-	surface.Face = Enum.NormalId.Front
+	surface.Face = face or Enum.NormalId.Front
 	surface.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 	surface.PixelsPerStud = 72
 	surface.LightInfluence = 0
@@ -357,7 +357,11 @@ function World.Build(useForPlot: (number, Player, string, string?) -> ()): { Plo
 			useForPlot(index, player, action, key)
 		end
 		local sign = `СЕКТОР 0{index}`
-		local owner = surfaceLabel(requirePart(model, "Табло сектора"), `{sign}\nСВОБОДЕН`, 56)
+		local ownerBoard = requirePart(model, "Табло сектора")
+		local owner = {
+			surfaceLabel(ownerBoard, `{sign}\nСВОБОДЕН`, 42),
+			surfaceLabel(ownerBoard, `{sign}\nСВОБОДЕН`, 42, Enum.NormalId.Back),
+		}
 		surfaceLabel(requirePart(root, `Указатель сектора 0{index}`), sign, 52)
 		local spawn = model:FindFirstChildWhichIsA("SpawnLocation")
 		assert(spawn, `[World] В {model.Name} отсутствует вход`)
@@ -366,13 +370,9 @@ function World.Build(useForPlot: (number, Player, string, string?) -> ()): { Plo
 			inventory = requirePart(model, "Склад"),
 			collections = requirePart(model, "Коллекции"),
 		}
-		surfaceLabel(requirePart(stations.terminal, "Матовый экран заказа"), "ЗАКАЗЫ", 28)
-		surfaceLabel(requirePart(stations.inventory, "Стекло весов"), "СКЛАД", 19)
-		surfaceLabel(
-			requirePart(stations.collections, "Панель каталогизации"),
-			"КОЛЛЕКЦИИ",
-			21
-		)
+		for _, decoration in authoredParts(stations.terminal, "Строка дисплея заказов") do
+			decoration.Transparency = 1
+		end
 		for key, terminal in stations do
 			local face = Instance.new("Attachment")
 			face.Name = "Точка взаимодействия"
@@ -450,7 +450,13 @@ function World.Build(useForPlot: (number, Player, string, string?) -> ()): { Plo
 			GateLights = { upper = shaftLight(deliveryPoint, ICE), lower = shaftLight(disposalPoint, AMBER) },
 			Spawn = spawn,
 			OpenParts = {},
-			Kit = Sector.build(model, spawn, stands, storage, function(item: Types.Item, full: boolean?): Model
+			Kit = Sector.build(model, spawn, stands, storage, {
+				OrderScreen = requirePart(stations.terminal, "Матовый экран заказа"),
+				StorageDesk = stations.inventory,
+				CollectionDesk = stations.collections,
+				CollectionScreen = requirePart(stations.collections, "Панель каталогизации"),
+				LootControl = button,
+			}, function(item: Types.Item, full: boolean?): Model
 				return makeItem(item, full)
 			end),
 		})
@@ -460,8 +466,10 @@ end
 
 function World.Owner(plot: Plot, player: Player?): ()
 	local title = if player then player.DisplayName else "СВОБОДЕН"
-	plot.Owner.Text = `СЕКТОР 0{plot.Rank}\n{title}`
-	plot.Owner.TextColor3 = if player then ICE else Color3.fromRGB(156, 173, 185)
+	for _, face in plot.Owner do
+		face.Text = `СЕКТОР 0{plot.Rank}\n{title}`
+		face.TextColor3 = if player then PAPER else MUTED
+	end
 	if player then
 		plot.Model:SetAttribute("OwnerId", player.UserId)
 		player.RespawnLocation = plot.Spawn

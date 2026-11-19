@@ -21,11 +21,19 @@ type Cell = {
 }
 
 type Panel = {
-	Center: Vector3,
+	Frame: CFrame,
 	Models: { Model },
 	Title: TextLabel,
 	Lamp: Part,
 	Signature: string,
+}
+
+export type Signs = {
+	OrderScreen: Part,
+	StorageDesk: Part,
+	CollectionDesk: Part,
+	CollectionScreen: Part,
+	LootControl: Part,
 }
 
 export type Kit = {
@@ -41,12 +49,11 @@ export type Kit = {
 	Panels: { Panel },
 	Info: TextLabel,
 	MakeMini: MakeMini,
-	Hologram: Folder,
-	HologramKind: string,
+	OrderLabel: TextLabel,
 	LootLabel: TextLabel,
 	LootLamp: Part,
 	StorageLabel: TextLabel,
-	StorageBar: Part,
+	StorageBar: Frame,
 	CollectionLabel: TextLabel,
 }
 
@@ -66,15 +73,6 @@ local RED = rgb(255, 80, 90)
 local WARM = rgb(255, 232, 190)
 local GLASS = rgb(190, 230, 245)
 local PANEL_COLORS = { VIOLET, CYAN, AMBER, GREEN }
-local CONTAINER_COLORS: { [string]: Color3 } = {
-	box = rgb(190, 140, 88),
-	crate = rgb(158, 110, 68),
-	safe = rgb(96, 112, 130),
-	cargo = rgb(62, 110, 150),
-	secret = rgb(146, 87, 208),
-}
-local HOLOGRAM_CENTER = Vector3.new(10.4, 7.2, -3.5)
-local STORAGE_BAR_WIDTH = 3.4
 local STORAGE_PER_CELL = 5
 
 local Sector = {}
@@ -124,12 +122,20 @@ local function cylinder(
 	return piece
 end
 
-local function sign(piece: Part, face: Enum.NormalId, text: string, color: Color3, scale: number?): TextLabel
+local function sign(
+	piece: Part,
+	face: Enum.NormalId,
+	text: string,
+	color: Color3,
+	scale: number?,
+	distance: number?
+): TextLabel
 	local gui = Instance.new("SurfaceGui")
 	gui.Face = face
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 	gui.PixelsPerStud = scale or 60
 	gui.LightInfluence = 0
+	gui.MaxDistance = distance or 32
 	gui.Parent = piece
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.fromScale(1, 1)
@@ -137,8 +143,15 @@ local function sign(piece: Part, face: Enum.NormalId, text: string, color: Color
 	label.Text = text
 	label.TextColor3 = color
 	label.TextScaled = true
-	label.Font = Enum.Font.GothamBlack
+	label.TextWrapped = true
+	label.Font = Enum.Font.GothamBold
 	label.Parent = gui
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0.065, 0)
+	padding.PaddingRight = UDim.new(0.065, 0)
+	padding.PaddingTop = UDim.new(0.08, 0)
+	padding.PaddingBottom = UDim.new(0.08, 0)
+	padding.Parent = label
 	return label
 end
 
@@ -458,10 +471,9 @@ end
 
 -- ============ Коллекции ============
 
-local PANEL_WIDTH = 3.6
-local PANEL_HEIGHT = 3.4
-local PANEL_Y = 5.0
-local PANEL_Z = -44.2
+local PANEL_WIDTH = 3.45
+local PANEL_HEIGHT = 3.12
+local PANEL_GAP = 0.16
 
 local function ghost(model: Model): ()
 	for _, object in model:GetDescendants() do
@@ -475,81 +487,108 @@ local function ghost(model: Model): ()
 	end
 end
 
-local function buildPanel(kit: Kit, index: number, collection: { Name: string, Items: { string } }): Panel
-	local F = kit.Frame
-	local count = #Catalog.Collections
-	local x = (index - (count + 1) / 2) * (PANEL_WIDTH + 0.4) - 6.6
-	local center = Vector3.new(x, PANEL_Y, PANEL_Z)
+local function buildPanel(
+	parent: Instance,
+	frame: CFrame,
+	index: number,
+	collection: { Name: string, Items: { string } }
+): Panel
 	local color = PANEL_COLORS[(index - 1) % #PANEL_COLORS + 1]
 	local folder = Instance.new("Folder")
 	folder.Name = `Коллекция {collection.Name}`
-	folder.Parent = kit.Root
+	folder.Parent = parent
 	local function place(offset: Vector3): CFrame
-		return F * CFrame.new(center + offset)
+		return frame * CFrame.new(offset)
 	end
-	brick(folder, "Основа", place(Vector3.zero), Vector3.new(PANEL_WIDTH, PANEL_HEIGHT, 0.3), DEEP)
+	brick(folder, "Корпус", frame, Vector3.new(PANEL_WIDTH, PANEL_HEIGHT, 0.28), DEEP)
 	local glass = brick(
 		folder,
 		"Стекло",
-		place(Vector3.new(0, 0, 0.2)),
-		Vector3.new(PANEL_WIDTH, PANEL_HEIGHT, 0.04),
+		place(Vector3.new(0, -0.10, -0.61)),
+		Vector3.new(PANEL_WIDTH - 0.16, PANEL_HEIGHT - 0.91, 0.04),
 		GLASS,
 		Enum.Material.Glass
 	)
-	glass.Transparency = 0.9
+	glass.Transparency = 0.91
 	for _, side in { -1, 1 } do
 		brick(
 			folder,
-			"Кромка",
-			place(Vector3.new(side * (PANEL_WIDTH / 2 - 0.04), 0, 0.18)),
-			Vector3.new(0.08, PANEL_HEIGHT, 0.08),
-			color,
-			Enum.Material.Neon
-		)
-		brick(
-			folder,
-			"Кромка",
-			place(Vector3.new(0, side * (PANEL_HEIGHT / 2 - 0.04), 0.18)),
-			Vector3.new(PANEL_WIDTH, 0.08, 0.08),
-			color,
-			Enum.Material.Neon
+			"Боковина",
+			place(Vector3.new(side * (PANEL_WIDTH / 2 - 0.05), -0.1, -0.27)),
+			Vector3.new(0.1, PANEL_HEIGHT - 0.6, 0.68),
+			STEEL
 		)
 	end
 	local title = brick(
 		folder,
 		"Заголовок",
-		place(Vector3.new(0, PANEL_HEIGHT / 2 - 0.4, 0.17)),
-		Vector3.new(PANEL_WIDTH - 0.3, 0.55, 0.06),
+		place(Vector3.new(0, PANEL_HEIGHT / 2 - 0.31, -0.21)),
+		Vector3.new(PANEL_WIDTH - 0.21, 0.51, 0.11),
 		STEEL
 	)
-	local label = sign(title, Enum.NormalId.Back, collection.Name, WARM, 80)
+	local label = sign(title, Enum.NormalId.Front, collection.Name, WARM, 88, 27)
 	local lamp = brick(
 		folder,
-		"Индикатор",
-		place(Vector3.new(PANEL_WIDTH / 2 - 0.3, PANEL_HEIGHT / 2 - 0.4, 0.22)),
-		Vector3.new(0.18, 0.18, 0.06),
-		RED,
-		Enum.Material.Neon
+		"Полоса состояния",
+		place(Vector3.new(0, PANEL_HEIGHT / 2 - 0.61, -0.275)),
+		Vector3.new(PANEL_WIDTH - 0.38, 0.05, 0.05),
+		color,
+		Enum.Material.SmoothPlastic
 	)
 	for row = 0, 1 do
-		local y = PANEL_HEIGHT / 2 - 1.55 - row * 1.25
+		local y = PANEL_HEIGHT / 2 - 1.66 - row * 1.01
 		brick(
 			folder,
 			"Полка",
-			place(Vector3.new(0, y - 0.03, 0.05)),
-			Vector3.new(PANEL_WIDTH - 0.5, 0.06, 0.4),
+			place(Vector3.new(0, y - 0.04, -0.28)),
+			Vector3.new(PANEL_WIDTH - 0.25, 0.09, 0.7),
+			STEEL
+		)
+	end
+	return { Frame = frame, Models = {}, Title = label, Lamp = lamp, Signature = "" }
+end
+
+local function buildCollectionRack(kit: Kit, counter: Part): ()
+	local frame = counter.CFrame * CFrame.new(0, 3.93, 3.03)
+	local count = #Catalog.Collections
+	local width = count * PANEL_WIDTH + (count - 1) * PANEL_GAP + 0.46
+	brick(
+		kit.Root,
+		"Задняя рама коллекций",
+		frame * CFrame.new(0, 0, 0.18),
+		Vector3.new(width, 3.39, 0.26),
+		STEEL
+	)
+	local heading = brick(
+		kit.Root,
+		"Шапка стойки коллекций",
+		frame * CFrame.new(0, 1.94, -0.29),
+		Vector3.new(width, 0.74, 0.58),
+		DEEP
+	)
+	sign(heading, Enum.NormalId.Front, "КОЛЛЕКЦИИ", WARM, 78, 34)
+	for _, side in { -1, 1 } do
+		local x = side * (width / 2 - 0.21)
+		local height = frame.Position.Y - 1.58
+		brick(
+			kit.Root,
+			"Несущая стойка коллекций",
+			frame * CFrame.new(x, -frame.Position.Y + height / 2, 0.22),
+			Vector3.new(0.30, height, 0.45),
 			STEEL
 		)
 		brick(
-			folder,
-			"Подсветка полки",
-			place(Vector3.new(0, y - 0.01, 0.24)),
-			Vector3.new(PANEL_WIDTH - 0.5, 0.025, 0.03),
-			color,
-			Enum.Material.Neon
+			kit.Root,
+			"Опора коллекций",
+			frame * CFrame.new(x, -frame.Position.Y + 0.07, 0.22),
+			Vector3.new(0.75, 0.14, 0.83),
+			DEEP
 		)
 	end
-	return { Center = center, Models = {}, Title = label, Lamp = lamp, Signature = "" }
+	for index, collection in Catalog.Collections do
+		local x = (index - (count + 1) / 2) * (PANEL_WIDTH + PANEL_GAP)
+		table.insert(kit.Panels, buildPanel(kit.Root, frame * CFrame.new(x, 0, 0), index, collection))
+	end
 end
 
 function Sector.setCollections(kit: Kit, collections: { [string]: Types.Item }): ()
@@ -569,7 +608,7 @@ function Sector.setCollections(kit: Kit, collections: { [string]: Types.Item }):
 		local complete = owned == #collection.Items
 		everything += #collection.Items
 		everyOwned += owned
-		panel.Lamp.Color = if complete then GREEN elseif owned > 0 then AMBER else RED
+		panel.Lamp.Color = if complete then GREEN elseif owned > 0 then AMBER else STEEL
 		local suffix = if complete
 			then string.format("  +%.1f%%", total / owned / 10)
 			else `  {owned}/{#collection.Items}`
@@ -589,62 +628,20 @@ function Sector.setCollections(kit: Kit, collections: { [string]: Types.Item }):
 					ghost(mini)
 				end
 				mini.Parent = kit.Root
-				fit(mini, 1.0, 0.95)
+				fit(mini, 0.78, 0.77)
 				local column = (slot - 1) % 2
 				local row = (slot - 1) // 2
-				local y = PANEL_HEIGHT / 2 - 1.55 - row * 1.25
-				local frame = kit.Frame
-					* CFrame.new(panel.Center + Vector3.new((column - 0.5) * 1.6, y, 0.05))
-					* CFrame.Angles(0, math.rad(180), 0)
+				local y = PANEL_HEIGHT / 2 - 1.66 - row * 1.01
+				local frame = panel.Frame * CFrame.new((column - 0.5) * 1.58, y, -0.27)
 				mini:PivotTo(frame)
 				table.insert(panel.Models, mini)
 			end
 		end
 	end
-	kit.CollectionLabel.Text = `КОЛЛЕКЦИИ  {everyOwned}/{everything}`
+	kit.CollectionLabel.Text = `Собрано {everyOwned}/{everything}`
 end
 
 -- ============ Указатели, кольцо зоны добычи, табло ============
-
-local function standSign(kit: Kit, text: string, color: Color3, position: Vector3, yaw: number, width: number): ()
-	local F = kit.Frame
-	local frame = F * CFrame.new(position) * CFrame.Angles(0, math.rad(yaw), 0)
-	local folder = Instance.new("Folder")
-	folder.Name = `Указатель {text}`
-	folder.Parent = kit.Root
-	local board = brick(folder, "Табличка", frame, Vector3.new(width, 1.3, 0.16), DEEP)
-	local label = sign(board, Enum.NormalId.Front, text, color, 70)
-	label.Name = "Надпись"
-	brick(
-		folder,
-		"Кромка",
-		frame * CFrame.new(0, 0.62, -0.02),
-		Vector3.new(width, 0.07, 0.2),
-		color,
-		Enum.Material.Neon
-	)
-	brick(
-		folder,
-		"Кромка",
-		frame * CFrame.new(0, -0.62, -0.02),
-		Vector3.new(width, 0.07, 0.2),
-		color,
-		Enum.Material.Neon
-	)
-	for _, side in { -1, 1 } do
-		local height = position.Y - 0.2
-		brick(
-			folder,
-			"Опора",
-			F
-				* CFrame.new(position.X, height / 2, position.Z)
-				* CFrame.Angles(0, math.rad(yaw), 0)
-				* CFrame.new(side * (width / 2 - 0.2), 0, 0),
-			Vector3.new(0.18, height, 0.18),
-			STEEL
-		)
-	end
-end
 
 local function buildPadRing(kit: Kit): ()
 	local folder = Instance.new("Folder")
@@ -668,7 +665,7 @@ local function buildPadRing(kit: Kit): ()
 end
 
 function Sector.setInfo(kit: Kit, level: number, price: number, orders: number, maximum: number): ()
-	kit.Info.Text = `УР. {level}  ·  ЗАКАЗ {price}\nОЧЕРЕДЬ {orders}/{maximum}`
+	kit.Info.Text = `Заказы · ур. {level}\n{price} монет   ·   {orders}/{maximum} в очереди`
 end
 
 function Sector.setDisplay(kit: Kit, slot: number, item: Types.Item?): ()
@@ -685,101 +682,25 @@ function Sector.setDisplay(kit: Kit, slot: number, item: Types.Item?): ()
 	light.Brightness = if item then 1.4 else 0
 end
 
--- ============ Голограмма заказа, табло склада и добычи ============
-
--- Полупрозрачная миниатюра контейнера для голограммы над терминалом заказов.
-local function miniature(folder: Folder, kind: string?): ()
-	for _, child in folder:GetChildren() do
-		child:Destroy()
-	end
-	local F = CFrame.new(HOLOGRAM_CENTER)
-	local color = if kind then CONTAINER_COLORS[kind] else rgb(120, 140, 170)
-	local function holo(name: string, offset: Vector3, size: Vector3, tint: Color3?, material: Enum.Material?): Part
-		local piece =
-			brick(folder, name, F * CFrame.new(offset), size, tint or color, material or Enum.Material.SmoothPlastic)
-		piece.Transparency = 0.3
-		return piece
-	end
-	cylinder(folder, "Диск голограммы", F * CFrame.new(0, -1.1, 0), 0.08, 2.8, CYAN, Enum.Material.Neon).Transparency =
-		0.3
-	if kind == "crate" then
-		holo("Ящик", Vector3.zero, Vector3.new(1.9, 1.5, 1.9), nil, Enum.Material.WoodPlanks)
-		for _, y in { -0.45, 0, 0.45 } do
-			holo("Доска", Vector3.new(0, y, 0), Vector3.new(1.96, 0.1, 1.96), rgb(96, 66, 44), Enum.Material.Wood)
-		end
-	elseif kind == "safe" then
-		holo("Сейф", Vector3.zero, Vector3.new(1.9, 1.7, 1.7))
-		local wheel = cylinder(
-			folder,
-			"Ручка",
-			F * CFrame.new(0.3, 0, -0.9) * CFrame.Angles(0, math.rad(90), 0),
-			0.1,
-			0.8,
-			rgb(232, 184, 74),
-			Enum.Material.Metal
-		)
-		wheel.CFrame = F
-			* CFrame.new(0.3, 0, -0.9)
-			* CFrame.Angles(0, math.rad(90), 0)
-			* CFrame.Angles(0, 0, math.pi / 2)
-		wheel.Transparency = 0.2
-	elseif kind == "cargo" then
-		holo("Контейнер", Vector3.zero, Vector3.new(3.2, 1.5, 1.6))
-		for x = -1.3, 1.3, 0.5 do
-			holo(
-				"Ребро",
-				Vector3.new(x, 0, -0.82),
-				Vector3.new(0.1, 1.4, 0.06),
-				rgb(45, 56, 68),
-				Enum.Material.Metal
-			)
-		end
-	elseif kind == "secret" then
-		holo("Куб", Vector3.zero, Vector3.new(1.6, 1.4, 1.6), rgb(34, 26, 58), Enum.Material.Slate)
-		local orb = holo("Ядро", Vector3.new(0, 1.2, 0), Vector3.one * 0.6, rgb(146, 87, 208), Enum.Material.Neon)
-		orb.Shape = Enum.PartType.Ball
-	elseif kind == "box" then
-		holo("Коробка", Vector3.zero, Vector3.new(1.8, 1.1, 1.8), nil, Enum.Material.Fabric)
-		holo("Лента", Vector3.new(0, 0.58, 0), Vector3.new(0.4, 0.04, 1.86), rgb(246, 198, 72))
-	else
-		local unknown = holo("Неизвестно", Vector3.zero, Vector3.new(1.4, 1.4, 1.4))
-		sign(unknown, Enum.NormalId.Front, "?", WARM, 80)
-	end
-	local light = Instance.new("PointLight")
-	light.Color = color
-	light.Range = 12
-	light.Brightness = 1
-	light.Parent = folder:FindFirstChildWhichIsA("BasePart")
-end
-
--- state: nil — заказа нет (голограмма скрыта); "?" — контейнер в пути, тип скрыт; иначе тип контейнера.
 function Sector.setOrder(kit: Kit, state: string?): ()
-	local key = state or "none"
-	if key == kit.HologramKind then
-		return
-	end
-	kit.HologramKind = key
-	if not state then
-		for _, child in kit.Hologram:GetChildren() do
-			child:Destroy()
-		end
-		return
-	end
-	miniature(kit.Hologram, if state == "?" then nil else state)
+	kit.OrderLabel.Text = if state == "?"
+		then "Доставка"
+		elseif state then Catalog.Containers[state] or ""
+		else "Нет активного заказа"
 end
 
 local STAGE_LABELS: { [string]: string } = {
-	queued = "ЗАКАЗ В ОЧЕРЕДИ",
-	delivery = "КОНТЕЙНЕР В ПУТИ",
-	sealed = "ОТКРОЙТЕ КОНТЕЙНЕР",
-	open = "СОБЕРИТЕ ДОБЫЧУ",
-	clear = "ВЫЙДИТЕ ИЗ ЗОНЫ",
+	queued = "Заказ в очереди",
+	delivery = "Контейнер в пути",
+	sealed = "Открыть контейнер",
+	open = "Соберите добычу",
+	clear = "Выйдите из зоны",
 }
 
 function Sector.setLoot(kit: Kit, stage: string?, remaining: number): ()
-	local text = if stage then STAGE_LABELS[stage] or "" else "ПЛОЩАДКА СВОБОДНА"
+	local text = if stage then STAGE_LABELS[stage] or "" else "Площадка свободна"
 	if stage == "open" then
-		text ..= `\nОСТАЛОСЬ {remaining}`
+		text ..= `\nОсталось {remaining}`
 	end
 	kit.LootLabel.Text = text
 	kit.LootLamp.Color = if stage == "open"
@@ -790,111 +711,46 @@ function Sector.setLoot(kit: Kit, stage: string?, remaining: number): ()
 end
 
 function Sector.setStorageInfo(kit: Kit, count: number, capacity: number): ()
-	kit.StorageLabel.Text = `СКЛАД {count}/{capacity}`
+	kit.StorageLabel.Text = `Склад {count}/{capacity}`
 	local ratio = math.clamp(count / math.max(capacity, 1), 0, 1)
-	kit.StorageBar.Size = Vector3.new(math.max(ratio, 0.02) * STORAGE_BAR_WIDTH, 0.12, 0.04)
-	kit.StorageBar.Color = if ratio >= 1 then RED elseif ratio >= 0.8 then AMBER else GREEN
-	-- Полоса растёт от левого края табло.
-	local frame = kit.StorageBar:GetAttribute("Origin") :: CFrame
-	kit.StorageBar.CFrame = frame * CFrame.new(kit.StorageBar.Size.X / 2 - STORAGE_BAR_WIDTH / 2, 0, 0)
+	kit.StorageBar.Size = UDim2.fromScale(ratio, 1)
+	kit.StorageBar.BackgroundColor3 = if ratio >= 1 then RED elseif ratio >= 0.8 then AMBER else CYAN
 end
 
-local function buildExtras(kit: Kit): ()
-	local F = kit.Frame
-	local root = kit.Root
-	kit.Hologram = Instance.new("Folder")
-	kit.Hologram.Name = "Голограмма заказа"
-	kit.Hologram.Parent = root
-
-	-- Табло заполнения склада над столом склада.
-	local boardFrame = F * CFrame.new(9.1, 3.9, -20.4) * CFrame.Angles(0, math.rad(90), 0)
-	local board = brick(root, "Табло склада", boardFrame, Vector3.new(3.8, 1.0, 0.12), DEEP)
-	kit.StorageLabel = sign(board, Enum.NormalId.Front, "", AMBER, 70)
-	kit.StorageLabel.Size = UDim2.fromScale(1, 0.62)
-	local track = brick(
-		root,
-		"Шкала склада",
-		boardFrame * CFrame.new(0, -0.3, -0.07),
-		Vector3.new(STORAGE_BAR_WIDTH, 0.14, 0.03),
-		rgb(36, 44, 58)
-	)
-	track.Material = Enum.Material.SmoothPlastic
-	kit.StorageBar = brick(
-		root,
-		"Заполнение склада",
-		boardFrame * CFrame.new(0, -0.3, -0.09),
-		Vector3.new(STORAGE_BAR_WIDTH, 0.12, 0.04),
-		GREEN,
-		Enum.Material.Neon
-	)
-	kit.StorageBar:SetAttribute("Origin", boardFrame * CFrame.new(0, -0.3, -0.09))
-	for _, side in { -1, 1 } do
-		brick(
-			root,
-			"Опора табло склада",
-			F * CFrame.new(9.1, 1.95, -20.4 + side * 1.8),
-			Vector3.new(0.14, 3.9, 0.14),
-			STEEL
-		)
-	end
-
-	-- Счётчик коллекций над столом каталогизации.
-	local catalogFrame = F * CFrame.new(-6.6, 3.2, -39.8) * CFrame.Angles(0, math.rad(180), 0)
-	local catalog = brick(root, "Табло коллекций", catalogFrame, Vector3.new(4.2, 0.7, 0.12), DEEP)
-	kit.CollectionLabel = sign(catalog, Enum.NormalId.Front, "", VIOLET, 70)
-
-	-- Состояние добычи у пульта и стойки вокруг него.
-	local lootFrame = F * CFrame.new(3.2, 3.5, -10) * CFrame.Angles(0, math.rad(90), 0)
-	local loot = brick(root, "Табло добычи", lootFrame, Vector3.new(3.0, 1.1, 0.12), DEEP)
-	kit.LootLabel = sign(loot, Enum.NormalId.Front, "", GREEN, 70)
-	kit.LootLamp = brick(
-		root,
-		"Лампа добычи",
-		lootFrame * CFrame.new(0, 0.62, 0),
-		Vector3.new(3.0, 0.1, 0.16),
-		CYAN,
-		Enum.Material.Neon
-	)
+local function mountedScreen(root: Folder, anchor: Part, name: string, offset: Vector3, size: Vector3): Part
+	local frame = anchor.CFrame * CFrame.new(offset)
+	local screen = brick(root, name, frame, size, DEEP)
+	local top = anchor.Size.Y / 2
+	local height = offset.Y - size.Y / 2 - top
 	brick(
 		root,
-		"Стойка табло добычи",
-		F * CFrame.new(3.2, 1.75, -10 + 1.0),
-		Vector3.new(0.14, 3.5, 0.14),
+		"Крепление монитора",
+		anchor.CFrame * CFrame.new(offset.X, top + height / 2, offset.Z + 0.07),
+		Vector3.new(0.32, height + 0.08, 0.24),
 		STEEL
 	)
 	brick(
 		root,
-		"Стойка табло добычи",
-		F * CFrame.new(3.2, 1.75, -10 - 1.0),
-		Vector3.new(0.14, 3.5, 0.14),
-		STEEL
+		"Пятка крепления",
+		anchor.CFrame * CFrame.new(offset.X, top + 0.14, offset.Z + 0.03),
+		Vector3.new(0.94, 0.20, 0.48),
+		DEEP
 	)
-	for _, corner in { Vector3.new(1, 1, 1), Vector3.new(1, 1, -1), Vector3.new(-1, 1, 1), Vector3.new(-1, 1, -1) } do
-		local base = F * CFrame.new(3.2 + corner.X * 0.95, 0, -10 + corner.Z * 0.95)
-		brick(root, "Тумба пульта", base * CFrame.new(0, 0.45, 0), Vector3.new(0.2, 0.9, 0.2), STEEL)
-		brick(
-			root,
-			"Огонь тумбы",
-			base * CFrame.new(0, 0.95, 0),
-			Vector3.new(0.14, 0.1, 0.14),
-			AMBER,
-			Enum.Material.Neon
-		)
-	end
-	-- Стрелки на полу показывают, куда смотреть: к шахте.
-	for index = 0, 2 do
-		local chevron = F * CFrame.new(1.4 - index * 1.0, 0.4, -10)
-		for _, side in { -1, 1 } do
-			brick(
-				root,
-				"Стрелка",
-				chevron * CFrame.Angles(0, math.rad(side * 45), 0) * CFrame.new(0, 0, side * 0.28),
-				Vector3.new(0.14, 0.03, 0.7),
-				CYAN,
-				Enum.Material.Neon
-			)
-		end
-	end
+	return screen
+end
+
+local function markShowcase(root: Folder, stand: Part): ()
+	local frame = stand.CFrame * CFrame.new(8.45, 4.55, 1.25) * CFrame.Angles(0, math.pi / 2, 0)
+	local plate =
+		brick(root, "Настенный указатель витрин", frame, Vector3.new(5.6, 0.90, 0.32), DEEP)
+	sign(plate, Enum.NormalId.Front, "ВИТРИНЫ", WARM, 72, 32)
+	brick(
+		root,
+		"Вставка указателя",
+		frame * CFrame.new(0, -0.45, -0.16),
+		Vector3.new(5.30, 0.07, 0.04),
+		CYAN
+	)
 end
 
 function Sector.build(
@@ -902,11 +758,62 @@ function Sector.build(
 	spawn: SpawnLocation,
 	stands: { [number]: Part },
 	storage: { Part },
+	signs: Signs,
 	makeMini: MakeMini
 ): Kit
 	local root = Instance.new("Folder")
 	root.Name = "Декор сектора"
 	root.Parent = model
+	local info = sign(signs.OrderScreen, Enum.NormalId.Front, "", WARM, 92, 19)
+	signs.OrderScreen.Material = Enum.Material.SmoothPlastic
+	signs.OrderScreen.Transparency = 0
+	signs.OrderScreen.Color = DEEP
+	info.Size = UDim2.fromScale(1, 0.69)
+	local orderLabel = info:Clone()
+	orderLabel.TextColor3 = rgb(145, 209, 202)
+	orderLabel.Position = UDim2.fromScale(0, 0.69)
+	orderLabel.Size = UDim2.fromScale(1, 0.31)
+	orderLabel.Parent = info.Parent
+
+	local storageMonitor = mountedScreen(
+		root,
+		signs.StorageDesk,
+		"Экран склада",
+		Vector3.new(1.34, signs.StorageDesk.Size.Y / 2 + 1.14, 0.81),
+		Vector3.new(2.56, 1.16, 0.26)
+	)
+	local storageLabel = sign(storageMonitor, Enum.NormalId.Front, "", WARM, 85, 20)
+	storageLabel.Size = UDim2.fromScale(1, 0.73)
+	local track = Instance.new("Frame")
+	track.BackgroundColor3 = STEEL
+	track.BorderSizePixel = 0
+	track.Position = UDim2.fromScale(0.13, 0.77)
+	track.Size = UDim2.fromScale(0.74, 0.1)
+	track.Parent = storageLabel.Parent
+	local fill = Instance.new("Frame")
+	fill.BorderSizePixel = 0
+	fill.Parent = track
+
+	signs.CollectionScreen.Material = Enum.Material.SmoothPlastic
+	signs.CollectionScreen.Transparency = 0
+	signs.CollectionScreen.Color = DEEP
+	local collectionLabel = sign(signs.CollectionScreen, Enum.NormalId.Front, "", WARM, 89, 16)
+
+	local lootMonitor = mountedScreen(
+		root,
+		signs.LootControl,
+		"Экран добычи",
+		Vector3.new(0, signs.LootControl.Size.Y / 2 + 0.69, -0.07),
+		Vector3.new(2.3, 0.78, 0.24)
+	)
+	local lootLabel = sign(lootMonitor, Enum.NormalId.Front, "", WARM, 86, 20)
+	local lootLamp = brick(
+		root,
+		"Сигнал экрана добычи",
+		lootMonitor.CFrame * CFrame.new(0, 0.4, -0.09),
+		Vector3.new(1.9, 0.07, 0.13),
+		STEEL
+	)
 	local kit: Kit = {
 		Frame = spawn.CFrame,
 		Root = root,
@@ -916,15 +823,14 @@ function Sector.build(
 		Lights = {},
 		Cells = {},
 		Panels = {},
-		Info = Instance.new("TextLabel"),
+		Info = info,
 		MakeMini = makeMini,
-		Hologram = Instance.new("Folder"),
-		HologramKind = "",
-		LootLabel = Instance.new("TextLabel"),
-		LootLamp = Instance.new("Part"),
-		StorageLabel = Instance.new("TextLabel"),
-		StorageBar = Instance.new("Part"),
-		CollectionLabel = Instance.new("TextLabel"),
+		OrderLabel = orderLabel,
+		LootLabel = lootLabel,
+		LootLamp = lootLamp,
+		StorageLabel = storageLabel,
+		StorageBar = fill,
+		CollectionLabel = collectionLabel,
 	}
 	for slot, stand in stands do
 		buildStand(kit, slot, stand)
@@ -932,43 +838,9 @@ function Sector.build(
 	for _, module in storage do
 		table.insert(kit.Cells, buildCell(kit, module))
 	end
-	for index, collection in Catalog.Collections do
-		table.insert(kit.Panels, buildPanel(kit, index, collection))
-	end
-
-	standSign(kit, "ВИТРИНЫ", CYAN, Vector3.new(-19.2, 7.2, -21), -90, 6)
-	standSign(kit, "СКЛАД", AMBER, Vector3.new(13.4, 9.2, -18.6), 90, 4.6)
-	standSign(kit, "ДОБЫЧА", GREEN, Vector3.new(3.2, 4.6, -12.6), 90, 4.2)
-	standSign(kit, "КОЛЛЕКЦИИ", VIOLET, Vector3.new(-6.6, 8.6, -43.6), 180, 8)
+	buildCollectionRack(kit, signs.CollectionDesk)
+	markShowcase(root, stands[1])
 	buildPadRing(kit)
-	buildExtras(kit)
-
-	-- Табло над терминалом заказов: уровень лаборатории, цена и очередь.
-	local board = brick(
-		root,
-		"Табло заказов",
-		kit.Frame * CFrame.new(10.4, 4.3, -3.5) * CFrame.Angles(0, math.rad(90), 0),
-		Vector3.new(4.4, 1.2, 0.14),
-		DEEP
-	)
-	kit.Info = sign(board, Enum.NormalId.Front, "", CYAN, 70)
-	brick(
-		root,
-		"Кромка табло",
-		board.CFrame * CFrame.new(0, 0.6, -0.02),
-		Vector3.new(4.4, 0.06, 0.18),
-		CYAN,
-		Enum.Material.Neon
-	)
-	for _, side in { -1, 1 } do
-		brick(
-			root,
-			"Опора табло",
-			kit.Frame * CFrame.new(10.4, 2.15, -3.5 + side * 2.0),
-			Vector3.new(0.16, 4.3, 0.16),
-			STEEL
-		)
-	end
 
 	Sector.setStorage(kit, 15, {})
 	Sector.setCollections(kit, {})
