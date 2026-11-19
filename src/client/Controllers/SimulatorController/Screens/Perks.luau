@@ -461,13 +461,34 @@ function Perks.render(data: Types.View, _wide: boolean): ()
 	host.BorderSizePixel = 0
 	host.Size = UDim2.fromScale(1, 1)
 	host.ScrollingDirection = Enum.ScrollingDirection.XY
-	-- Карту двигаем сами (мышь и касание), чтобы работало одинаково на всех платформах.
-	host.ScrollingEnabled = false
+	-- Касание и трекпад двигают карту встроенной прокруткой; мышь перетаскивает карту вручную (ниже).
+	host.ScrollingEnabled = true
+	host.Active = true
 	host.ScrollBarThickness = 0
 	host.Selectable = false
 	host.Parent = view
 	local chart = Style.frame(host, nil)
 	chart.Size = UDim2.fromOffset(map.Size.X, map.Size.Y)
+	-- Прозрачная кнопка на всю карту под узлами: гарантированно получает нажатия мыши на пустом месте.
+	local surface = Instance.new("TextButton")
+	surface.Name = "Поверхность"
+	surface.BackgroundTransparency = 1
+	surface.Text = ""
+	surface.AutoButtonColor = false
+	surface.Selectable = false
+	surface.Size = UDim2.fromScale(1, 1)
+	surface.ZIndex = 1
+	surface.Parent = chart
+	local dragging = false
+	-- Сколько пикселей прошла мышь за нажатие: сдвиг больше порога не считается кликом по узлу.
+	local travelled = 0
+	local function beginDrag(input: InputObject): ()
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = true
+			travelled = 0
+		end
+	end
+	table.insert(connections, surface.InputBegan:Connect(beginDrag))
 	local scale = Instance.new("UIScale")
 	scale.Parent = chart
 
@@ -587,7 +608,11 @@ function Perks.render(data: Types.View, _wide: boolean): ()
 		local diameter = if perk.Parent then NODE_DIAMETER else ROOT_DIAMETER
 		local widget = drawNode(chart, states[perk.Key], map.Points[perk.Key], diameter)
 		widgets[perk.Key] = widget
+		table.insert(connections, widget.Button.InputBegan:Connect(beginDrag))
 		widget.Button.Activated:Connect(function()
+			if travelled > 6 then
+				return
+			end
 			Sfx.play("click")
 			selectPerk(perk.Key)
 		end)
@@ -629,38 +654,30 @@ function Perks.render(data: Types.View, _wide: boolean): ()
 	summary.ZIndex = 10
 	Style.textStroke(summary, 2)
 
-	local dragging = false
 	local function inside(): boolean
 		local mouse = UserInputService:GetMouseLocation() - GuiService:GetGuiInset()
 		local at, size = host.AbsolutePosition, host.AbsoluteSize
 		return mouse.X >= at.X and mouse.X <= at.X + size.X and mouse.Y >= at.Y and mouse.Y <= at.Y + size.Y
 	end
-	local function pointer(input: InputObject): boolean
-		return input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch
-	end
-	table.insert(
-		connections,
-		host.InputBegan:Connect(function(input)
-			if pointer(input) then
-				dragging = true
-			end
-		end)
-	)
 	table.insert(
 		connections,
 		UserInputService.InputEnded:Connect(function(input)
-			if pointer(input) then
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
 				dragging = false
+				-- Activated срабатывает сразу после отпускания, поэтому сдвиг сбрасываем с небольшой задержкой.
+				task.delay(0.1, function()
+					travelled = 0
+				end)
 			end
 		end)
 	)
 	table.insert(
 		connections,
 		UserInputService.InputChanged:Connect(function(input)
-			local moving = input.UserInputType == Enum.UserInputType.MouseMovement
-				or input.UserInputType == Enum.UserInputType.Touch
-			if dragging and moving then
-				host.CanvasPosition -= Vector2.new(input.Delta.X, input.Delta.Y)
+			if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+				local delta = Vector2.new(input.Delta.X, input.Delta.Y)
+				travelled += delta.Magnitude
+				host.CanvasPosition -= delta
 			end
 		end)
 	)
