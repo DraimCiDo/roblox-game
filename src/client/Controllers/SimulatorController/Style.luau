@@ -9,9 +9,9 @@ local Style = {}
 Style.Ink = Color3.fromRGB(24, 20, 64)
 Style.Panel = Color3.fromRGB(47, 53, 118)
 Style.Card = Color3.fromRGB(65, 74, 150)
-Style.Edge = Color3.fromRGB(22, 18, 62)
+Style.Edge = Color3.fromRGB(16, 12, 46)
 Style.Track = Color3.fromRGB(32, 35, 88)
-Style.Neutral = Color3.fromRGB(96, 112, 214)
+Style.Neutral = Color3.fromRGB(78, 128, 244)
 Style.Text = Color3.fromRGB(255, 255, 255)
 Style.Muted = Color3.fromRGB(188, 196, 242)
 Style.Signal = Color3.fromRGB(76, 224, 124)
@@ -91,22 +91,37 @@ function Style.label(parent: Instance, value: string, size: number, color: Color
 	return label
 end
 
+-- Контур вокруг самих букв: белый жирный текст с тёмной обводкой читается на любом цвете, как в симуляторах.
+function Style.textStroke(label: GuiObject, thickness: number?, color: Color3?): UIStroke
+	local line = Instance.new("UIStroke")
+	line.Name = "ТекстОбводка"
+	line.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+	line.Color = color or Style.Edge
+	line.Thickness = thickness or 2
+	line.Parent = label
+	return line
+end
+
 function Style.setButton(control: TextButton, enabled: boolean, tone: ButtonTone): ()
 	control.Interactable = enabled
 	control.Selectable = enabled
 	control.AutoButtonColor = false
+	local outline = control:FindFirstChild("ТекстОбводка") :: UIStroke?
+	if outline then
+		outline.Transparency = if enabled then 0 else 0.6
+	end
 	if not enabled then
 		control.BackgroundColor3 = Style.Track
 		control.TextColor3 = Style.Muted
-	elseif tone == "neutral" then
-		control.BackgroundColor3 = Style.Neutral
-		control.TextColor3 = Style.Text
-	elseif tone == "danger" then
-		control.BackgroundColor3 = Style.Warning
-		control.TextColor3 = Style.Text
 	else
-		control.BackgroundColor3 = if tone == "reward" then Style.Amber else Style.Signal
-		control.TextColor3 = Style.Ink
+		control.TextColor3 = Style.Text
+		if tone == "neutral" then
+			control.BackgroundColor3 = Style.Neutral
+		elseif tone == "danger" then
+			control.BackgroundColor3 = Style.Warning
+		else
+			control.BackgroundColor3 = if tone == "reward" then Style.Amber else Style.Signal
+		end
 	end
 end
 
@@ -124,9 +139,10 @@ function Style.button(
 	control.TextSize = 18
 	control.TextWrapped = true
 	control.Text = caption
+	Style.round(control, 12)
+	Style.outline(control, Style.Edge, 3)
+	Style.textStroke(control, 2)
 	Style.setButton(control, enabled ~= false, tone or "primary")
-	Style.round(control, 10)
-	Style.outline(control)
 	Style.gloss(control)
 
 	local scale = Instance.new("UIScale")

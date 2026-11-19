@@ -23,21 +23,22 @@ local WARNING_HINTS = {
 	"лишком",
 	"орвался",
 }
-local BUTTON_SIZE = 72
+local BUTTON_SIZE = 84
 
 local Hud = {}
 
-local heading: TextLabel
-local hint: TextLabel
-local signal: Frame
-local queue: TextLabel
 local balance: TextLabel
 local popScale: UIScale
+local levelLabel: TextLabel
+local levelFill: Frame
+local levelCount: TextLabel
+local queueLabel: TextLabel
 local rewardButton: TextButton
 local rewardBadge: Frame
 local toasts: Frame
 local toastSerial = 0
 local lastCoins: number?
+local lastLevel: number?
 
 -- Отступы справа снизу зависят от платформы: на телефоне выше кнопки прыжка, на консоли — за безопасной зоной.
 local function sideOffset(): Vector2
@@ -49,43 +50,65 @@ local function sideOffset(): Vector2
 	return Vector2.new(16, 16)
 end
 
+-- Объёмная плашка: толстая тёмная обводка, цветной градиент и мягкий блик, как у кнопок в симуляторах.
+local function plate(parent: Instance, color: Color3, radius: number): Frame
+	local frame = Style.frame(parent, color, radius)
+	Style.outline(frame, Style.Edge, 4)
+	Style.gloss(frame)
+	return frame
+end
+
+local function label(parent: Instance, text: string, size: number, color: Color3?): TextLabel
+	local result = Components.text(parent, text, size, color or Style.Text, true)
+	result.TextWrapped = false
+	Style.textStroke(result, 2)
+	return result
+end
+
+-- Круглая кнопка с иконкой и подписью под ней.
 local function iconButton(
 	parent: Instance,
 	icon: Icons.IconName,
-	label: string,
+	caption: string,
 	hotkey: string?,
 	callback: () -> ()
 ): TextButton
 	local control = Style.button(parent, "", callback, true, "neutral")
-	control.Name = label
+	control.Name = caption
 	control.Size = UDim2.fromOffset(BUTTON_SIZE, BUTTON_SIZE)
 	Style.round(control, 20)
 	local holder = Style.frame(control)
-	holder.AnchorPoint = Vector2.new(0.5, 0.5)
-	holder.Position = UDim2.fromScale(0.5, 0.5)
-	holder.Size = UDim2.fromScale(0.62, 0.62)
+	holder.AnchorPoint = Vector2.new(0.5, 0)
+	holder.Position = UDim2.new(0.5, 0, 0, 8)
+	holder.Size = UDim2.fromOffset(46, 46)
 	Icons.draw(holder, icon, Style.Amber, Style.Text)
+	local text = label(control, caption, 14)
+	text.AnchorPoint = Vector2.new(0.5, 1)
+	text.Position = UDim2.new(0.5, 0, 1, -5)
+	text.Size = UDim2.new(1, -8, 0, 18)
+	text.TextXAlignment = Enum.TextXAlignment.Center
 	if hotkey and UserInputService.KeyboardEnabled then
-		local key = Components.text(control, hotkey, 12, Style.Muted, true)
-		key.AnchorPoint = Vector2.new(0, 1)
-		key.Position = UDim2.new(0, 7, 1, -3)
-		key.Size = UDim2.fromOffset(20, 14)
+		local key = label(control, hotkey, 12, Style.Muted)
+		key.Position = UDim2.fromOffset(8, 4)
+		key.Size = UDim2.fromOffset(16, 14)
 	end
 	return control
 end
 
 function Hud.build(gui: ScreenGui, callbacks: Callbacks): ()
 	-- Монеты: крупная плашка сверху по центру.
-	local pill = Style.frame(gui, Style.Ink, 30)
+	local pill = plate(gui, Style.Ink, 32)
 	pill.Name = "Баланс"
 	pill.AnchorPoint = Vector2.new(0.5, 0)
 	pill.Position = UDim2.new(0.5, 0, 0, 8)
 	pill.AutomaticSize = Enum.AutomaticSize.X
-	pill.Size = UDim2.fromOffset(0, 60)
-	Style.outline(pill, Style.Amber, 4)
-	Style.soft(pill, 0.1)
+	pill.Size = UDim2.fromOffset(0, 64)
+	local outline = pill:FindFirstChildOfClass("UIStroke")
+	if outline then
+		outline.Color = Style.Amber
+	end
 	local minimum = Instance.new("UISizeConstraint")
-	minimum.MinSize = Vector2.new(190, 60)
+	minimum.MinSize = Vector2.new(200, 64)
 	minimum.Parent = pill
 	popScale = Instance.new("UIScale")
 	popScale.Parent = pill
@@ -98,44 +121,38 @@ function Hud.build(gui: ScreenGui, callbacks: Callbacks): ()
 	pillLayout.Parent = pill
 	local pillPadding = Instance.new("UIPadding")
 	pillPadding.PaddingLeft = UDim.new(0, 14)
-	pillPadding.PaddingRight = UDim.new(0, 20)
+	pillPadding.PaddingRight = UDim.new(0, 22)
 	pillPadding.Parent = pill
 	local coin = Style.frame(pill)
 	coin.LayoutOrder = 1
-	coin.Size = UDim2.fromOffset(42, 42)
+	coin.Size = UDim2.fromOffset(44, 44)
 	Icons.draw(coin, "coin", Style.Amber)
-	balance = Components.text(pill, "", 30, Style.Amber, true)
+	balance = label(pill, "", 34, Style.Amber)
 	balance.LayoutOrder = 2
 	balance.AutomaticSize = Enum.AutomaticSize.X
-	balance.Size = UDim2.fromOffset(0, 60)
-	balance.TextWrapped = false
+	balance.Size = UDim2.fromOffset(0, 64)
 
-	-- Статус заказа: под монетами.
-	local status = Style.frame(gui, Style.Ink, 14)
-	status.Name = "Статус"
-	status.AnchorPoint = Vector2.new(0.5, 0)
-	status.Position = UDim2.new(0.5, 0, 0, 74)
-	status.Size = UDim2.new(1, -24, 0, 60)
-	Style.outline(status, Style.Edge, 3)
-	Style.soft(status, 0.08)
-	local bounds = Instance.new("UISizeConstraint")
-	bounds.MaxSize = Vector2.new(380, 60)
-	bounds.Parent = status
-	signal = Style.frame(status, Style.Amber, 3)
-	Components.place(signal, 10, 10, UDim.new(0, 6), 40)
-	heading = Components.text(status, "Синхронизация сектора…", 16, Style.Text, true)
-	Components.place(heading, 24, 5, UDim.new(1, -128), 26)
-	heading.TextTruncate = Enum.TextTruncate.AtEnd
-	hint = Components.text(status, "", 13, Style.Muted)
-	Components.place(hint, 24, 31, UDim.new(1, -36), 26)
-	hint.TextYAlignment = Enum.TextYAlignment.Top
-	queue = Components.text(status, "", 15, Style.Cyan, true)
-	queue.AnchorPoint = Vector2.new(1, 0)
-	queue.Position = UDim2.new(1, -10, 0, 7)
-	queue.Size = UDim2.fromOffset(104, 22)
-	queue.TextXAlignment = Enum.TextXAlignment.Right
+	-- Уровень и заказы: слева по центру экрана.
+	local card = plate(gui, Style.Ink, 18)
+	card.Name = "Уровень"
+	card.AnchorPoint = Vector2.new(0, 0.5)
+	card.Position = UDim2.new(0, 12, 0.5, 0)
+	card.Size = UDim2.fromOffset(176, 96)
+	levelLabel = label(card, "УР. 1", 26, Style.Cyan)
+	Components.place(levelLabel, 12, 4, UDim.new(1, -24), 32)
+	local track, fill = Style.meter(card, 0, Style.Violet)
+	Components.place(track, 12, 40, UDim.new(1, -24), 16)
+	levelFill = fill
+	levelCount = label(track, "", 12, Style.Text)
+	levelCount.AnchorPoint = Vector2.new(0.5, 0.5)
+	levelCount.Position = UDim2.fromScale(0.5, 0.5)
+	levelCount.Size = UDim2.fromScale(1, 1)
+	levelCount.TextXAlignment = Enum.TextXAlignment.Center
+	levelCount.ZIndex = 2
+	queueLabel = label(card, "", 15, Style.Text)
+	Components.place(queueLabel, 12, 62, UDim.new(1, -24), 24)
 
-	-- Перки и награда: справа внизу иконками, у большого пальца.
+	-- Перки и награда: справа внизу крупными кнопками, у большого пальца.
 	local offset = sideOffset()
 	local side = Style.frame(gui)
 	side.Name = "Меню"
@@ -152,12 +169,12 @@ function Hud.build(gui: ScreenGui, callbacks: Callbacks): ()
 	perks.LayoutOrder = 1
 	rewardButton = iconButton(side, "gift", "Награда", "G", callbacks.Reward)
 	rewardButton.LayoutOrder = 2
-	rewardBadge = Style.frame(rewardButton, Style.Warning, 9)
+	rewardBadge = Style.frame(rewardButton, Style.Warning, 10)
 	rewardBadge.AnchorPoint = Vector2.new(1, 0)
-	rewardBadge.Position = UDim2.new(1, -2, 0, 2)
-	rewardBadge.Size = UDim2.fromOffset(20, 20)
+	rewardBadge.Position = UDim2.new(1, 2, 0, -2)
+	rewardBadge.Size = UDim2.fromOffset(22, 22)
 	rewardBadge.Visible = false
-	Style.outline(rewardBadge, Style.Edge, 2)
+	Style.outline(rewardBadge, Style.Edge, 3)
 
 	toasts = Style.frame(gui)
 	toasts.Name = "Уведомления"
@@ -177,12 +194,6 @@ function Hud.build(gui: ScreenGui, callbacks: Callbacks): ()
 end
 
 function Hud.update(data: Types.View, canClaim: boolean): ()
-	local title, tip, tint = Components.status(data)
-	local progress = Components.progressText(data)
-	heading.Text = if progress then `{title} · {progress}` else title
-	hint.Text = tip
-	signal.BackgroundColor3 = tint
-	queue.Text = `ур. {Catalog.level(data.Opened)} · {data.Orders}/{1 + (data.Perks.orders or 0)}`
 	balance.Text = Components.short(data.Coins)
 	-- Плашка «подпрыгивает», когда баланс растёт.
 	if lastCoins and data.Coins > lastCoins then
@@ -190,6 +201,21 @@ function Hud.update(data: Types.View, canClaim: boolean): ()
 		Style.tween(popScale, { Scale = 1 }, 0.25, Enum.EasingStyle.Back)
 	end
 	lastCoins = data.Coins
+
+	local level, floor, ceiling = Catalog.levelRange(data.Opened)
+	levelLabel.Text = `УР. {level}`
+	if ceiling then
+		Style.setMeter(levelFill, (data.Opened - floor) / (ceiling - floor))
+		levelCount.Text = `{data.Opened} / {ceiling}`
+	else
+		Style.setMeter(levelFill, 1)
+		levelCount.Text = "МАКС."
+	end
+	if lastLevel and level > lastLevel then
+		Hud.notice(`Новый уровень лаборатории: {level}!`)
+	end
+	lastLevel = level
+	queueLabel.Text = `ЗАКАЗЫ {data.Orders}/{1 + (data.Perks.orders or 0)}`
 	Hud.setReward(canClaim)
 end
 
@@ -213,15 +239,19 @@ function Hud.notice(message: string): ()
 		pending[1]:Destroy()
 	end
 
-	local toast = Style.frame(toasts, Style.Ink, 12)
+	local toast = plate(toasts, Style.Ink, 14)
 	toast.LayoutOrder = toastSerial
-	toast.Size = UDim2.new(1, 0, 0, 46)
-	local stroke = Style.outline(toast, tone, 3)
+	toast.Size = UDim2.new(1, 0, 0, 50)
+	local stroke = toast:FindFirstChildOfClass("UIStroke")
+	if stroke then
+		stroke.Color = tone
+	end
 	local scale = Instance.new("UIScale")
 	scale.Scale = 0.85
 	scale.Parent = toast
-	local text = Components.text(toast, message, 16, tone, true)
-	Components.place(text, 12, 0, UDim.new(1, -24), 46)
+	local text = label(toast, message, 17, Style.Text)
+	text.TextWrapped = true
+	Components.place(text, 12, 0, UDim.new(1, -24), 50)
 	text.TextXAlignment = Enum.TextXAlignment.Center
 	Style.tween(scale, { Scale = 1 }, 0.18, Enum.EasingStyle.Back)
 
@@ -230,7 +260,9 @@ function Hud.notice(message: string): ()
 			return
 		end
 		Style.tween(toast, { BackgroundTransparency = 1 }, 0.25)
-		Style.tween(stroke, { Transparency = 1 }, 0.25)
+		if stroke then
+			Style.tween(stroke, { Transparency = 1 }, 0.25)
+		end
 		Style.tween(text, { TextTransparency = 1 }, 0.25)
 		task.wait(0.3)
 		toast:Destroy()
