@@ -48,15 +48,28 @@ end
 
 function Collections.render(data: Types.View): ()
 	Components.paragraph(
-		"Внесённый предмет расходуется навсегда, но его можно заменить другим экземпляром того же типа."
+		"Нужный предмет со склада помечен зелёной подписью: нажмите на слот и внесите его. Внесённый предмет расходуется, но его можно заменить другим экземпляром."
 	)
+	-- Лучший экземпляр каждого типа на складе и их количество: по ним слоты показывают, что находка уже есть.
+	local best: { [string]: Types.Item } = {}
+	local amount: { [string]: number } = {}
+	for _, item in data.Inventory do
+		amount[item.Kind] = (amount[item.Kind] or 0) + 1
+		local current = best[item.Kind]
+		if not current or item.Quality > current.Quality then
+			best[item.Kind] = item
+		end
+	end
+
 	for _, collection in Catalog.Collections do
-		local total, count = 0, 0
+		local total, count, ready = 0, 0, 0
 		for _, kind in collection.Items do
 			local saved = data.Collections[kind]
 			if saved then
 				count += 1
 				total += saved.Quality
+			elseif best[kind] then
+				ready += 1
 			end
 		end
 		local complete = count == #collection.Items
@@ -69,8 +82,10 @@ function Collections.render(data: Types.View): ()
 		Components.place(name, 2, 0, UDim.new(0.6, 0), 26)
 		local summary = if complete
 			then string.format("+%.1f%% к продаже", total / count / 10)
+			elseif ready > 0 then `Внесено {count} / {#collection.Items} · на складе {ready}`
 			else `Собрано {count} / {#collection.Items}`
-		local bonus = Components.text(top, summary, 13, if complete then Style.Signal else Style.Muted, true)
+		local tone = if complete then Style.Signal elseif ready > 0 then Style.Amber else Style.Muted
+		local bonus = Components.text(top, summary, 13, tone, true)
 		bonus.TextXAlignment = Enum.TextXAlignment.Right
 		Components.place(bonus, 0, 4, UDim.new(1, -2), 20)
 		local track = Style.meter(top, count / #collection.Items, if complete then Style.Signal else Style.Cyan)
@@ -79,10 +94,20 @@ function Collections.render(data: Types.View): ()
 		local grid = Components.grid(COLUMNS, GAP, group)
 		for _, kind in collection.Items do
 			local saved = data.Collections[kind]
-			Components.tile(grid, kind, saved, {
-				Ghost = saved == nil,
-				Caption = if saved then nil else Catalog.Items[kind].Name,
-				CaptionColor = Style.Muted,
+			local held = best[kind]
+			local caption, captionColor = Catalog.Items[kind].Name, Style.Muted
+			if saved and held then
+				caption, captionColor = `Есть ×{amount[kind]}`, Style.Signal
+			elseif saved then
+				caption = ""
+			elseif held then
+				caption, captionColor = "Внести", Style.Signal
+			end
+			Components.tile(grid, kind, saved or held, {
+				Ghost = saved == nil and held == nil,
+				Caption = if caption == "" then nil else caption,
+				CaptionColor = captionColor,
+				Badge = if saved then "✓" elseif held then `×{amount[kind]}` else nil,
 				Selected = picked == kind,
 				FocusKey = kind,
 				Callback = function()
