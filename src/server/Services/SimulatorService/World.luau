@@ -8,6 +8,7 @@ local Config = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Containers = require(script.Parent.Containers)
 local ItemModels = require(ReplicatedStorage.Shared.ItemModels)
+local Sector = require(script.Parent.Sector)
 local ItemAssets = require(script.Parent.ItemAssets)
 
 local STEEL = Color3.fromRGB(45, 56, 68)
@@ -55,9 +56,12 @@ export type Plot = {
 	GateLights: { [string]: PointLight },
 	Spawn: SpawnLocation,
 	OpenParts: { Part },
+	Kit: Sector.Kit,
 }
 
 local World = {}
+-- Объявлена заранее: нужна при построении секторов, а определяется ниже вместе с моделями предметов.
+local makeItem: (Types.Item, boolean?) -> Model
 local boards: { [string]: { RankingFace } } = {}
 
 local function part(
@@ -446,6 +450,9 @@ function World.Build(useForPlot: (number, Player, string, string?) -> ()): { Plo
 			GateLights = { upper = shaftLight(deliveryPoint, ICE), lower = shaftLight(disposalPoint, AMBER) },
 			Spawn = spawn,
 			OpenParts = {},
+			Kit = Sector.build(model, spawn, stands, storage, function(item: Types.Item, full: boolean?): Model
+				return makeItem(item, full)
+			end),
 		})
 	end
 	return plots
@@ -596,12 +603,12 @@ local function deliverThroughPipe(plot: Plot, model: Model, base: CFrame, remain
 	end, Enum.EasingStyle.Linear)
 end
 
-local function makeItem(item: Types.Item): Model
+function makeItem(item: Types.Item, full: boolean?): Model
 	local definition = Catalog.Items[item.Kind]
 	-- Модель из Creator Store подключается только по явному включению; по умолчанию рисуем свою.
 	local model = ItemAssets.clone(item.Kind) or Instance.new("Model")
 	if #model:GetChildren() == 0 then
-		ItemModels.build(item.Kind, model, { Full = true })
+		ItemModels.build(item.Kind, model, { Full = full ~= false })
 		model.WorldPivot = CFrame.new()
 	end
 	model.Name = definition.Name
@@ -610,12 +617,16 @@ local function makeItem(item: Types.Item): Model
 	return model
 end
 
-function World.UpdateStorage(plot: Plot, capacity: number): ()
-	for index, module in plot.Storage do
-		local built = index <= capacity / 5
-		module.Transparency = if built then 0 else 1
-		module.CanCollide = built
-	end
+function World.UpdateStorage(plot: Plot, capacity: number, inventory: { Types.Item }): ()
+	Sector.setStorage(plot.Kit, capacity, inventory)
+end
+
+function World.UpdateCollections(plot: Plot, collections: { [string]: Types.Item }): ()
+	Sector.setCollections(plot.Kit, collections)
+end
+
+function World.UpdateInfo(plot: Plot, level: number, price: number, orders: number, maximum: number): ()
+	Sector.setInfo(plot.Kit, level, price, orders, maximum)
 end
 
 function World.UpdateDisplays(plot: Plot, items: { [string]: Types.Item }): ()
@@ -626,10 +637,15 @@ function World.UpdateDisplays(plot: Plot, items: { [string]: Types.Item }): ()
 			previous:Destroy()
 			plot.StandModels[slot] = nil
 			plot.StandSigns[slot].Text = ""
+			Sector.setDisplay(plot.Kit, slot, nil)
 		end
 		if item and not plot.StandModels[slot] then
 			local model = makeItem(item)
-			model:PivotTo(stand.CFrame * CFrame.new(0, 0.67, 0))
+			local lift = plot.Kit.Lift[slot] or 0
+			model:PivotTo(
+				stand.CFrame * CFrame.new(0, 0.67 + lift, 0) * CFrame.Angles(0, math.rad(plot.Kit.Yaw[slot] or 0), 0)
+			)
+			Sector.setDisplay(plot.Kit, slot, item)
 			model.Parent = plot.Model
 			plot.StandModels[slot] = model
 			plot.StandSigns[slot].Text = `{Catalog.Items[item.Kind].Name} · {item.Quality}/100`

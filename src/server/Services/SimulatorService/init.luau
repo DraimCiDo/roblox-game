@@ -135,7 +135,15 @@ local function sync(player: Player, session: Session, scatter: boolean?): ()
 		scatter == true,
 		if order then order.Deadline - Workspace:GetServerTimeNow() else 0
 	)
-	World.UpdateStorage(session.Plot, Economy.capacity(data))
+	World.UpdateStorage(session.Plot, Economy.capacity(data), data.Inventory)
+	World.UpdateCollections(session.Plot, data.Collections)
+	World.UpdateInfo(
+		session.Plot,
+		Catalog.level(data.Opened),
+		Economy.orderPrice(data),
+		#data.Orders,
+		1 + (data.Perks.orders or 0)
+	)
 	World.UpdateDisplays(session.Plot, data.Displays)
 	publish(player)
 end
@@ -748,7 +756,8 @@ function SimulatorService:Start(): ()
 		if session then
 			World.Clear(session.Plot)
 			World.UpdateDisplays(session.Plot, {})
-			World.UpdateStorage(session.Plot, 15)
+			World.UpdateStorage(session.Plot, 15, {})
+			World.UpdateCollections(session.Plot, {})
 			World.Owner(session.Plot, nil)
 			occupants[session.Plot.Rank] = nil
 			sessions[player] = nil
