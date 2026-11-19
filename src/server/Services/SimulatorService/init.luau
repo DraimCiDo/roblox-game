@@ -241,8 +241,7 @@ local function tickPlayer(player: Player, session: Session, now: number): ()
 				sync(player, session)
 			end
 		elseif World.Position(player) and not World.InPad(session.Plot, player) then
-			session.ReleaseAt = now + 1.1
-			World.Release(session.Plot)
+			session.ReleaseAt = now + World.Release(session.Plot)
 		end
 	end
 end
@@ -656,26 +655,14 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 	end
 end
 
-local function boardText(title: string, entries: { { Name: string, Score: number, Note: string? } }): string
-	local lines = { title }
-	for index, entry in entries do
-		local note = if entry.Note then `  ·  {entry.Note}` else ""
-		table.insert(lines, `{index}. {entry.Name}  ·  {entry.Score}{note}`)
-	end
-	if #entries == 0 then
-		table.insert(lines, "Пока пусто")
-	end
-	return table.concat(lines, "\n")
-end
-
 local function startRankings(): ()
-	World.Board("global", "ОБЩИЙ РЕЙТИНГ\nНет данных")
 	task.spawn(function()
 		local names: { [string]: string } = {}
+		local loaded = false
 		while true do
 			local rank = Data:GetRanking()
 			if rank then
-				local entries = {}
+				local entries: { World.RankingEntry } = {}
 				for _, row in rank do
 					local userId = tonumber(row.Key)
 					if userId and not names[row.Key] then
@@ -688,21 +675,24 @@ local function startRankings(): ()
 					end
 					table.insert(entries, { Name = names[row.Key] or row.Key, Score = row.Value })
 				end
-				World.Board("global", boardText("ОБЩИЙ · ЗАРАБОТАНО МОНЕТ", entries))
+				World.Board("global", entries, "Пока нет результатов")
+				loaded = true
+			elseif not loaded then
+				World.Board("global", {}, "Общий рейтинг сейчас недоступен")
 			end
 			task.wait(90)
 		end
 	end)
 	task.spawn(function()
 		while true do
-			local entries = {}
+			local entries: { World.RankingEntry } = {}
 			for player in sessions do
 				local data = Data:Get(player)
 				if data then
 					table.insert(entries, {
 						Name = player.DisplayName,
 						Score = data.Earned,
-						Note = `открыто {data.Opened}`,
+						Opened = data.Opened,
 					})
 				end
 			end
@@ -712,7 +702,7 @@ local function startRankings(): ()
 				end
 				return first.Score > second.Score
 			end)
-			World.Board("localLobby", boardText("ЛОББИ · ЗАРАБОТАНО МОНЕТ", entries))
+			World.Board("localLobby", entries, "Ожидание игроков")
 			task.wait(3)
 		end
 	end)
@@ -771,6 +761,7 @@ function SimulatorService:Start(): ()
 	while true do
 		local now = Workspace:GetServerTimeNow()
 		for player, session in sessions do
+			World.RecoverFromShaft(player, plots)
 			tickPlayer(player, session, now)
 		end
 		task.wait(0.1)

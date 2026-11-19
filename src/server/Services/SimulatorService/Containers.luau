@@ -82,13 +82,17 @@ local function drive(
 	end
 	local value = Instance.new("NumberValue")
 	value.Parent = model
-	local connection = value.Changed:Connect(step)
+	local connection = value.Changed:Connect(function(alpha: number)
+		if not model:GetAttribute("Releasing") then
+			step(alpha)
+		end
+	end)
 	local tween =
 		TweenService:Create(value, TweenInfo.new(duration, style, direction or Enum.EasingDirection.Out), { Value = 1 })
 	tween.Completed:Once(function(state: Enum.PlaybackState)
 		connection:Disconnect()
 		value:Destroy()
-		if done and state == Enum.PlaybackState.Completed then
+		if done and state == Enum.PlaybackState.Completed and not model:GetAttribute("Releasing") then
 			done()
 		end
 	end)
@@ -893,6 +897,9 @@ local function cargoOpen(ctx: Ctx, handle: Part, instant: boolean): ()
 		end
 	end
 	local function swing()
+		if ctx.Model:GetAttribute("Releasing") then
+			return
+		end
 		swingAll(ctx, doors, if instant then 0 else 0.95, Enum.EasingStyle.Quad)
 		local glow = layout.Named.Roof:FindFirstChildWhichIsA("PointLight")
 		if glow then
@@ -1074,6 +1081,32 @@ function Containers.build(order: Types.Order, use: Use, kit: Kit): (Model, { Par
 end
 
 -- Поворачивает метку и спицы ручки сейфа; phase от 0 до 1.
+function Containers.prepareRelease(model: Model, duration: number): ()
+	model:SetAttribute("Releasing", true)
+	for _, child in model:GetDescendants() do
+		if child:IsA("BasePart") then
+			child.CanCollide = false
+		end
+	end
+	local layout = Layouts[model]
+	if not layout then
+		return
+	end
+	local base = model:GetPivot()
+	local info = TweenInfo.new(duration, Enum.EasingStyle.Quad)
+	-- Открытые двери грузового контейнера выступают за границы шахты.
+	for _, group in { "Door-1", "Door1" } do
+		local doors = layout.Groups[group]
+		if not doors then
+			continue
+		end
+		for _, piece in doors do
+			local closed = base * layout.Rest[piece]
+			TweenService:Create(piece, info, { CFrame = closed }):Play()
+		end
+	end
+end
+
 function Containers.rotateDial(model: Model, base: CFrame, phase: number): ()
 	local layout = Layouts[model]
 	if not layout or not layout.Groups.Spin then
