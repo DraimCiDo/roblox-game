@@ -1,4 +1,5 @@
 --!strict
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
@@ -661,6 +662,61 @@ local function deliverThroughPipe(plot: Plot, model: Model, base: CFrame, remain
 	end, Enum.EasingStyle.Linear)
 end
 
+-- Цвет и сила свечения зависят от качества: чем выше качество, тем ярче и шире аура.
+local GLOW_TIERS = {
+	{ Max = 20, Color = Color3.fromRGB(170, 176, 204), Strength = 0.35 },
+	{ Max = 49, Color = Color3.fromRGB(110, 214, 134), Strength = 0.55 },
+	{ Max = 70, Color = Color3.fromRGB(80, 194, 255), Strength = 0.8 },
+	{ Max = 99, Color = Color3.fromRGB(190, 124, 255), Strength = 1.1 },
+	{ Max = 100, Color = Color3.fromRGB(255, 200, 60), Strength = 1.6 },
+}
+
+-- Мягкая аура вокруг лута: почти прозрачный неоновый шар, свет и (у хороших находок) редкие искры.
+local function addGlow(model: Model, quality: number): ()
+	local tier = 1
+	for index, entry in GLOW_TIERS do
+		if quality <= entry.Max then
+			tier = index
+			break
+		end
+	end
+	local glow = GLOW_TIERS[tier]
+	local center, extents = model:GetBoundingBox()
+	local halo = Instance.new("Part")
+	halo.Name = "Свечение"
+	halo.Shape = Enum.PartType.Ball
+	halo.Size = Vector3.one * (math.max(extents.X, extents.Y, extents.Z) * 1.3 + 0.8)
+	halo.CFrame = center
+	halo.Color = glow.Color
+	halo.Material = Enum.Material.Neon
+	halo.Transparency = 0.93 - 0.03 * tier
+	halo.Anchored = true
+	halo.CanCollide = false
+	halo.CanQuery = false
+	halo.CanTouch = false
+	halo.CastShadow = false
+	halo.Parent = model
+	local light = Instance.new("PointLight")
+	light.Color = glow.Color
+	light.Brightness = glow.Strength
+	light.Range = 6 + 3 * tier
+	light.Parent = halo
+	if tier >= 4 then
+		local sparks = Instance.new("ParticleEmitter")
+		sparks.Rate = if tier == 5 then 7 else 3
+		sparks.Lifetime = NumberRange.new(1.4, 2.4)
+		sparks.Speed = NumberRange.new(0.4, 1.4)
+		sparks.SpreadAngle = Vector2.new(180, 180)
+		sparks.Acceleration = Vector3.new(0, 1.6, 0)
+		sparks.LightEmission = 1
+		sparks.Color = ColorSequence.new(glow.Color)
+		sparks.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 0) })
+		sparks.Transparency =
+			NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) })
+		sparks.Parent = halo
+	end
+end
+
 function makeItem(item: Types.Item, full: boolean?): Model
 	local definition = Catalog.Items[item.Kind]
 	-- Модель из Creator Store подключается только по явному включению; по умолчанию рисуем свою.
@@ -847,7 +903,11 @@ function World.Sync(plot: Plot, order: Types.Order?, use: Use, scatter: boolean,
 		shouldExist[item.Id] = true
 		if not plot.Loot[item.Id] then
 			local prop = makeItem(item)
+			addGlow(prop, item.Quality)
 			local target = base * CFrame.new(loot.X, if order.Kind == "cargo" then 0.3 else 0, loot.Z)
+			-- Клиент по этим данным парит и вращает лут (как выпавшие предметы в Minecraft).
+			prop:SetAttribute("Rest", target)
+			CollectionService:AddTag(prop, "CorpaLoot")
 			prop.Parent = plot.Model
 			plot.Loot[item.Id] = prop
 			plot.LootPositions[item.Id] = target.Position
@@ -871,8 +931,15 @@ function World.Sync(plot: Plot, order: Types.Order?, use: Use, scatter: boolean,
 						animate(prop, from, target, 0.55, 2.3)
 					end
 				end)
+				-- Парение включается, когда предмет приземлился.
+				task.delay(lead + 0.65, function()
+					if prop.Parent then
+						prop:SetAttribute("Settled", true)
+					end
+				end)
 			else
 				prop:PivotTo(target)
+				prop:SetAttribute("Settled", true)
 			end
 		end
 	end
