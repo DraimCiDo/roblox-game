@@ -37,7 +37,7 @@ local CAPTIONS: { [string]: string } = {
 	inventory = "Выберите предмет, чтобы увидеть цену и продать",
 	collections = "Заполните все слоты, чтобы получить бонус к продаже",
 	loot = "Операции с открытым контейнером",
-	perks = "Улучшайте сектор за монеты",
+	perks = "Выберите узел, чтобы посмотреть улучшение",
 	daily = "Награда за время в лаборатории",
 	dial = "Три штифта: каждый следующий быстрее",
 }
@@ -78,6 +78,8 @@ local badge: Frame
 local badgeStroke: UIStroke
 local panel: Frame
 local panelScale: UIScale
+local panelBounds: UISizeConstraint
+local perksWide = false
 local backdrop: TextButton
 local close: TextButton
 local selectMenu: (string?) -> ()
@@ -95,6 +97,8 @@ end
 local function fingerprint(data: Types.View): string
 	local parts: { string } = {
 		tostring(data.Coins),
+		tostring(data.Opened),
+		tostring(data.OrderPrice),
 		tostring(data.Orders),
 		tostring(data.OrderStage),
 		tostring(data.OrderKind),
@@ -125,6 +129,11 @@ end
 
 local function gamepadActive(): boolean
 	return UserInputService:GetLastInputType().Name:sub(1, 7) == "Gamepad"
+end
+
+local function widePerks(): boolean
+	local camera = Workspace.CurrentCamera
+	return camera ~= nil and camera.ViewportSize.X >= 900
 end
 
 local function updateClocks(): ()
@@ -174,6 +183,8 @@ local function refresh(preserveScroll: boolean?): ()
 	if not key then
 		return
 	end
+	perksWide = key == "perks" and widePerks()
+	panelBounds.MaxSize = if perksWide then Vector2.new(1050, 700) else Vector2.new(600, 660)
 	local content = panel:FindFirstChild("Содержимое") :: ScrollingFrame
 	local canvas = content.CanvasPosition
 	local oldSelection = GuiService.SelectedObject
@@ -198,7 +209,7 @@ local function refresh(preserveScroll: boolean?): ()
 	elseif key == "collections" then
 		Collections.render(data)
 	elseif key == "perks" then
-		Perks.render(data)
+		Perks.render(data, perksWide)
 	elseif key == "loot" then
 		Loot.render(data)
 	elseif key == "daily" then
@@ -247,6 +258,7 @@ selectMenu = function(key: string?): ()
 	if key ~= previous then
 		Inventory.reset()
 		Collections.reset()
+		Perks.reset()
 	end
 	signature = if state then fingerprint(state) else ""
 	bindStop(key == "dial")
@@ -319,9 +331,9 @@ local function build(): ()
 	panel.ZIndex = 3
 	Style.outline(panel, Style.Edge, 4)
 	Style.soft(panel, 0.16)
-	local bounds = Instance.new("UISizeConstraint")
-	bounds.MaxSize = Vector2.new(600, 660)
-	bounds.Parent = panel
+	panelBounds = Instance.new("UISizeConstraint")
+	panelBounds.MaxSize = Vector2.new(600, 660)
+	panelBounds.Parent = panel
 	panelScale = Instance.new("UIScale")
 	panelScale.Parent = panel
 
@@ -381,6 +393,14 @@ local function build(): ()
 	Components.setup(content, dock, send, function()
 		refresh(true)
 	end)
+	local camera = Workspace.CurrentCamera
+	if camera then
+		camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+			if menu == "perks" and perksWide ~= widePerks() then
+				refresh()
+			end
+		end)
+	end
 end
 
 local function animate(): ()
