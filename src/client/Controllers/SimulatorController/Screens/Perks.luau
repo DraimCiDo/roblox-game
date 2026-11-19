@@ -6,128 +6,147 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Components = require(script.Parent.Parent.Components)
 local Style = require(script.Parent.Parent.Style)
 
--- Узел состоит из четырёх строк с жёстко заданными зонами, поэтому элементы не наезжают друг на друга.
-local NODE_HEIGHT = 156
-local LINK_WIDTH = 28
+local NODE_HEIGHT = 124
+local INDENT = 22
 local BRANCH_COLORS: { [string]: Color3 } = {
+	logistics = Style.Violet,
 	storage = Style.Cyan,
-	orders = Style.Violet,
-	odds = Style.Amber,
-	sale = Style.Signal,
+	trade = Style.Signal,
+	luck = Style.Amber,
 }
-local EFFECTS: { [string]: string } = {
-	quickCollect = "Сбор всей добычи одним действием",
-	quickSell = "Продажа всей добычи одним действием",
-}
-local NAMES: { [string]: string } = { storage = "Склад", sale = "Бонус продажи" }
 
 local Perks = {}
 
-local function benefit(perk: Catalog.Perk, level: number): string
-	if perk.Key == "storage" then
-		return `{15 + level * 5} мест на складе`
-	elseif perk.Key == "orders" then
-		return `Заказов одновременно: {1 + level}`
-	elseif perk.Key == "sale" then
-		return `+{level * 10}% к цене продажи`
-	elseif perk.Key == "odds" then
-		return "Больше шанс редких контейнеров"
+-- Глубина узла в ветке: корни имеют 0, потомки сдвигаются вправо.
+local function depthOf(perk: Catalog.Perk, index: { [string]: Catalog.Perk }): number
+	local depth = 0
+	local current = perk
+	while current.Parent do
+		depth += 1
+		current = index[current.Parent]
 	end
-	return EFFECTS[perk.Key] or ""
+	return depth
 end
 
-local function node(parent: Frame, perk: Catalog.Perk, data: Types.View, color: Color3): ()
-	local level = data.Perks[perk.Key] or 0
-	local cost = perk.Costs[level + 1]
-	local parentLevel = perk.Required or 1
-	local unlocked = not perk.Parent or (data.Perks[perk.Parent] or 0) >= parentLevel
-	local affordable = cost ~= nil and unlocked and data.Coins >= cost
-	local accent = if unlocked then color else Style.Muted
+local function lockReason(
+	perk: Catalog.Perk,
+	data: Types.View,
+	level: number,
+	index: { [string]: Catalog.Perk }
+): string?
+	if perk.Parent and (data.Perks[perk.Parent] or 0) < (perk.Required or 1) then
+		return `Нужен «{index[perk.Parent].Name}» · ур. {perk.Required or 1}`
+	end
+	local need = perk.Opened[level + 1]
+	if need and data.Opened < need then
+		return `Нужно открыть контейнеров: {need} (сейчас {data.Opened})`
+	end
+	return nil
+end
 
-	local frame = Style.frame(parent, Style.Card, 14)
-	frame.Size = UDim2.fromScale(1, 1)
+local function node(
+	perk: Catalog.Perk,
+	data: Types.View,
+	color: Color3,
+	depth: number,
+	index: { [string]: Catalog.Perk }
+): ()
+	local level = math.min(data.Perks[perk.Key] or 0, #perk.Costs)
+	local cost = perk.Costs[level + 1]
+	local locked = if cost then lockReason(perk, data, level, index) else nil
+	local reserved = cost ~= nil and locked == nil and data.Coins - cost < data.OrderPrice
+	local affordable = cost ~= nil and locked == nil and data.Coins >= cost and not reserved
+	local accent = if locked then Style.Muted else color
+
+	local slot = Components.strip(NODE_HEIGHT)
+	local frame = Style.frame(slot, Style.Card, 14)
+	frame.Position = UDim2.fromOffset(depth * INDENT, 0)
+	frame.Size = UDim2.new(1, -depth * INDENT, 1, 0)
 	frame.ClipsDescendants = true
 	Style.outline(frame, if affordable then accent else Style.Edge, if affordable then 3 else 2)
+	Style.soft(frame)
 
-	-- Зона 1: название. Зона 2: описание. Зона 3: уровни. Зона 4: кнопка у нижнего края.
-	local name = Components.text(frame, perk.Name, 17, if unlocked then Style.Text else Style.Muted, true)
-	Components.place(name, 10, 8, UDim.new(1, -20), 22)
+	-- Соединитель к родителю: вертикаль и короткая горизонталь слева от карточки.
+	if depth > 0 then
+		local stem = Style.frame(slot, accent, 2)
+		stem.Position = UDim2.fromOffset(depth * INDENT - 14, -10)
+		stem.Size = UDim2.fromOffset(4, NODE_HEIGHT / 2 + 10)
+		local elbow = Style.frame(slot, accent, 2)
+		elbow.Position = UDim2.fromOffset(depth * INDENT - 14, NODE_HEIGHT / 2 - 2)
+		elbow.Size = UDim2.fromOffset(14, 4)
+	end
+
+	local name = Components.text(frame, perk.Name, 18, if locked then Style.Muted else Style.Text, true)
+	Components.place(name, 12, 8, UDim.new(1, -150), 24)
 	name.TextTruncate = Enum.TextTruncate.AtEnd
-	local detail = if unlocked
-		then benefit(perk, level)
-		else `Нужен «{NAMES[perk.Parent or ""] or "?"}» · ур. {parentLevel}`
-	local info = Components.text(frame, detail, 12, if unlocked then Style.Muted else Style.Warning)
-	Components.place(info, 10, 32, UDim.new(1, -20), 32)
-	info.TextYAlignment = Enum.TextYAlignment.Top
-	info.TextTruncate = Enum.TextTruncate.AtEnd
-
-	-- Деления компактные (6 px) и занимают лишь левую часть строки; справа счётчик уровня.
-	local counter = Components.text(frame, `{level}/{#perk.Costs}`, 12, accent, true)
-	counter.AnchorPoint = Vector2.new(1, 0)
-	counter.Position = UDim2.new(1, -10, 0, 70)
-	counter.Size = UDim2.fromOffset(40, 14)
-	counter.TextXAlignment = Enum.TextXAlignment.Right
+	local current =
+		Components.text(frame, if level > 0 then perk.Describe(level) else "Не изучено", 13, Style.Text)
+	Components.place(current, 12, 34, UDim.new(1, -150), 18)
+	current.TextTruncate = Enum.TextTruncate.AtEnd
+	local following = if cost
+		then `Далее: {perk.Describe(level + 1)}`
+		else "Максимальный уровень"
+	local nextLine = Components.text(frame, following, 12, if cost then accent else Style.Signal)
+	Components.place(nextLine, 12, 54, UDim.new(1, -150), 18)
+	nextLine.TextTruncate = Enum.TextTruncate.AtEnd
+	local reason = locked
+		or (if reserved then `Оставьте {Components.coin(data.OrderPrice)} на заказ` else nil)
+	if reason then
+		local warning = Components.text(frame, reason, 12, Style.Warning)
+		Components.place(warning, 12, 74, UDim.new(1, -150), 30)
+		warning.TextYAlignment = Enum.TextYAlignment.Top
+	end
 	local pips = Components.pips(frame, #perk.Costs, level, accent)
-	Components.place(pips, 10, 74, UDim.new(1, -64), 6)
+	pips.AnchorPoint = Vector2.new(0, 1)
+	pips.Position = UDim2.new(0, 12, 1, -10)
+	pips.Size = UDim2.new(1, -150, 0, 6)
 
-	local caption = if cost then Components.coin(cost) else "Максимум"
+	local counter = Components.text(frame, `{level}/{#perk.Costs}`, 14, accent, true)
+	counter.AnchorPoint = Vector2.new(1, 0)
+	counter.Position = UDim2.new(1, -12, 0, 10)
+	counter.Size = UDim2.fromOffset(110, 18)
+	counter.TextXAlignment = Enum.TextXAlignment.Right
+
+	local caption = if cost then Components.short(cost) else "Максимум"
 	local buy = Style.button(frame, caption, function()
 		Components.send("perk", perk.Key)
 	end, affordable, if cost then "primary" else "neutral")
 	buy.Name = perk.Key
-	buy.AnchorPoint = Vector2.new(0.5, 1)
-	buy.Position = UDim2.new(0.5, 0, 1, -8)
-	buy.Size = UDim2.new(1, -20, 0, 42)
+	buy.AnchorPoint = Vector2.new(1, 1)
+	buy.Position = UDim2.new(1, -10, 1, -10)
+	buy.Size = UDim2.fromOffset(112, 50)
 	Components.prefer(buy)
 end
 
 function Perks.render(data: Types.View): ()
+	local level = Catalog.level(data.Opened)
 	Components.paragraph(
-		"Ветки открываются по порядку: улучшайте основу, чтобы получить доступ к умениям справа."
+		`Лаборатория: уровень {level}, открыто контейнеров {data.Opened}. Новые ступени открываются по мере открытия контейнеров и изучения предыдущих навыков.`
 	)
-	local children: { [string]: Catalog.Perk } = {}
+	local index: { [string]: Catalog.Perk } = {}
 	for _, perk in Catalog.Perks do
-		if perk.Parent then
-			children[perk.Parent] = perk
-		end
+		index[perk.Key] = perk
 	end
 
-	for _, perk in Catalog.Perks do
-		if not perk.Parent then
-			local color = BRANCH_COLORS[perk.Key] or Style.Cyan
-			local follower = children[perk.Key]
-			local branch = Components.strip(NODE_HEIGHT)
-
-			-- Соединитель создаём первым, чтобы он лежал под узлами и не перекрывал их.
-			if follower then
-				local unlocked = (data.Perks[perk.Key] or 0) >= (follower.Required or 1)
-				local link = Style.frame(branch, if unlocked then color else Style.Track, 3)
-				link.AnchorPoint = Vector2.new(0.5, 0.5)
-				link.Position = UDim2.fromScale(0.5, 0.5)
-				link.Size = UDim2.fromOffset(LINK_WIDTH, 6)
+	for _, branch in Catalog.Branches do
+		local color = BRANCH_COLORS[branch.Key] or Style.Cyan
+		local members: { Catalog.Perk } = {}
+		local owned, total = 0, 0
+		for _, perk in Catalog.Perks do
+			if perk.Branch == branch.Key then
+				table.insert(members, perk)
+				owned += math.min(data.Perks[perk.Key] or 0, #perk.Costs)
+				total += #perk.Costs
 			end
-
-			local root = Style.frame(branch)
-			root.Size = if follower then UDim2.new(0.5, -LINK_WIDTH / 2, 1, 0) else UDim2.fromScale(1, 1)
-			node(root, perk, data, color)
-			if follower then
-				local child = Style.frame(branch)
-				child.AnchorPoint = Vector2.new(1, 0)
-				child.Position = UDim2.fromScale(1, 0)
-				child.Size = UDim2.new(0.5, -LINK_WIDTH / 2, 1, 0)
-				node(child, follower, data, color)
-			end
-
-			if perk.Key == "odds" then
-				local level = data.Perks.odds or 0
-				local cost = perk.Costs[level + 1]
-				Components.heading(
-					if cost
-						then "Шансы сейчас → после улучшения"
-						else "Шансы доставки"
-				)
-				Components.odds(level, if cost then level + 1 else nil)
-			end
+		end
+		local header = Components.strip(34)
+		local title = Components.text(header, branch.Name, 21, color, true)
+		Components.place(title, 2, 0, UDim.new(0.6, 0), 30)
+		local progress = Components.text(header, `{owned}/{total}`, 15, Style.Muted, true)
+		progress.TextXAlignment = Enum.TextXAlignment.Right
+		Components.place(progress, 0, 4, UDim.new(1, -4), 24)
+		for _, perk in members do
+			node(perk, data, color, depthOf(perk, index), index)
 		end
 	end
 end

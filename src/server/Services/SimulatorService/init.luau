@@ -66,6 +66,9 @@ local function view(player: Player): Types.View?
 	return {
 		Coins = data.Coins,
 		Earned = data.Earned,
+		Opened = data.Opened,
+		OrderPrice = Economy.orderPrice(data),
+		DailyReward = Economy.dailyReward(data),
 		Inventory = data.Inventory,
 		Collections = data.Collections,
 		Displays = data.Displays,
@@ -199,13 +202,13 @@ local function tickPlayer(player: Player, session: Session, now: number): ()
 	end
 	local data = Data:Get(player)
 	local order = data and data.Orders[1]
-	if not order then
+	if not data or not order then
 		return
 	end
 	if order.Stage == "queued" then
 		Data:Update(player, function()
 			order.Stage = "delivery"
-			order.Deadline = now + Economy.deliveryTime(order)
+			order.Deadline = now + Economy.deliveryTime(order, data)
 		end)
 		sync(player, session)
 	elseif order.Stage == "delivery" and now >= order.Deadline then
@@ -270,6 +273,7 @@ end
 local function openOrder(
 	player: Player,
 	plot: World.Plot,
+	data: Types.PlayerData,
 	order: Types.Order,
 	argument: string?,
 	physical: boolean
@@ -387,7 +391,7 @@ local function openOrder(
 		end
 	end
 	if opened then
-		Economy.open(order)
+		Economy.open(order, data)
 	end
 	return true, opened
 end
@@ -589,10 +593,10 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 				tell(player, "Подойдите к терминалу заказов.")
 			elseif #data.Orders >= 1 + (data.Perks.orders or 0) then
 				tell(player, "Все слоты заказов заняты.")
-			elseif data.Coins < Config.OrderPrice then
+			elseif data.Coins < Economy.orderPrice(data) then
 				tell(player, "Недостаточно монет.")
 			else
-				data.Coins -= Config.OrderPrice
+				data.Coins -= Economy.orderPrice(data)
 				table.insert(data.Orders, Economy.newOrder(data, false))
 				updated = true
 				tell(
@@ -603,7 +607,7 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 				)
 			end
 		elseif action == "open" and order then
-			updated, scatter = openOrder(player, plot, order, argument, physical)
+			updated, scatter = openOrder(player, plot, data, order, argument, physical)
 			if scatter then
 				data.Opened += 1
 			end
@@ -616,8 +620,13 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 			end
 			if perk.Parent and (data.Perks[perk.Parent] or 0) < (perk.Required or 1) then
 				tell(player, "Сначала откройте предыдущий уровень ветки.")
+			elseif data.Opened < perk.Opened[level + 1] then
+				tell(player, `Нужно открыть контейнеров: {perk.Opened[level + 1]}`)
 			elseif data.Coins < cost then
 				tell(player, "Недостаточно монет.")
+			elseif data.Coins - cost < Economy.orderPrice(data) then
+				-- Защита от тупика: после покупки должно хватать на следующий заказ.
+				tell(player, "Оставьте монет на следующий заказ.")
 			else
 				data.Coins -= cost
 				data.Perks[argument] = level + 1
@@ -631,9 +640,10 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 				tell(player, "Награда откроется после 15 минут в игре.")
 			else
 				data.DailyClaim = day
-				Economy.credit(data, Economy.DailyReward)
+				local reward = Economy.dailyReward(data)
+				Economy.credit(data, reward)
 				updated = true
-				tell(player, `Ежедневная награда · +{Economy.DailyReward} монет`)
+				tell(player, `Ежедневная награда · +{reward} монет`)
 			end
 		elseif action == "sell" or action == "collection" or action == "display" or action == "removeDisplay" then
 			updated = inventoryAction(player, plot, data, action, argument, extra)

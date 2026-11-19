@@ -380,22 +380,49 @@ function Components.pips(parent: Instance, total: number, filled: number, color:
 	return holder
 end
 
-function Components.odds(level: number, nextLevel: number?): ()
-	local values = Catalog.Odds[level + 1]
-	local following = if nextLevel then Catalog.Odds[nextLevel + 1] else nil
+-- Крупные числа для узких мест (плашка баланса, кнопки): 12 345, 480 К, 1,9 М, 2,4 Б.
+function Components.short(value: number): string
+	local function trim(number: number): string
+		local text = string.format("%.2f", number)
+		text = string.gsub(text, "0+$", "")
+		text = string.gsub(text, "%.$", "")
+		return (string.gsub(text, "%.", ","))
+	end
+	if value >= 1e9 then
+		return `{trim(value / 1e9)} Б`
+	elseif value >= 1e6 then
+		return `{trim(value / 1e6)} М`
+	elseif value >= 1e5 then
+		return `{math.floor(value / 1e3)} К`
+	end
+	return Components.coin(value)
+end
+
+local function percent(value: number): string
+	return string.format(if value >= 10 then "%.0f%%" else "%.1f%%", value)
+end
+
+-- Таблица шансов типов контейнеров; закрытые уровнем типы затемнены и подписаны.
+function Components.odds(values: { number }, following: { number }?, level: number): ()
 	local summary = Components.card(#values * 34 + 16, Style.Track)
 	for index, chance in values do
 		local kind = Catalog.Kinds[index]
 		local top = 8 + (index - 1) * 34
-		local name = Components.text(summary, Catalog.Containers[kind], 13, Style.Text, true)
-		Components.place(name, 12, top, UDim.new(1, -112), 19)
-		local chanceText = if following then `{chance}% → {following[index]}%` else `{chance}%`
-		local number = Components.text(summary, chanceText, 13, Style.Muted, true)
+		local locked = level < Catalog.TierUnlock[index]
+		local name =
+			Components.text(summary, Catalog.Containers[kind], 13, if locked then Style.Muted else Style.Text, true)
+		Components.place(name, 12, top, UDim.new(1, -132), 19)
+		local chanceText = if locked
+			then `уровень {Catalog.TierUnlock[index]}`
+			elseif following then `{percent(chance)} → {percent(following[index])}`
+			else percent(chance)
+		local number = Components.text(summary, chanceText, 13, if locked then Style.Warning else Style.Muted, true)
 		number.TextXAlignment = Enum.TextXAlignment.Right
 		number.AnchorPoint = Vector2.new(1, 0)
 		number.Position = UDim2.new(1, -12, 0, top)
-		number.Size = UDim2.fromOffset(96, 19)
-		local track = Style.meter(summary, (if following then following[index] else chance) / 100, Preview.color(kind))
+		number.Size = UDim2.fromOffset(116, 19)
+		local share = (if following then following[index] else chance) / 100
+		local track = Style.meter(summary, share, if locked then Style.Edge else Preview.color(kind))
 		Components.place(track, 12, top + 21, UDim.new(1, -24), 6)
 	end
 end

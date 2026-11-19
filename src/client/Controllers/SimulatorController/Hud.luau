@@ -3,6 +3,7 @@ local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
+local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Components = require(script.Parent.Components)
 local Icons = require(script.Parent.Icons)
@@ -123,7 +124,7 @@ function Hud.build(gui: ScreenGui, callbacks: Callbacks): ()
 	signal = Style.frame(status, Style.Amber, 3)
 	Components.place(signal, 10, 10, UDim.new(0, 6), 40)
 	heading = Components.text(status, "Синхронизация сектора…", 16, Style.Text, true)
-	Components.place(heading, 24, 5, UDim.new(1, -84), 26)
+	Components.place(heading, 24, 5, UDim.new(1, -128), 26)
 	heading.TextTruncate = Enum.TextTruncate.AtEnd
 	hint = Components.text(status, "", 13, Style.Muted)
 	Components.place(hint, 24, 31, UDim.new(1, -36), 26)
@@ -131,7 +132,7 @@ function Hud.build(gui: ScreenGui, callbacks: Callbacks): ()
 	queue = Components.text(status, "", 15, Style.Cyan, true)
 	queue.AnchorPoint = Vector2.new(1, 0)
 	queue.Position = UDim2.new(1, -10, 0, 7)
-	queue.Size = UDim2.fromOffset(52, 22)
+	queue.Size = UDim2.fromOffset(104, 22)
 	queue.TextXAlignment = Enum.TextXAlignment.Right
 
 	-- Перки и награда: справа внизу иконками, у большого пальца.
@@ -181,8 +182,8 @@ function Hud.update(data: Types.View, canClaim: boolean): ()
 	heading.Text = if progress then `{title} · {progress}` else title
 	hint.Text = tip
 	signal.BackgroundColor3 = tint
-	queue.Text = `{data.Orders}/{1 + (data.Perks.orders or 0)}`
-	balance.Text = Components.coin(data.Coins)
+	queue.Text = `ур. {Catalog.level(data.Opened)} · {data.Orders}/{1 + (data.Perks.orders or 0)}`
+	balance.Text = Components.short(data.Coins)
 	-- Плашка «подпрыгивает», когда баланс растёт.
 	if lastCoins and data.Coins > lastCoins then
 		popScale.Scale = 1.12

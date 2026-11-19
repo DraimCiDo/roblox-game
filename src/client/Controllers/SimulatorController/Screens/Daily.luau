@@ -35,10 +35,11 @@ function Daily.tick(data: Types.View, now: number): ()
 		then "ПОЛУЧЕНО"
 		elseif canClaim then "ГОТОВО"
 		else Components.clock(remaining)
+	local reward = Components.coin(data.DailyReward)
 	widgets.Caption.Text = if claimed
 		then "Награда сегодня получена"
-		elseif canClaim then "Награда доступна"
-		else "До получения награды"
+		elseif canClaim then `Награда доступна · +{reward} монет`
+		else `До получения награды · +{reward} монет`
 	widgets.Fill.Size = UDim2.fromScale(if claimed then 1 else math.clamp(1 - remaining / Config.DailySeconds, 0, 1), 1)
 	Style.setButton(widgets.Button, canClaim, "reward")
 	Components.prefer(widgets.Button)

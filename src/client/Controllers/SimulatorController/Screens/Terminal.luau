@@ -1,7 +1,7 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Config = require(ReplicatedStorage.Shared.Config.GameConfig)
+local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Preview = require(script.Parent.Parent.ContainerPreview)
 local Components = require(script.Parent.Parent.Components)
@@ -12,7 +12,7 @@ local Terminal = {}
 function Terminal.render(data: Types.View): ()
 	local maximum = 1 + (data.Perks.orders or 0)
 	local available = data.Orders < maximum
-	local canPay = data.Coins >= Config.OrderPrice
+	local canPay = data.Coins >= data.OrderPrice
 	local name, hint, tint = Components.status(data)
 
 	local hero = Components.card(152)
@@ -42,14 +42,37 @@ function Terminal.render(data: Types.View): ()
 
 	local caption = if not available
 		then "Очередь заполнена"
-		elseif not canPay then `Не хватает {Components.coin(Config.OrderPrice - data.Coins)} монет`
-		else `Заказать  ·  {Components.coin(Config.OrderPrice)} монет`
+		elseif not canPay then `Не хватает {Components.coin(data.OrderPrice - data.Coins)} монет`
+		else `Заказать  ·  {Components.coin(data.OrderPrice)} монет`
 	Components.command(caption, function()
 		Components.send("buy")
 	end, available and canPay, "primary")
 
+	-- Уровень лаборатории: растёт с числом открытых контейнеров, повышает цену заказа и открывает редкие типы.
+	local level, floor, ceiling = Catalog.levelRange(data.Opened)
+	local lab = Components.card(96)
+	local labTitle = Components.text(lab, `Уровень лаборатории {level}`, 20, Style.Text, true)
+	Components.place(labTitle, 14, 8, UDim.new(1, -28), 26)
+	local detail
+	if ceiling then
+		detail = `Открыто {data.Opened} · до уровня {level + 1} ещё {ceiling - data.Opened}`
+	else
+		detail = `Открыто {data.Opened} · максимальный уровень`
+	end
+	for tier, need in Catalog.TierUnlock do
+		if need > level then
+			detail ..= `\nНа уровне {need} появится: {Catalog.Containers[Catalog.Kinds[tier]]}`
+			break
+		end
+	end
+	local info = Components.text(lab, detail, 13, Style.Muted)
+	Components.place(info, 14, 34, UDim.new(1, -28), 36)
+	local ratio = if ceiling then (data.Opened - floor) / (ceiling - floor) else 1
+	local bar = Style.meter(lab, ratio, Style.Violet)
+	Components.place(bar, 14, 76, UDim.new(1, -28), 10)
+
 	Components.heading("Шансы доставки")
-	Components.odds(data.Perks.odds or 0)
+	Components.odds(Catalog.odds(data.Opened, data.Perks.odds or 0), nil, level)
 end
 
 -- Обновляет обратный отсчёт доставки без перерисовки экрана.

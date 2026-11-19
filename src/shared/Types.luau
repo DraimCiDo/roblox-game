@@ -31,6 +31,9 @@ export type PlayerData = {
 export type View = {
 	Coins: number,
 	Earned: number,
+	Opened: number,
+	OrderPrice: number,
+	DailyReward: number,
 	Inventory: { Item },
 	Collections: { [string]: Item },
 	Displays: { [string]: Item },
