@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
+local Audio = require(script.Parent.Audio)
 local Types = require(ReplicatedStorage.Shared.Types)
 
 type Use = (Player, string, string?) -> ()
@@ -403,11 +404,13 @@ local function boxStep(ctx: Ctx, step: number, instant: boolean): ()
 				strip.Transparency = math.clamp((alpha - 0.55) / 0.45, 0, 1)
 			end)
 			sparks(ctx.Model, top, 10, TAPE, 14)
+			Audio.at(ctx.Model, "tape")
 		end
 	elseif step == 2 or step == 3 then
 		local flap = layout.Named[if step == 2 then "FlapLeft" else "FlapRight"]
 		swingAll(ctx, { flap }, if instant then 0 else 0.38, Enum.EasingStyle.Back)
 		if not instant then
+			Audio.at(ctx.Model, "flap")
 			sparks(
 				ctx.Model,
 				ctx.Base * CFrame.new(if step == 2 then -BOX_WIDTH / 2 else BOX_WIDTH / 2, BOX_FLOOR + BOX_HEIGHT, 0),
@@ -421,6 +424,12 @@ local function boxStep(ctx: Ctx, step: number, instant: boolean): ()
 		swingAll(ctx, layout.Groups.Walls, if instant then 0 else 0.55, Enum.EasingStyle.Quad)
 		if not instant then
 			local center = ctx.Base * CFrame.new(0, 1.6, 0)
+			Audio.at(ctx.Model, "confetti")
+			task.delay(0.45, function()
+				if ctx.Model.Parent then
+					Audio.at(ctx.Model, "thud")
+				end
+			end)
 			sparks(ctx.Model, center, 26, TAPE, 26, 14)
 			sparks(ctx.Model, center, 20, PAPER, 22, 14)
 			sparks(ctx.Model, center, 20, ICE, 20, 14)
@@ -550,6 +559,7 @@ local function crateBreak(ctx: Ctx, band: Part, index: number, broken: number, i
 	end
 	if not instant then
 		local outward = if band.Position.Z > ctx.Base.Position.Z then 1 else -1
+		Audio.at(band, "snap")
 		launch(ctx.Model, band, Vector3.new(rand(-6, 6), 18, outward * 16))
 		launch(ctx.Model, lock, Vector3.new(rand(-6, 6), 14, outward * 12))
 		sparks(ctx.Model, band.CFrame, 14, WOOD[1], 18)
@@ -577,6 +587,7 @@ local function crateCollapse(ctx: Ctx, instant: boolean): ()
 		for _, piece in layout.Groups.Lid do
 			launch(ctx.Model, piece, Vector3.new(rand(-9, 9), rand(16, 26), rand(-9, 9)))
 		end
+		Audio.at(ctx.Model, "woodCrash")
 		sparks(ctx.Model, ctx.Base * CFrame.new(0, CRATE_HEIGHT, 0), 30, WOOD[2], 28)
 		sparks(ctx.Model, ctx.Base * CFrame.new(0, 1.5, 0), 16, Color3.fromRGB(210, 190, 160), 16, 6)
 	end
@@ -736,6 +747,9 @@ local function safeOpen(ctx: Ctx, instant: boolean): ()
 	for _, piece in layout.Groups.Door do
 		piece.CanCollide = false
 	end
+	if not instant then
+		Audio.at(ctx.Model, "clunk")
+	end
 	local cavity = layout.Named.Cavity
 	local glow = cavity:FindFirstChildWhichIsA("PointLight")
 	local function swing()
@@ -746,6 +760,7 @@ local function safeOpen(ctx: Ctx, instant: boolean): ()
 			else
 				TweenService:Create(glow, TweenInfo.new(0.6), { Brightness = 2.5 }):Play()
 				sparks(ctx.Model, cavity.CFrame * CFrame.new(0, 0, -0.4), 22, BRASS, 18, 10)
+				Audio.at(ctx.Model, "scrape")
 			end
 		end
 	end
@@ -871,6 +886,7 @@ local function cargoUnlock(ctx: Ctx, lock: Part, side: number, instant: boolean)
 	if not instant then
 		launch(ctx.Model, lock, Vector3.new(side * 6, 8, -14))
 		sparks(ctx.Model, lock.CFrame, 14, AMBER, 16)
+		Audio.at(lock, "latch")
 	end
 	lock.Transparency = 1
 	lock.CanCollide = false
@@ -888,6 +904,9 @@ local function cargoOpen(ctx: Ctx, handle: Part, instant: boolean): ()
 		end, function()
 			handle.Transparency = 1
 		end)
+	end
+	if not instant then
+		Audio.at(ctx.Model, "clunk")
 	end
 	local doors: { Part } = {}
 	for _, side in { -1, 1 } do
@@ -907,6 +926,7 @@ local function cargoOpen(ctx: Ctx, handle: Part, instant: boolean): ()
 		end
 		if not instant then
 			sparks(ctx.Model, ctx.Base * CFrame.new(0, 3.4, CARGO_FRONT - 0.5), 24, ICE, 20, 8)
+			Audio.at(ctx.Model, "scrape")
 		end
 	end
 	if instant then
@@ -1025,6 +1045,7 @@ local function secretCharge(ctx: Ctx, step: number, instant: boolean): ()
 		end
 		if not instant then
 			sparks(ctx.Model, orb.CFrame, 8 + 4 * step, VIOLET_HOT, 10 + 3 * step, -4)
+			Audio.at(orb, "charge", 0.8 + 0.12 * step)
 		end
 		setPrompt(layout.Named.Body, SECRET_PROMPTS[step + 1] or SECRET_PROMPTS[#SECRET_PROMPTS])
 		return
@@ -1044,6 +1065,7 @@ local function secretCharge(ctx: Ctx, step: number, instant: boolean): ()
 		flash(glow, 8, 0)
 	end
 	local center = orb.CFrame
+	Audio.at(orb, "boom")
 	sparks(ctx.Model, center, 40, VIOLET_HOT, 36, 10)
 	sparks(ctx.Model, center, 30, VIOLET, 26, 10)
 	launch(ctx.Model, layout.Named.Lid, Vector3.new(0, 30, 0))

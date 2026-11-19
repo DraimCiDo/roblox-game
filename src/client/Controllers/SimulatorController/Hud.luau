@@ -8,6 +8,7 @@ local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Components = require(script.Parent.Components)
 local Icons = require(script.Parent.Icons)
+local Sfx = require(script.Parent.Sfx)
 local Style = require(script.Parent.Style)
 
 export type Callbacks = { Perks: () -> (), Reward: () -> () }
@@ -200,6 +201,7 @@ function Hud.update(data: Types.View, canClaim: boolean): ()
 	balance.Text = Components.short(data.Coins)
 	-- Плашка «подпрыгивает», когда баланс растёт.
 	if lastCoins and data.Coins > lastCoins then
+		Sfx.play("coin")
 		popScale.Scale = 1.12
 		Style.tween(popScale, { Scale = 1 }, 0.25, Enum.EasingStyle.Back)
 	end
@@ -215,6 +217,7 @@ function Hud.update(data: Types.View, canClaim: boolean): ()
 		levelCount.Text = "МАКС."
 	end
 	if lastLevel and level > lastLevel then
+		Sfx.play("levelup")
 		Hud.notice(`Новый уровень лаборатории: {level}!`)
 	end
 	lastLevel = level
@@ -232,6 +235,7 @@ function Hud.notice(message: string): ()
 			break
 		end
 	end
+	Sfx.play(if tone == Style.Warning then "error" else "notice")
 	local pending = {}
 	for _, child in toasts:GetChildren() do
 		if child:IsA("Frame") then

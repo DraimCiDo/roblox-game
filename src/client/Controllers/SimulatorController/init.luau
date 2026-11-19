@@ -22,6 +22,7 @@ local Loot = require(script.Screens.Loot)
 local Perks = require(script.Screens.Perks)
 local Showcase = require(script.Screens.Showcase)
 local Terminal = require(script.Screens.Terminal)
+local Sfx = require(script.Sfx)
 local Style = require(script.Style)
 
 local TITLES: { [string]: string } = {
@@ -265,10 +266,14 @@ selectMenu = function(key: string?): ()
 	bindStop(key == "dial")
 	refresh(previous == key)
 	if key and not previous then
+		Sfx.play("menuOpen")
 		panelScale.Scale = 0.9
 		Style.tween(panelScale, { Scale = 1 }, 0.2, Enum.EasingStyle.Back)
 		backdrop.BackgroundTransparency = 1
 		Style.tween(backdrop, { BackgroundTransparency = 0.35 }, 0.2)
+	end
+	if not key and previous then
+		Sfx.play("menuClose")
 	end
 	if not key and previous and gamepadActive() then
 		GuiService.SelectedObject = nil
@@ -425,6 +430,7 @@ end
 
 function SimulatorController:Start(): ()
 	action = Remotes.event(Remotes.Events.Action)
+	Sfx.preload()
 	build()
 	Remotes.event(Remotes.Events.Interface).OnClientEvent:Connect(function(mode, value, ...)
 		if mode == "menu" then
@@ -444,9 +450,13 @@ function SimulatorController:Start(): ()
 				Total = total or 1,
 			}
 			if (stage or 1) > 1 then
+				Sfx.play("dialOk")
 				Hud.notice(`Штифт {stage - 1} на месте!`)
 			end
 			selectMenu("dial")
+		elseif mode == "sfx" then
+			local target, pitch = ...
+			Sfx.playAt(value, target, pitch)
 		elseif mode == "guide" then
 			if value then
 				local target, pulse = ...
@@ -458,6 +468,7 @@ function SimulatorController:Start(): ()
 			stopLocked = false
 			Dial.flash(value == true)
 			if value == true then
+				Sfx.play("claim")
 				Hud.notice("Сейф вскрыт!")
 			end
 			task.delay(DIAL_CLOSE_DELAY, function()

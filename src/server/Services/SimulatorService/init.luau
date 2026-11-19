@@ -8,6 +8,7 @@ local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Data = require(script.Parent.PlayerDataService)
+local Audio = require(script.Audio)
 local Economy = require(script.Economy)
 local World = require(script.World)
 local Tutorial = require(script.Tutorial)
@@ -284,12 +285,14 @@ local function tickPlayer(player: Player, session: Session, now: number): ()
 			order.Stage = "delivery"
 			order.Deadline = now + Economy.deliveryTime(order, data)
 		end)
+		Audio.at(session.Plot.Clear, "whoosh")
 		sync(player, session)
 	elseif order.Stage == "delivery" and now >= order.Deadline then
 		Data:Update(player, function()
 			order.Stage = "sealed"
 			order.Deadline = 0
 		end)
+		Audio.at(session.Plot.Clear, "thud")
 		sync(player, session)
 	elseif order.Stage == "sealed" and order.DialStarted > 0 then
 		local elapsed = now - order.DialStarted
@@ -515,6 +518,7 @@ local function inventoryAction(
 		local total = Economy.payout(data, item)
 		Economy.credit(data, total)
 		tell(player, `Продано · +{total} монет`)
+		Audio.to(player, "sell")
 	elseif action == "collection" then
 		if not Economy.collectible(item.Kind) then
 			return false
@@ -531,6 +535,7 @@ local function inventoryAction(
 				then "Экземпляр в коллекции заменён."
 				else "Экземпляр внесён в коллекцию."
 		)
+		Audio.to(player, "deposit")
 	elseif action == "display" and slotKey then
 		local stand = standPart(plot, slotKey)
 		local index = member(slotKey, #Catalog.DisplaySizes)
@@ -546,6 +551,7 @@ local function inventoryAction(
 		end
 		data.Displays[slotKey] = item
 		tell(player, "Находка выставлена.")
+		Audio.to(player, "place")
 	else
 		return false
 	end
@@ -589,6 +595,7 @@ local function lootAction(
 					table.remove(order.Loot, index)
 					finishLoot(order)
 					tell(player, `Утилизатор · {Catalog.Items[loot.Item.Kind].Name} +{value}`)
+					Audio.to(player, "coin")
 					return true
 				end
 				if #data.Inventory >= Economy.capacity(data) then
@@ -599,6 +606,7 @@ local function lootAction(
 				table.remove(order.Loot, index)
 				finishLoot(order)
 				tell(player, `На складе · {Catalog.Items[loot.Item.Kind].Name}`)
+				Audio.to(player, "pickup")
 				return true
 			end
 		end
@@ -616,6 +624,7 @@ local function lootAction(
 			table.clear(order.Loot)
 			Economy.credit(data, total)
 			tell(player, `Быстрая продажа · +{total} монет`)
+			Audio.to(player, "sell")
 		else
 			local limit = Economy.recycleLimit(data)
 			local stored, sold, earned = 0, 0, 0
@@ -646,6 +655,7 @@ local function lootAction(
 				tell(player, `Склад заполнен · осталось {#order.Loot}{note}`)
 			else
 				tell(player, `Собрано находок · {stored}{note}`)
+				Audio.to(player, "pickup")
 			end
 		end
 		finishLoot(order)
@@ -702,6 +712,7 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 					then "Заказ принят."
 					else `Заказ принят · место в очереди {#data.Orders}`
 				tell(player, if refund > 0 then `{text} Кэшбэк +{refund}` else text)
+				Audio.to(player, "order")
 			end
 		elseif action == "open" and order then
 			updated, scatter = openOrder(player, plot, data, order, argument, physical)
@@ -726,6 +737,7 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 			else
 				data.Coins -= cost
 				data.Perks[argument] = level + 1
+				Audio.to(player, "perk")
 				updated = true
 			end
 		elseif action == "skipTutorial" then
@@ -745,6 +757,7 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 				Economy.credit(data, reward)
 				updated = true
 				tell(player, `Ежедневная награда · +{reward} монет`)
+				Audio.to(player, "claim")
 			end
 		elseif action == "sell" or action == "collection" or action == "display" or action == "removeDisplay" then
 			updated = inventoryAction(player, plot, data, action, argument, extra)

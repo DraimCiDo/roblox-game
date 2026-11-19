@@ -1,6 +1,8 @@
 --!strict
 local TweenService = game:GetService("TweenService")
 
+local Sfx = require(script.Parent.Sfx)
+
 export type ButtonTone = "primary" | "neutral" | "reward" | "danger"
 
 local Style = {}
@@ -150,6 +152,7 @@ function Style.button(
 	control.MouseEnter:Connect(function()
 		if control.Interactable then
 			Style.tween(scale, { Scale = 1.03 }, 0.1)
+			Sfx.play("hover")
 		end
 	end)
 	control.MouseLeave:Connect(function()
@@ -165,6 +168,7 @@ function Style.button(
 	end)
 	control.Activated:Connect(function()
 		if control.Interactable then
+			Sfx.play("click")
 			callback()
 		end
 	end)

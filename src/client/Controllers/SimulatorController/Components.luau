@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Preview = require(script.Parent.ContainerPreview)
+local Sfx = require(script.Parent.Sfx)
 local ItemPreview = require(script.Parent.ItemPreview)
 local Style = require(script.Parent.Style)
 
@@ -327,7 +328,10 @@ function Components.tile(parent: Instance, kind: string, item: Types.Item?, opti
 	local callback = options.Callback
 	tile.Selectable = callback ~= nil
 	if callback then
-		tile.Activated:Connect(callback)
+		tile.Activated:Connect(function()
+			Sfx.play("click")
+			callback()
+		end)
 		Components.prefer(tile)
 	end
 	tile.Parent = parent

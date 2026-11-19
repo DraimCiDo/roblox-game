@@ -4,6 +4,7 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Components = require(script.Parent.Components)
+local Sfx = require(script.Parent.Sfx)
 local Style = require(script.Parent.Style)
 
 -- Подсказка обучения: баннер сверху и подсветка цели в мире (контур, стрелка над целью, луч от персонажа).
@@ -163,6 +164,9 @@ function Guide.build(gui: ScreenGui, onSkip: () -> (), onPulse: (string?) -> ())
 end
 
 function Guide.show(text: string, target: Instance?, pulseKey: string?): ()
+	if banner.Visible and body.Text ~= text or not banner.Visible then
+		Sfx.play("notice")
+	end
 	body.Text = text
 	banner.Visible = true
 	bannerScale.Scale = 0.92

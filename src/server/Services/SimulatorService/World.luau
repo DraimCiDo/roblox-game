@@ -8,6 +8,7 @@ local Config = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Containers = require(script.Parent.Containers)
 local ItemModels = require(ReplicatedStorage.Shared.ItemModels)
+local Audio = require(script.Parent.Audio)
 local Sector = require(script.Parent.Sector)
 local SurfaceFinish = require(script.Parent.SurfaceFinish)
 local ItemAssets = require(script.Parent.ItemAssets)
@@ -253,6 +254,7 @@ local function moveGate(plot: Plot, name: string, open: boolean, duration: numbe
 	signal.Color = if open then (if name == "upper" then ICE else AMBER) else STEEL
 	plot.GateLights[name].Enabled = open
 	local pieces: { Part } = if name == "upper" then plot.Upper else plot.Lower
+	Audio.at(pieces[1], "hiss")
 	for index, piece in pieces do
 		local side = if index == 1 then -1 else 1
 		if name == "lower" then

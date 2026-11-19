@@ -1,5 +1,6 @@
 --!strict
 local Components = require(script.Parent.Parent.Components)
+local Sfx = require(script.Parent.Parent.Sfx)
 local Style = require(script.Parent.Parent.Style)
 
 export type Round = {
@@ -17,6 +18,7 @@ local FACE = 240
 local TICKS = 36
 
 local Dial = {}
+local wasInside = false
 Dial.TimeLimit = TIME_LIMIT
 
 -- Угол по часовой стрелке в UI; физическая ручка сейфа вращается в ту же сторону, что и указатель.
@@ -129,6 +131,11 @@ function Dial.update(round: Round, elapsed: number): ()
 	local phase = (elapsed % round.Period) / round.Period
 	widgets.Needle.Rotation = angle(phase)
 	local inside = math.abs(phase - round.Target) <= round.Tolerance
+	-- Короткий щелчок, когда указатель входит в зелёную зону.
+	if inside and not wasInside then
+		Sfx.play("tick")
+	end
+	wasInside = inside
 	widgets.Glow.Color = if inside then Style.Signal else Style.Edge
 	widgets.Glow.Thickness = if inside then 7 else 5
 	widgets.Time.Text = `{math.ceil(TIME_LIMIT - elapsed)} с`

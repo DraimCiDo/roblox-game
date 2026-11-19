@@ -8,6 +8,7 @@ local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Components = require(script.Parent.Parent.Components)
 local Icons = require(script.Parent.Parent.Icons)
+local Sfx = require(script.Parent.Parent.Sfx)
 local Style = require(script.Parent.Parent.Style)
 
 local BOARD = Color3.fromRGB(10, 12, 30)
@@ -587,6 +588,7 @@ function Perks.render(data: Types.View, _wide: boolean): ()
 		local widget = drawNode(chart, states[perk.Key], map.Points[perk.Key], diameter)
 		widgets[perk.Key] = widget
 		widget.Button.Activated:Connect(function()
+			Sfx.play("click")
 			selectPerk(perk.Key)
 		end)
 	end
