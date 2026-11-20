@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
 local ItemModels = require(ReplicatedStorage.Shared.ItemModels)
+local Theme = require(ReplicatedStorage.Shared.Config.Theme)
 local Types = require(ReplicatedStorage.Shared.Types)
 
 type MakeMini = (Types.Item, boolean?) -> Model
@@ -143,7 +144,7 @@ local function sign(
 	label.TextColor3 = color
 	label.TextScaled = true
 	label.TextWrapped = true
-	label.Font = Enum.Font.GothamBold
+	label.FontFace = Theme.Fonts.Display
 	label.Parent = gui
 	local padding = Instance.new("UIPadding")
 	padding.PaddingLeft = UDim.new(0.065, 0)

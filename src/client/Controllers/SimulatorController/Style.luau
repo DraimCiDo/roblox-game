@@ -1,8 +1,10 @@
 --!strict
 -- Дизайн-система интерфейса «Лаборатория CORPA»: графит и сталь, неоновые циан и янтарь,
 -- тонкие техничные рамки, малые скругления и угловые маркеры, как на экранах оборудования.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
+local Theme = require(ReplicatedStorage.Shared.Config.Theme)
 local Sfx = require(script.Parent.Sfx)
 
 export type ButtonTone = "primary" | "neutral" | "reward" | "danger"
@@ -27,11 +29,11 @@ Style.Signal = Color3.fromRGB(74, 232, 152)
 Style.Warning = Color3.fromRGB(255, 86, 106)
 Style.Violet = Color3.fromRGB(170, 132, 255)
 
--- Шрифты с кириллицей: Jura — техничные заголовки, Roboto Condensed — текст, Roboto Mono — цифры-показания.
-Style.Display = Font.new("rbxasset://fonts/families/Jura.json", Enum.FontWeight.Bold)
-Style.Body = Font.new("rbxasset://fonts/families/RobotoCondensed.json", Enum.FontWeight.Medium)
-Style.Bold = Font.new("rbxasset://fonts/families/RobotoCondensed.json", Enum.FontWeight.Bold)
-Style.Mono = Font.new("rbxasset://fonts/families/RobotoMono.json", Enum.FontWeight.Bold)
+-- Шрифты общие с надписями в мире (Shared/Config/Theme).
+Style.Display = Theme.Fonts.Display
+Style.Body = Theme.Fonts.Body
+Style.Bold = Theme.Fonts.Bold
+Style.Mono = Theme.Fonts.Mono
 
 -- Скругления в этом стиле малые: крупные радиусы старой вёрстки сводятся к 2–6 пикселям.
 local MAX_RADIUS = 6

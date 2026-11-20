@@ -2,7 +2,10 @@
 -- Декор центрального зала и проверка свободного места на полу.
 -- Сцена лежит в Studio, поэтому планировку зала код не знает: каждый предмет ставится только туда,
 -- где под ним ровный пол, над ним есть свободная высота и нет пересечений с другими деталями.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+
+local Theme = require(ReplicatedStorage.Shared.Config.Theme)
 
 local Hall = {}
 
@@ -269,7 +272,7 @@ function Hall.Gate(floorY: number): ()
 	caption.BackgroundTransparency = 1
 	caption.Text = "ЗАКРЫТО · СКОРО ОТКРОЕТСЯ"
 	caption.TextColor3 = AMBER
-	caption.Font = Enum.Font.GothamBold
+	caption.FontFace = Theme.Fonts.Display
 	caption.TextScaled = true
 	caption.Parent = surface
 	-- Лампа замка тихо мигает: ворота «живые».

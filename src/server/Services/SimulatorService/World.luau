@@ -14,13 +14,14 @@ local Audio = require(script.Parent.Audio)
 local Sector = require(script.Parent.Sector)
 local SurfaceFinish = require(script.Parent.SurfaceFinish)
 local ItemAssets = require(script.Parent.ItemAssets)
+local Theme = require(ReplicatedStorage.Shared.Config.Theme)
 
 local STEEL = Color3.fromRGB(45, 56, 68)
-local ICE = Color3.fromRGB(91, 232, 222)
-local AMBER = Color3.fromRGB(255, 181, 86)
-local INK = Color3.fromRGB(11, 20, 29)
-local PAPER = Color3.fromRGB(232, 241, 243)
-local MUTED = Color3.fromRGB(155, 177, 184)
+local ICE = Theme.Colors.Cyan
+local AMBER = Theme.Colors.Amber
+local INK = Theme.Colors.Ink
+local PAPER = Theme.Colors.Text
+local MUTED = Theme.Colors.Muted
 local GATE_MOVE_TIME = 0.36
 local DISPOSAL_TRAVEL_TIME = 1.05
 local PIPE_TRAVEL_FRACTION = 0.55
@@ -109,7 +110,7 @@ local function boardLabel(
 	text.TextSize = size
 	text.TextTruncate = Enum.TextTruncate.AtEnd
 	text.TextXAlignment = Enum.TextXAlignment.Left
-	text.Font = if bold then Enum.Font.GothamBold else Enum.Font.Gotham
+	text.FontFace = if bold then Theme.Fonts.Bold else Theme.Fonts.Body
 	text.Parent = parent
 	return text
 end
@@ -213,7 +214,7 @@ local function surfaceLabel(parent: BasePart, text: string, distance: number, fa
 	caption.Text = text
 	caption.TextScaled = true
 	caption.TextWrapped = true
-	caption.Font = Enum.Font.GothamBold
+	caption.FontFace = Theme.Fonts.Display
 	caption.Parent = surface
 	local margin = Instance.new("UIPadding")
 	margin.PaddingLeft = UDim.new(0.045, 0)
