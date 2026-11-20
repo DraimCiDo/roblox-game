@@ -45,6 +45,7 @@ local toasts: Frame
 local toastSerial = 0
 local lastCoins: number?
 local lastLevel: number?
+local cursorHint: TextLabel
 
 -- Отступы справа снизу зависят от платформы: на телефоне выше кнопки прыжка, на консоли — за безопасной зоной.
 local function sideOffset(): Vector2
@@ -86,7 +87,25 @@ local function label(parent: Instance, text: string, size: number, color: Color3
 	return result
 end
 
--- Круглая кнопка с иконкой и подписью под ней.
+-- Клавиша-подсказка в углу кнопки (только при клавиатуре).
+local function keycap(parent: GuiObject, key: string): ()
+	if not UserInputService.KeyboardEnabled then
+		return
+	end
+	local cap = Style.frame(parent, Style.Track, 4)
+	cap.Name = "Клавиша"
+	cap.Position = UDim2.fromOffset(4, 4)
+	cap.Size = UDim2.fromOffset(18, 18)
+	cap.ZIndex = parent.ZIndex + 2
+	Style.outline(cap, Style.Edge, 1)
+	local text = Components.text(cap, key, 12, Style.Cyan, true)
+	text.Size = UDim2.fromScale(1, 1)
+	text.TextXAlignment = Enum.TextXAlignment.Center
+	text.TextWrapped = false
+	text.ZIndex = cap.ZIndex + 1
+end
+
+-- Квадратная кнопка с иконкой и подписью под ней.
 local function iconButton(
 	parent: Instance,
 	icon: Icons.IconName,
@@ -108,10 +127,8 @@ local function iconButton(
 	text.Position = UDim2.new(0.5, 0, 1, -5)
 	text.Size = UDim2.new(1, -8, 0, 18)
 	text.TextXAlignment = Enum.TextXAlignment.Center
-	if hotkey and UserInputService.KeyboardEnabled then
-		local key = label(control, hotkey, 12, Style.Muted)
-		key.Position = UDim2.fromOffset(8, 4)
-		key.Size = UDim2.fromOffset(16, 14)
+	if hotkey then
+		keycap(control, hotkey)
 	end
 	return control
 end
@@ -159,10 +176,13 @@ function Hud.build(gui: ScreenGui, callbacks: Callbacks): ()
 	card.AnchorPoint = Vector2.new(0, 0.5)
 	card.Position = UDim2.new(0, 12, 0.5, 0)
 	card.Size = UDim2.fromOffset(176, 96)
-	levelLabel = label(card, "УР. 1", 26, Style.Cyan)
-	Components.place(levelLabel, 12, 4, UDim.new(1, -24), 32)
-	local track, fill = Style.meter(card, 0, Style.Violet)
-	Components.place(track, 12, 40, UDim.new(1, -24), 16)
+	Style.accent(card, Style.Cyan)
+	local caption = label(card, "ЛАБОРАТОРИЯ", 11, Style.Muted)
+	Components.place(caption, 14, 6, UDim.new(1, -24), 14)
+	levelLabel = label(card, "УР. 1", 24, Style.Cyan)
+	Components.place(levelLabel, 14, 18, UDim.new(1, -24), 26)
+	local track, fill = Style.meter(card, 0, Style.Cyan)
+	Components.place(track, 14, 46, UDim.new(1, -26), 14)
 	levelFill = fill
 	levelCount = label(track, "", 12, Style.Text)
 	levelCount.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -170,8 +190,8 @@ function Hud.build(gui: ScreenGui, callbacks: Callbacks): ()
 	levelCount.Size = UDim2.fromScale(1, 1)
 	levelCount.TextXAlignment = Enum.TextXAlignment.Center
 	levelCount.ZIndex = 2
-	queueLabel = label(card, "", 15, Style.Text)
-	Components.place(queueLabel, 12, 62, UDim.new(1, -24), 24)
+	queueLabel = label(card, "", 14, Style.Text)
+	Components.place(queueLabel, 14, 66, UDim.new(1, -26), 22)
 
 	-- Настройки: шестерёнка слева сверху, под значками Roblox.
 	local settings = Style.button(gui, "", callbacks.Settings, true, "neutral")
@@ -185,6 +205,21 @@ function Hud.build(gui: ScreenGui, callbacks: Callbacks): ()
 	gearHolder.Position = UDim2.fromScale(0.5, 0.5)
 	gearHolder.Size = UDim2.fromOffset(34, 34)
 	Icons.draw(gearHolder, "gear", Style.Amber, Style.Text)
+	keycap(settings, "O")
+
+	-- Подсказка в режиме первого лица: курсор заперт в центре, кнопки HUD доступны с зажатым Alt.
+	cursorHint = label(
+		gui,
+		"Alt — курсор  ·  P перки  ·  G награда  ·  O настройки",
+		13,
+		Style.Muted
+	)
+	cursorHint.Name = "Подсказка курсора"
+	cursorHint.AnchorPoint = Vector2.new(0.5, 1)
+	cursorHint.Position = UDim2.new(0.5, 0, 1, -8)
+	cursorHint.Size = UDim2.fromOffset(420, 18)
+	cursorHint.TextXAlignment = Enum.TextXAlignment.Center
+	cursorHint.Visible = false
 
 	-- Перки и награда: справа внизу крупными кнопками, у большого пальца.
 	local offset = sideOffset()
@@ -345,6 +380,11 @@ function Hud.pulse(key: string?): ()
 		Transparency = 0.85,
 	}):Play()
 	pulseRing = ring
+end
+
+-- Показывает подсказку управления, пока камера в режиме первого лица (только на клавиатуре).
+function Hud.setFirstPerson(active: boolean): ()
+	cursorHint.Visible = active and UserInputService.KeyboardEnabled
 end
 
 function Hud.setReward(canClaim: boolean): ()

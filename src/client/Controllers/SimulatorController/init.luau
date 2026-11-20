@@ -88,6 +88,7 @@ local panelScale: UIScale
 local panelBounds: UISizeConstraint
 local perksWide = false
 local backdrop: TextButton
+local cursorFree: TextButton
 local close: TextButton
 local selectMenu: (string?) -> ()
 
@@ -141,6 +142,17 @@ end
 local function widePerks(): boolean
 	local camera = Workspace.CurrentCamera
 	return camera ~= nil and camera.ViewportSize.X >= 900
+end
+
+-- Камера почти в голове персонажа — режим первого лица (приближение колесом или LockFirstPerson).
+local function firstPerson(): boolean
+	local camera = Workspace.CurrentCamera
+	local character = Players.LocalPlayer.Character
+	local head = character and character:FindFirstChild("Head") :: BasePart?
+	if not camera or not head then
+		return false
+	end
+	return (camera.CFrame.Position - head.Position).Magnitude < 1.5
 end
 
 local function updateClocks(): ()
@@ -256,6 +268,29 @@ local function refresh(preserveScroll: boolean?): ()
 		end
 		GuiService.SelectedObject = nextFocus
 	end
+	-- Окно по высоте содержимого: короткие экраны (награда, сейф) не оставляют пустоты под собой.
+	-- Карта перков всегда занимает всё доступное место.
+	if key ~= "perks" then
+		task.defer(function()
+			if menu ~= key then
+				return
+			end
+			local dock = panel:FindFirstChild("Нижняя панель") :: Frame
+			local docked = dock.Visible and dock.AnchorPoint.Y == 1
+			-- Высота самого списка (AbsoluteCanvasSize не бывает меньше видимой области прокрутки).
+			local list = content:FindFirstChildOfClass("UIListLayout")
+			-- Замер может попасть на анимацию открытия (UIScale < 1): переводим в размеры без масштаба.
+			local scale = math.max(panelScale.Scale, 0.5)
+			local used = (if list then list.AbsoluteContentSize.Y else content.AbsoluteCanvasSize.Y) / scale + 16
+			local dockHeight = dock.AbsoluteSize.Y / scale
+			local needed = used + 116 + (if docked then dockHeight + 10 else 0)
+			if dock.Visible and not docked then
+				-- Боковая панель (телефон) не должна вылезать за низ окна.
+				needed = math.max(needed, dockHeight + 104)
+			end
+			panelBounds.MaxSize = Vector2.new(panelBounds.MaxSize.X, math.clamp(needed, 220, 660))
+		end)
+	end
 end
 
 selectMenu = function(key: string?): ()
@@ -339,6 +374,17 @@ local function build(): ()
 	backdrop.Modal = true
 	backdrop.ZIndex = 2
 	backdrop.Parent = gui
+
+	-- Невидимая модальная кнопка: пока зажат Alt, курсор в первом лице свободен и кнопки HUD нажимаются.
+	cursorFree = Instance.new("TextButton")
+	cursorFree.Name = "Свободный курсор"
+	cursorFree.BackgroundTransparency = 1
+	cursorFree.Text = ""
+	cursorFree.Size = UDim2.fromOffset(1, 1)
+	cursorFree.Selectable = false
+	cursorFree.Modal = true
+	cursorFree.Visible = false
+	cursorFree.Parent = gui
 	backdrop.Activated:Connect(function()
 		selectMenu(nil)
 	end)
@@ -363,12 +409,14 @@ local function build(): ()
 	panelBounds.Parent = panel
 	panelScale = Instance.new("UIScale")
 	panelScale.Parent = panel
+	Style.brackets(panel, Style.Cyan, 16, 2)
 
 	local banner = Style.frame(panel, Style.Card, 16)
 	banner.Position = UDim2.fromOffset(8, 8)
 	banner.Size = UDim2.new(1, -16, 0, 84)
 	Style.outline(banner, Style.Edge, 2)
 	Style.soft(banner, 0.1)
+	Style.accent(banner, Style.Cyan)
 	badge = Style.frame(banner, Style.Track, 14)
 	Components.place(badge, 12, 12, UDim.new(0, 60), 60)
 	badgeStroke = Style.outline(badge, Style.Signal, 3)
@@ -516,6 +564,10 @@ function SimulatorController:Start(): ()
 		end
 	end)
 	UserInputService.InputBegan:Connect(function(input, consumed)
+		if input.KeyCode == Enum.KeyCode.LeftAlt or input.KeyCode == Enum.KeyCode.RightAlt then
+			cursorFree.Visible = true
+			return
+		end
 		if consumed then
 			return
 		end
@@ -525,12 +577,20 @@ function SimulatorController:Start(): ()
 			toggle("perks")
 		elseif input.KeyCode == Enum.KeyCode.G then
 			toggle("daily")
+		elseif input.KeyCode == Enum.KeyCode.O then
+			toggle("settings")
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input)
+		if input.KeyCode == Enum.KeyCode.LeftAlt or input.KeyCode == Enum.KeyCode.RightAlt then
+			cursorFree.Visible = false
 		end
 	end)
 	RunService.RenderStepped:Connect(animate)
 	while true do
 		task.wait(0.25)
 		updateClocks()
+		Hud.setFirstPerson(firstPerson())
 	end
 end
 

@@ -153,7 +153,7 @@ function Guide.build(gui: ScreenGui, onSkip: () -> (), onPulse: (string?) -> ())
 	skip.Size = UDim2.fromOffset(118, 28)
 
 	body = Components.text(banner, "", 17, Style.Text)
-	body.Font = Style.Bold
+	body.FontFace = Style.Bold
 	body.LayoutOrder = 2
 	body.AutomaticSize = Enum.AutomaticSize.Y
 	body.Size = UDim2.new(1, 0, 0, 0)

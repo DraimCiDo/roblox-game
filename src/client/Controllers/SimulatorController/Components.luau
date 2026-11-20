@@ -228,8 +228,11 @@ function Components.place(gui: GuiObject, x: number, y: number, width: UDim, hei
 	gui.Size = UDim2.new(width, UDim.new(0, height))
 end
 
+-- display = заголовочный шрифт. Мелкие подписи (меньше 15 px) Jura рисует с разреженными буквами,
+-- поэтому для них берётся плотный жирный Roboto Condensed.
 function Components.text(parent: Instance, value: string, size: number, color: Color3?, display: boolean?): TextLabel
-	return Style.label(parent, value, size, color, if display then Style.Display else nil)
+	local font = if not display then nil elseif size < 15 then Style.Bold else Style.Display
+	return Style.label(parent, value, size, color, font)
 end
 
 function Components.heading(value: string): ()

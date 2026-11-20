@@ -1,5 +1,4 @@
 --!strict
-local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -12,9 +11,10 @@ local Icons = require(script.Parent.Parent.Icons)
 local Sfx = require(script.Parent.Parent.Sfx)
 local Style = require(script.Parent.Parent.Style)
 
-local BOARD = Color3.fromRGB(10, 12, 30)
-local PANEL = Color3.fromRGB(31, 33, 65)
-local RAIL = Color3.fromRGB(70, 74, 108)
+-- Карта навыков — «экран прибора»: почти чёрный графит, стальные рельсы связей.
+local BOARD = Color3.fromRGB(8, 12, 18)
+local PANEL = Color3.fromRGB(20, 28, 38)
+local RAIL = Color3.fromRGB(58, 74, 90)
 local BRANCH_COLORS: { [string]: Color3 } = {
 	logistics = Style.Violet,
 	storage = Style.Cyan,
@@ -118,7 +118,6 @@ local function disconnect(): ()
 		connection:Disconnect()
 	end
 	table.clear(connections)
-	ContextActionService:UnbindAction("CorpaPerkZoom")
 end
 
 local function stateFor(perk: Catalog.Perk, data: Types.View): NodeState
@@ -254,10 +253,10 @@ local function drawNode(parent: Frame, state: NodeState, position: Vector2, diam
 	counter.Size = UDim2.fromScale(1, 1)
 	counter.ZIndex = 7
 
-	local name = centerText(parent, perk.Name, 10, if state.Locked then RAIL:Lerp(Style.Muted, 0.5) else Style.Muted)
+	local name = centerText(parent, perk.Name, 12, if state.Locked then RAIL:Lerp(Style.Muted, 0.5) else Style.Text)
 	name.AnchorPoint = Vector2.new(0.5, 0)
-	name.Position = UDim2.fromOffset(position.X, position.Y + diameter / 2 + 16)
-	name.Size = UDim2.fromOffset(112, 26)
+	name.Position = UDim2.fromOffset(position.X, position.Y + diameter / 2 + 15)
+	name.Size = UDim2.fromOffset(116, 30)
 	name.TextWrapped = true
 	name.TextYAlignment = Enum.TextYAlignment.Top
 	name.ZIndex = 5
@@ -505,7 +504,8 @@ function Perks.render(source: Types.View, _wide: boolean): ()
 	host.Size = UDim2.fromScale(1, 1)
 	host.ScrollingDirection = Enum.ScrollingDirection.XY
 	-- Касание и трекпад двигают карту встроенной прокруткой; мышь перетаскивает карту вручную (ниже).
-	host.ScrollingEnabled = true
+	-- Встроенная прокрутка нужна только для касаний; с мышью она бы перехватывала колесо, а карту двигает перетаскивание.
+	host.ScrollingEnabled = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
 	host.Active = true
 	host.ScrollBarThickness = 0
 	host.Selectable = false
@@ -671,10 +671,11 @@ function Perks.render(source: Types.View, _wide: boolean): ()
 	layoutList.Padding = UDim.new(0, 6)
 	layoutList.SortOrder = Enum.SortOrder.LayoutOrder
 	layoutList.Parent = toolbar
+	-- «Центр» рисуется иконкой: глифа прицела нет в шрифтах с кириллицей.
 	local toolList: { { Caption: string, Factor: number } } = {
 		{ Caption = "+", Factor = 1.2 },
 		{ Caption = "−", Factor = 1 / 1.2 },
-		{ Caption = "⌖", Factor = 0 },
+		{ Caption = "", Factor = 0 },
 	}
 	for index, tool in toolList do
 		local control = Style.button(toolbar, tool.Caption, function()
@@ -685,10 +686,18 @@ function Perks.render(source: Types.View, _wide: boolean): ()
 				setZoom(zoom * tool.Factor)
 			end
 		end, true, "neutral")
+		control.Name = if tool.Factor == 0 then "Центр" else tool.Caption
 		control.LayoutOrder = index
 		control.Size = UDim2.fromOffset(46, 42)
 		control.TextSize = 24
 		control.ZIndex = 10
+		if tool.Factor == 0 then
+			local mark = Icons.draw(control, "target", Style.Cyan)
+			mark.AnchorPoint = Vector2.new(0.5, 0.5)
+			mark.Position = UDim2.fromScale(0.5, 0.5)
+			mark.Size = UDim2.fromOffset(24, 24)
+			mark.ZIndex = 11
+		end
 	end
 	local summary = Components.text(
 		view,
@@ -699,17 +708,21 @@ function Perks.render(source: Types.View, _wide: boolean): ()
 		Style.Muted,
 		true
 	)
-	summary.Position = UDim2.fromOffset(14, 10)
-	summary.Size = UDim2.fromOffset(360, 20)
+	-- Плашка поверх карты, чтобы надпись не смешивалась с узлами под ней.
+	summary.AutomaticSize = Enum.AutomaticSize.X
+	summary.Position = UDim2.fromOffset(8, 8)
+	summary.Size = UDim2.fromOffset(0, 24)
 	summary.TextWrapped = false
 	summary.ZIndex = 10
-	Style.textStroke(summary, 2)
+	summary.BackgroundColor3 = Style.Panel
+	summary.BackgroundTransparency = 0.1
+	local summaryPad = Instance.new("UIPadding")
+	summaryPad.PaddingLeft = UDim.new(0, 8)
+	summaryPad.PaddingRight = UDim.new(0, 8)
+	summaryPad.Parent = summary
+	Style.round(summary, 4)
+	Style.outline(summary, Style.Edge, 1)
 
-	local function inside(): boolean
-		local mouse = UserInputService:GetMouseLocation() - GuiService:GetGuiInset()
-		local at, size = host.AbsolutePosition, host.AbsoluteSize
-		return mouse.X >= at.X and mouse.X <= at.X + size.X and mouse.Y >= at.Y and mouse.Y <= at.Y + size.Y
-	end
 	table.insert(
 		connections,
 		UserInputService.InputEnded:Connect(function(input)
@@ -732,14 +745,37 @@ function Perks.render(source: Types.View, _wide: boolean): ()
 			end
 		end)
 	)
-	-- Колесо над картой меняет масштаб и не прокручивает меню под ней.
-	ContextActionService:BindActionAtPriority("CorpaPerkZoom", function(_, _, input)
-		if not inside() then
-			return Enum.ContextActionResult.Pass
-		end
-		setZoom(zoom * (if input.Position.Z > 0 then 1.1 else 1 / 1.1))
-		return Enum.ContextActionResult.Sink
-	end, false, Enum.ContextActionPriority.High.Value, Enum.UserInputType.MouseWheel)
+	-- Колесо над картой меняет масштаб. Над прокручиваемым кадром колесо получает сам интерфейс,
+	-- поэтому слушаем событие карты, а не ContextActionService (туда колесо над GUI не доходит).
+	table.insert(
+		connections,
+		host.InputChanged:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseWheel then
+				local anchor = Vector2.new(input.Position.X, input.Position.Y) - host.AbsolutePosition
+				setZoom(zoom * (if input.Position.Z > 0 then 1.1 else 1 / 1.1), anchor)
+			end
+		end)
+	)
+	-- Щипок двумя пальцами над картой — масштаб на сенсорных экранах.
+	local pinchStart = zoom
+	table.insert(
+		connections,
+		UserInputService.TouchPinch:Connect(function(touches, scaleFactor, _, state)
+			local first = touches[1]
+			if not first then
+				return
+			end
+			local at, size = host.AbsolutePosition, host.AbsoluteSize
+			local point = Vector2.new(first.X, first.Y) - GuiService:GetGuiInset()
+			if point.X < at.X or point.Y < at.Y or point.X > at.X + size.X or point.Y > at.Y + size.Y then
+				return
+			end
+			if state == Enum.UserInputState.Begin then
+				pinchStart = zoom
+			end
+			setZoom(pinchStart * scaleFactor)
+		end)
+	)
 
 	local first = selectedKey or Catalog.PerkNodes[1].Key
 	selectPerk(first)
