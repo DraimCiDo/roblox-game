@@ -64,7 +64,8 @@ local function floorAt(origin: Vector3): number
 		end
 	end
 	params.FilterDescendantsInstances = ignore
-	local hit = Workspace:Raycast(origin + Vector3.new(0, 40, 0), Vector3.new(0, -120, 0), params)
+	-- Луч начинается под потолком зала: сверху от +40 он попадал в крышу и декор вставал на неё.
+	local hit = Workspace:Raycast(origin + Vector3.new(0, 8, 0), Vector3.new(0, -40, 0), params)
 	return if hit then hit.Position.Y else origin.Y
 end
 

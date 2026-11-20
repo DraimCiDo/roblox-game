@@ -890,7 +890,8 @@ function SimulatorService:Start(): ()
 			sum += plot.Spawn.Position
 		end
 		local center = sum / #plots
-		local floorY = Mop.Start(center, tell, publish)
+		-- В центре зала стоит ядро CORPA, поэтому стойка со шваброй — у дорожки к сектору 02.
+		local floorY = Mop.Start(center + Vector3.new(0, 0, 26), tell, publish)
 		Hall.Decorate(center, floorY)
 		Hall.Gate(floorY)
 	end

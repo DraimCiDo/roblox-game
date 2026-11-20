@@ -684,8 +684,9 @@ local function backroomsRift(at: CFrame, duration: number): ()
 	dust.Rate = 22
 	dust.Parent = rift
 	local open = TweenInfo.new(0.45, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
-	TweenService:Create(rift, open, { Size = Vector3.one * 8, Transparency = 0.2 }):Play()
-	TweenService:Create(shell, open, { Size = Vector3.one * 9.5, Transparency = 0.55 }):Play()
+	-- Разрыв открывается внутри камеры Backrooms в конце трубы (высота камеры ~7.7): не крупнее неё.
+	TweenService:Create(rift, open, { Size = Vector3.one * 6, Transparency = 0.2 }):Play()
+	TweenService:Create(shell, open, { Size = Vector3.one * 7, Transparency = 0.55 }):Play()
 	-- Лампа дневного света мигает, как в бэкрумс.
 	local rng = Random.new()
 	task.spawn(function()

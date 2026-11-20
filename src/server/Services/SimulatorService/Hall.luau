@@ -163,7 +163,8 @@ function Hall.Decorate(center: Vector3, floorY: number): number
 	local kinds = { "planter", "bench", "crates", "totem" }
 	local count = 0
 	local index = 0
-	for _, radius in { 13, 21, 29 } do
+	-- Кольца декора начинаются за подиумом ядра CORPA (радиус 12) и кольцом разметки.
+	for _, radius in { 21, 29, 44 } do
 		local around = 8
 		for slot = 0, around - 1 do
 			index += 1

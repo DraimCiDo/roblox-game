@@ -206,8 +206,8 @@ local function backroomsChamber(sector, folder)
 		cap.Transparency = 1
 		cap.CanCollide = false
 	end
-	-- Контейнер появляется внутри комнаты Backrooms.
-	entry.CFrame = at(0, entry.CFrame.Position.Y, mid + 1)
+	-- Контейнер появляется в центре комнаты Backrooms (разрыв помещается между полом и потолком).
+	entry.CFrame = at(0, (bottom + top) / 2, mid + 1)
 
 	-- Тёплый жёлтый свет на дне шахты отвода: контейнеры уходят обратно в Backrooms.
 	local disposal = findPart(sector, "Нижняя точка отвода")
