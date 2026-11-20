@@ -50,24 +50,23 @@ end
 local function detail(item: Types.Item, price: number?): ()
 	local definition = Catalog.Items[item.Kind]
 	local tint = Components.qualityColor(item.Quality)
-	local dock = Components.dock(140)
+	local dock = Components.dock(140, true)
 	local frame = Style.frame(dock, Style.Card, 14)
 	frame.Size = UDim2.fromScale(1, 1)
 	Style.outline(frame, tint, 3)
+	-- Низкое окно (телефон): панель узкая и стоит сбоку, поэтому значок меньше, а подписи идут столбцом.
+	local compact = Components.compact()
+	local side = if compact then 10 else 132
 
 	local badge = Style.frame(frame, Style.Track, 12)
-	Components.place(badge, 10, 10, UDim.new(0, 110), 110)
+	Components.place(badge, 10, 10, UDim.new(0, if compact then 60 else 110), if compact then 60 else 110)
 	Style.outline(badge, tint, 2)
 	local icon = ItemPreview.draw(badge, item.Kind)
 	icon.Size = UDim2.fromScale(1, 1)
 
-	local name = Components.text(frame, definition.Name, 19, Style.Text, true)
-	Components.place(name, 132, 8, UDim.new(1, -142), 26)
+	local name = Components.text(frame, definition.Name, if compact then 16 else 19, Style.Text, true)
+	Components.place(name, if compact then 78 else 132, 8, UDim.new(1, if compact then -88 else -142), 26)
 	name.TextTruncate = Enum.TextTruncate.AtEnd
-	local state = Components.text(frame, Components.itemDetails(item), 13, tint, true)
-	Components.place(state, 132, 35, UDim.new(1, -142), 18)
-	local track = Style.meter(frame, item.Quality / 100, tint)
-	Components.place(track, 132, 57, UDim.new(1, -144), 8)
 	local note = collectionOf(item.Kind)
 	local extra = Components.text(
 		frame,
@@ -75,8 +74,19 @@ local function detail(item: Types.Item, price: number?): ()
 		12,
 		Style.Muted
 	)
-	Components.place(extra, 132, 70, UDim.new(1, -142), 18)
+	if compact then
+		Components.place(extra, 78, 36, UDim.new(1, -88), 32)
+		extra.TextWrapped = true
+		extra.TextYAlignment = Enum.TextYAlignment.Top
+	else
+		Components.place(extra, 132, 70, UDim.new(1, -142), 18)
+	end
 	extra.TextTruncate = Enum.TextTruncate.AtEnd
+	local state = Components.text(frame, Components.itemDetails(item), 13, tint, true)
+	Components.place(state, side, if compact then 78 else 35, UDim.new(1, if compact then -20 else -142), 18)
+	state.TextTruncate = Enum.TextTruncate.AtEnd
+	local track = Style.meter(frame, item.Quality / 100, tint)
+	Components.place(track, side, if compact then 102 else 57, UDim.new(1, if compact then -22 else -144), 8)
 
 	local caption = if price then `Продать · {Components.coin(price)}` else "Продать"
 	local sell = Style.button(frame, caption, function()
@@ -87,7 +97,7 @@ local function detail(item: Types.Item, price: number?): ()
 	sell.TextSize = 17
 	sell.AnchorPoint = Vector2.new(1, 1)
 	sell.Position = UDim2.new(1, -10, 1, -10)
-	sell.Size = UDim2.new(1, -142, 0, 44)
+	sell.Size = UDim2.new(1, if compact then -20 else -142, 0, 44)
 	Components.prefer(sell)
 end
 
