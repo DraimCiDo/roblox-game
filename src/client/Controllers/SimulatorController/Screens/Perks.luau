@@ -291,7 +291,9 @@ local function details(panel: Frame, state: NodeState, branches: { [string]: str
 	title.TextWrapped = wide
 	title.TextTruncate = Enum.TextTruncate.AtEnd
 	local progress = if perk.Step
-		then `Ступень {perk.Step} из {perk.Steps} · {if state.Level > 0 then "изучена" else "не изучена"}`
+		then `Ступень {perk.Step} из {perk.Steps} · {if state.Level > 0
+			then "изучена"
+			else "не изучена"}`
 		else `Уровень {state.Level} / {#perk.Costs}`
 	local count = Components.text(panel, progress, 13, Style.Muted)
 	Components.place(count, inset, if wide then 82 else 25, width, 16)

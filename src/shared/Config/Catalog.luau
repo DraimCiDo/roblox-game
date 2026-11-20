@@ -487,7 +487,9 @@ Catalog.Perks = {
 		Parent = "odds",
 		Required = 2,
 		Describe = function(level)
-			return `Ящики и всё более редкие контейнеры выпадают чаще на {math.round(level * E.TierLuckStep * 100)}%`
+			return `Ящики и всё более редкие контейнеры выпадают чаще на {math.round(
+				level * E.TierLuckStep * 100
+			)}%`
 		end,
 	},
 	{
@@ -499,7 +501,9 @@ Catalog.Perks = {
 		Parent = "crateLuck",
 		Required = 2,
 		Describe = function(level)
-			return `Сейфы и более редкие выпадают чаще на {math.round(level * E.TierLuckStep * 100)}%`
+			return `Сейфы и более редкие выпадают чаще на {math.round(
+				level * E.TierLuckStep * 100
+			)}%`
 		end,
 	},
 	{

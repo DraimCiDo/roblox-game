@@ -110,7 +110,15 @@ local function bench(parent: Instance, at: Vector3, facing: CFrame): ()
 	local model = group(parent, "Скамья")
 	local base = CFrame.new(at) * facing.Rotation
 	local block = Enum.PartType.Block
-	part(model, "Сиденье", block, Vector3.new(5.4, 0.4, 1.7), base * CFrame.new(0, 1.3, 0), CHROME, Enum.Material.Metal)
+	part(
+		model,
+		"Сиденье",
+		block,
+		Vector3.new(5.4, 0.4, 1.7),
+		base * CFrame.new(0, 1.3, 0),
+		CHROME,
+		Enum.Material.Metal
+	)
 	part(model, "Спинка", block, Vector3.new(5.4, 1.2, 0.3), base * CFrame.new(0, 2.1, 0.75), STEEL)
 	for _, x in { -2.3, 2.3 } do
 		part(model, "Опора", block, Vector3.new(0.4, 1.3, 1.5), base * CFrame.new(x, 0.65, 0), STEEL)
@@ -178,7 +186,6 @@ function Hall.Decorate(center: Vector3, floorY: number): number
 	return count
 end
 
-
 -- Закрытые ворота в западном торце зала: заготовка под будущую зону. Встают перед сервисными панелями стены
 -- (стена зала на x = -82, её внутренняя грань — на -81.1) и никого не блокируют: стена и так сплошная.
 function Hall.Gate(floorY: number): ()
@@ -192,11 +199,20 @@ function Hall.Gate(floorY: number): ()
 	end
 	for _, side in { -1, 1 } do
 		local leafSize = Vector3.new(0.4, 10.6, 14.2)
-		local leaf = part(folder, "Створка ворот", block, leafSize, at(5.4, side * 7.2), DARK, Enum.Material.Metal)
+		local leaf =
+			part(folder, "Створка ворот", block, leafSize, at(5.4, side * 7.2), DARK, Enum.Material.Metal)
 		leaf.CanCollide = true
 		-- Предупреждающие полосы по низу и верху створки.
 		for _, y in { 0.7, 10.2 } do
-			part(folder, "Полоса", block, Vector3.new(0.45, 0.7, 13.6), at(y, side * 7.2), AMBER, Enum.Material.Metal)
+			part(
+				folder,
+				"Полоса",
+				block,
+				Vector3.new(0.45, 0.7, 13.6),
+				at(y, side * 7.2),
+				AMBER,
+				Enum.Material.Metal
+			)
 		end
 		for rib = -2, 2 do
 			local ribFrame = at(5.4, side * 7.2 + rib * 2.6)
@@ -204,18 +220,43 @@ function Hall.Gate(floorY: number): ()
 		end
 	end
 	local frameColor = CHROME:Lerp(STEEL, 0.5)
-	part(folder, "Верхняя балка", block, Vector3.new(0.9, 1, 31.2), at(11.4, 0), frameColor, Enum.Material.Metal)
+	part(
+		folder,
+		"Верхняя балка",
+		block,
+		Vector3.new(0.9, 1, 31.2),
+		at(11.4, 0),
+		frameColor,
+		Enum.Material.Metal
+	)
 	for _, side in { -1, 1 } do
-		part(folder, "Стойка", block, Vector3.new(0.9, 11.4, 1), at(5.7, side * 15.4), frameColor, Enum.Material.Metal)
+		part(
+			folder,
+			"Стойка",
+			block,
+			Vector3.new(0.9, 11.4, 1),
+			at(5.7, side * 15.4),
+			frameColor,
+			Enum.Material.Metal
+		)
 	end
 	part(folder, "Замок", block, Vector3.new(0.8, 1.8, 2.2), at(5.4, 0), CHROME, Enum.Material.Metal)
-	local lamp = part(folder, "Сигнал замка", block, Vector3.new(0.3, 0.5, 1.4), at(6.8, 0), RED, Enum.Material.Neon)
+	local lamp =
+		part(folder, "Сигнал замка", block, Vector3.new(0.3, 0.5, 1.4), at(6.8, 0), RED, Enum.Material.Neon)
 	local light = Instance.new("PointLight")
 	light.Color = RED
 	light.Range = 12
 	light.Brightness = 1.2
 	light.Parent = lamp
-	local plate = part(folder, "Табличка ворот", block, Vector3.new(0.3, 2.4, 13), at(14, 0), DARK, Enum.Material.Metal)
+	local plate = part(
+		folder,
+		"Табличка ворот",
+		block,
+		Vector3.new(0.3, 2.4, 13),
+		at(14, 0),
+		DARK,
+		Enum.Material.Metal
+	)
 	local surface = Instance.new("SurfaceGui")
 	surface.Face = Enum.NormalId.Right
 	surface.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud

@@ -151,7 +151,10 @@ local function toggle(player: Player): ()
 	end
 	local worker: Worker = { Spot = nil, Count = 0, LastAt = 0 }
 	workers[player] = worker
-	notify(player, `Вы взяли швабру. Мойте пятна на полу — {Config.MopReward} монет за каждое`)
+	notify(
+		player,
+		`Вы взяли швабру. Мойте пятна на полу — {Config.MopReward} монет за каждое`
+	)
 	spawnSpot(player, worker)
 end
 
