@@ -61,16 +61,17 @@ local function rgb(r: number, g: number, b: number): Color3
 	return Color3.fromRGB(r, g, b)
 end
 
-local DEEP = rgb(20, 26, 36)
-local STEEL = rgb(52, 62, 76)
-local CHROME = rgb(196, 204, 214)
-local MARBLE = rgb(232, 234, 238)
-local CYAN = rgb(91, 232, 222)
-local AMBER = rgb(255, 181, 86)
-local VIOLET = rgb(178, 120, 255)
-local GREEN = rgb(80, 235, 130)
-local RED = rgb(255, 80, 90)
-local WARM = rgb(255, 232, 190)
+-- Палитра «Лаборатория CORPA» (общая тема интерфейса и мира).
+local DEEP = Theme.Colors.Panel
+local STEEL = rgb(46, 54, 66)
+local CHROME = rgb(176, 188, 200)
+local MARBLE = rgb(214, 220, 228)
+local CYAN = Theme.Colors.Cyan
+local AMBER = Theme.Colors.Amber
+local VIOLET = rgb(170, 132, 255)
+local GREEN = Theme.Colors.Signal
+local RED = Theme.Colors.Warning
+local WARM = Theme.Colors.Text
 local GLASS = rgb(190, 230, 245)
 local PANEL_COLORS = { VIOLET, CYAN, AMBER, GREEN }
 local STORAGE_PER_CELL = 5
@@ -315,9 +316,10 @@ end
 
 -- ============ Склад ============
 
+-- Ячейка строится в осях самого модуля: +X — задняя стенка (в глубину стеллажа), −X — лицевая сторона.
 local function buildCell(kit: Kit, module: Part): Cell
-	local F = kit.Frame
-	local center = F:PointToObjectSpace(module.Position)
+	local F = module.CFrame
+	local center = Vector3.zero
 	local size = module.Size
 	local folder = Instance.new("Folder")
 	folder.Name = "Ячейка склада"
@@ -457,7 +459,7 @@ function Sector.setStorage(kit: Kit, capacity: number, inventory: { Types.Item }
 				fit(mini, 0.42, size.Y - 0.22)
 				local z = (slot - 3) * (size.Z - 0.3) / STORAGE_PER_CELL
 				mini:PivotTo(
-					kit.Frame
+					cell.Module.CFrame
 						* CFrame.new(cell.Center + Vector3.new(0.05, -size.Y / 2 + 0.07, z))
 						* CFrame.Angles(0, math.rad(90), 0)
 				)

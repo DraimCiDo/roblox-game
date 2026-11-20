@@ -1,6 +1,6 @@
 --!nocheck
 -- Сборка карты без Studio: загружает assets/CorpaLab.rbxm и assets/CorpaLighting.rbxm,
--- запускает над ними сборщики оформления (hall.luau, sectors.luau) и записывает файлы обратно.
+-- запускает над ними сборщики (hall.luau — зал, sector.luau — сектора, corridors.luau — переходы) и записывает файлы обратно.
 -- Rojo (rojo serve) сам подхватит изменённые .rbxm и обновит сцену в открытом Studio.
 --
 -- Запуск из корня репозитория: lune run scripts/map/build.luau
@@ -12,7 +12,7 @@ local roblox = require("@lune/roblox")
 
 local LAB_FILE = "assets/CorpaLab.rbxm"
 local LIGHTING_FILE = "assets/CorpaLighting.rbxm"
-local BUILDERS = { "scripts/map/hall.luau", "scripts/map/sectors.luau" }
+local BUILDERS = { "scripts/map/hall.luau", "scripts/map/sector.luau", "scripts/map/corridors.luau" }
 
 local game = roblox.Instance.new("DataModel")
 local workspace = game:GetService("Workspace")

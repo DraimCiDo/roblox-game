@@ -12,7 +12,6 @@ local DropEffects = require(script.Parent.DropEffects)
 local ItemModels = require(ReplicatedStorage.Shared.ItemModels)
 local Audio = require(script.Parent.Audio)
 local Sector = require(script.Parent.Sector)
-local SurfaceFinish = require(script.Parent.SurfaceFinish)
 local ItemAssets = require(script.Parent.ItemAssets)
 local Theme = require(ReplicatedStorage.Shared.Config.Theme)
 
@@ -63,6 +62,10 @@ export type Plot = {
 	Spawn: SpawnLocation,
 	OpenParts: { Part },
 	Kit: Sector.Kit,
+	-- Затвор камеры Backrooms в конце трубы: открыт только пока контейнер вылетает (необязательный).
+	BackroomsDoors: { Part },
+	BackroomsFrames: { [Part]: CFrame },
+	BackroomsLamps: { Part },
 }
 
 local World = {}
@@ -308,32 +311,20 @@ local function downlight(fixture: Part, color: Color3, brightness: number, range
 	light.Parent = fixture
 end
 
-local function ageSideWalls(parent: Instance, name: string): ()
-	for _, wall in authoredParts(parent, name) do
-		local innerFace = if wall.CFrame:PointToObjectSpace(Vector3.zero).X > 0
-			then Enum.NormalId.Right
-			else Enum.NormalId.Left
-		SurfaceFinish.wall(wall, innerFace)
-	end
-end
-
+-- Подписи зон сектора и свет. Таблички необязательны: их надписи сборщик сцены может нарисовать сам.
 local function dressSector(model: Model): ()
-	local reception = requirePart(model, "Лицевая панель приёмки")
-	local displays = requirePart(model, "Панель экспозиции")
-	local order = requirePart(model, "Панель заказов")
-	local storage = requirePart(model, "Панель склада")
-	surfaceLabel(reception, "ПРИЁМКА КОНТЕЙНЕРОВ", 31)
-	surfaceLabel(displays, "ВИТРИНЫ", 34, Enum.NormalId.Left)
-	surfaceLabel(order, "ЗАКАЗЫ", 34, Enum.NormalId.Right)
-	surfaceLabel(storage, "СКЛАД", 34, Enum.NormalId.Right)
-
-	surfaceLabel(requirePart(model, "Паспорт шкафа образцов"), "ПРОБЫ", 13)
-	ageSideWalls(model, "Бортовая стена внешнего сектора")
-	SurfaceFinish.wall(
-		requirePart(model, "Торцевая стена внешнего сектора"),
-		Enum.NormalId.Front
-	)
-	SurfaceFinish.floor(requirePart(model, "Настил · Вход и приёмка"))
+	for name, text in
+		{
+			["Панель экспозиции"] = "ВИТРИНЫ",
+			["Панель заказов"] = "ЗАКАЗЫ",
+			["Панель склада"] = "СКЛАД",
+		}
+	do
+		local panel = model:FindFirstChild(name)
+		if panel and panel:IsA("Part") then
+			surfaceLabel(panel, text, 34)
+		end
+	end
 
 	for _, fixture in authoredParts(model, "Светильник рабочей зоны") do
 		downlight(fixture, Color3.fromRGB(229, 239, 233), 0.48, 22, 115)
@@ -373,7 +364,6 @@ end
 function World.Build(useForPlot: (number, Player, string, string?) -> ()): { Plot }
 	local root = Workspace:WaitForChild("CORPA — испытательная лаборатория", 10)
 	assert(root, "[World] Не найдена модель лаборатории Roblox Studio")
-	ageSideWalls(root, "Стена соединительного перехода")
 	for _, name in { "Светильник перехода", "Светильник подхода" } do
 		local hall = name == "Светильник подхода"
 		for _, fixture in authoredParts(root, name) do
@@ -477,6 +467,12 @@ function World.Build(useForPlot: (number, Player, string, string?) -> ()): { Plo
 		local disposalPoint = requirePart(model, "Нижняя точка отвода")
 		local deliverySignal = requirePart(model, "Сигнал подачи")
 		local disposalSignal = requirePart(model, "Сигнал отвода")
+		local backroomsDoors = authoredParts(model, "Затвор Backrooms")
+		local backroomsFrames = {}
+		for _, door in backroomsDoors do
+			backroomsFrames[door] = door.CFrame
+		end
+		local backroomsLamps = authoredParts(model, "Лампа Backrooms")
 		table.insert(plots, {
 			Model = model,
 			Pad = pad,
@@ -508,6 +504,9 @@ function World.Build(useForPlot: (number, Player, string, string?) -> ()): { Plo
 			GateLights = { upper = shaftLight(deliveryPoint, ICE), lower = shaftLight(disposalPoint, AMBER) },
 			Spawn = spawn,
 			OpenParts = {},
+			BackroomsDoors = backroomsDoors,
+			BackroomsFrames = backroomsFrames,
+			BackroomsLamps = backroomsLamps,
 			Kit = Sector.build(model, spawn, stands, storage, {
 				OrderScreen = requirePart(stations.terminal, "Матовый экран заказа"),
 				StorageDesk = stations.inventory,
@@ -708,6 +707,35 @@ local function backroomsRift(at: CFrame, duration: number): ()
 	end)
 end
 
+local BACKROOMS_DOOR_TIME = 0.55
+local BACKROOMS_LAMP_ON = Color3.fromRGB(255, 251, 228)
+local BACKROOMS_LAMP_OFF = Color3.fromRGB(70, 66, 52)
+
+-- Затвор Backrooms: створки разъезжаются в стороны (каждая на свою ширину), лампы внутри загораются.
+-- Закрытый затвор полностью скрывает камеру — Backrooms видны только во время вылета контейнера.
+local function setBackrooms(plot: Plot, open: boolean): ()
+	for _, door in plot.BackroomsDoors do
+		local closed = plot.BackroomsFrames[door]
+		local pairCenter = Vector3.zero
+		for _, other in plot.BackroomsDoors do
+			pairCenter += plot.BackroomsFrames[other].Position
+		end
+		pairCenter /= #plot.BackroomsDoors
+		local side = if closed:PointToObjectSpace(pairCenter).X > 0 then -1 else 1
+		local target = if open then closed * CFrame.new(side * door.Size.X, 0, 0) else closed
+		TweenService:Create(door, TweenInfo.new(BACKROOMS_DOOR_TIME, Enum.EasingStyle.Quad), { CFrame = target }):Play()
+	end
+	for _, lamp in plot.BackroomsLamps do
+		lamp.Color = if open then BACKROOMS_LAMP_ON else BACKROOMS_LAMP_OFF
+		lamp.Material = if open then Enum.Material.Neon else Enum.Material.SmoothPlastic
+		for _, light in lamp:GetChildren() do
+			if light:IsA("Light") then
+				light.Enabled = open
+			end
+		end
+	end
+end
+
 local function deliverThroughPipe(plot: Plot, model: Model, base: CFrame, remaining: number): Tween?
 	if remaining <= 0 then
 		model:PivotTo(base)
@@ -717,7 +745,15 @@ local function deliverThroughPipe(plot: Plot, model: Model, base: CFrame, remain
 	local outlet = plot.DeliveryPoint.CFrame
 	plot.PipeLight.Enabled = true
 	plot.GateLights.upper.Enabled = true
-	backroomsRift(entry, remaining * PIPE_TRAVEL_FRACTION + 0.4)
+	-- Точка входа лежит на уровне пола трубы: разрыв — в центре камеры Backrooms по высоте.
+	backroomsRift(entry * CFrame.new(0, 3.8, 0), remaining * PIPE_TRAVEL_FRACTION + 0.4)
+	setBackrooms(plot, true)
+	-- Затвор закрывается, когда контейнер прошёл трубу и опускается в шлюз.
+	task.delay(remaining * PIPE_TRAVEL_FRACTION + BACKROOMS_DOOR_TIME, function()
+		if plot.Active == model then
+			setBackrooms(plot, false)
+		end
+	end)
 	local gateLead = math.min(GATE_MOVE_TIME, remaining * 0.22)
 	local descentStart = PIPE_TRAVEL_FRACTION + gateLead / remaining
 	task.delay(remaining * PIPE_TRAVEL_FRACTION, function()
@@ -844,17 +880,13 @@ function World.UpdateDisplays(plot: Plot, items: { [string]: Types.Item }): ()
 		if item and not plot.StandModels[slot] then
 			local model = makeItem(item)
 			local lift = plot.Kit.Lift[slot] or 0
-			local position = (stand.CFrame * CFrame.new(0, stand.Size.Y / 2 + 0.02 + lift, 0)).Position
-			-- Лицевая сторона предмета (-Z) смотрит на место, где стоит игрок, на одной высоте с предметом.
-			local viewer = Vector3.new(plot.Spawn.Position.X, position.Y, plot.Spawn.Position.Z)
-			if (viewer - position).Magnitude > 0.5 then
-				model:PivotTo(CFrame.lookAt(position, viewer))
+			-- Лицевая сторона предмета (-Z) смотрит туда же, куда лицевая сторона витрины — в проход сектора.
+			local top = stand.CFrame * CFrame.new(0, stand.Size.Y / 2 + 0.02 + lift, 0)
+			local facing = stand.CFrame.LookVector * Vector3.new(1, 0, 1)
+			if facing.Magnitude > 0.01 then
+				model:PivotTo(CFrame.lookAt(top.Position, top.Position + facing.Unit))
 			else
-				model:PivotTo(
-					stand.CFrame
-						* CFrame.new(0, stand.Size.Y / 2 + 0.02 + lift, 0)
-						* CFrame.Angles(0, math.rad(plot.Kit.Yaw[slot] or 0), 0)
-				)
+				model:PivotTo(top * CFrame.Angles(0, math.rad(plot.Kit.Yaw[slot] or 0), 0))
 			end
 			Sector.setDisplay(plot.Kit, slot, item)
 			model.Parent = plot.Model
@@ -893,6 +925,7 @@ function World.Clear(plot: Plot): ()
 	end
 	plot.PipeLight.Enabled = false
 	plot.GateLights.upper.Enabled = false
+	setBackrooms(plot, false)
 	if plot.Active then
 		plot.Active:Destroy()
 	end
