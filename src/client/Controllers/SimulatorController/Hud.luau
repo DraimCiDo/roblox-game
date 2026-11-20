@@ -3,6 +3,7 @@ local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 
 local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
 local Types = require(ReplicatedStorage.Shared.Types)
@@ -53,6 +54,21 @@ local function sideOffset(): Vector2
 		return Vector2.new(16, 200)
 	end
 	return Vector2.new(16, 16)
+end
+
+-- Высота колонки «Перки + Награда»: две кнопки и промежуток между ними.
+local SIDE_HEIGHT = BUTTON_SIZE * 2 + 12
+
+-- Отступ колонки от низа: на низком экране (ландшафтный телефон) уменьшается, чтобы колонка не выходила за верхний край.
+local function sideBottom(): number
+	local wanted = sideOffset().Y
+	local camera = Workspace.CurrentCamera
+	if not camera then
+		return wanted
+	end
+	local top, bottom = GuiService:GetGuiInset()
+	local free = camera.ViewportSize.Y - top.Y - bottom.Y - SIDE_HEIGHT - 8
+	return math.max(8, math.min(wanted, free))
 end
 
 -- Объёмная плашка: толстая тёмная обводка, цветной градиент и мягкий блик, как у кнопок в симуляторах.
@@ -175,7 +191,13 @@ function Hud.build(gui: ScreenGui, callbacks: Callbacks): ()
 	local side = Style.frame(gui)
 	side.Name = "Меню"
 	side.AnchorPoint = Vector2.new(1, 1)
-	side.Position = UDim2.new(1, -offset.X, 1, -offset.Y)
+	side.Position = UDim2.new(1, -offset.X, 1, -sideBottom())
+	local camera = Workspace.CurrentCamera
+	if camera then
+		camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+			side.Position = UDim2.new(1, -offset.X, 1, -sideBottom())
+		end)
+	end
 	side.AutomaticSize = Enum.AutomaticSize.XY
 	side.Size = UDim2.fromOffset(0, 0)
 	local sideLayout = Instance.new("UIListLayout")

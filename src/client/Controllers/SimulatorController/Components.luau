@@ -1,5 +1,7 @@
 --!strict
+local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
 local Types = require(ReplicatedStorage.Shared.Types)
@@ -47,6 +49,10 @@ local CONDITION_COLORS: { [string]: Color3 } = {
 	["Идеальное"] = Color3.fromRGB(255, 200, 60),
 }
 local CONTENT_INSET = 108
+-- Ниже этой высоты панели (ландшафтный телефон) нижняя панель уходит вбок, иначе на содержимое не остаётся места.
+local COMPACT_BELOW = 420
+local SIDE_DOCK_WIDTH = 220
+local SIDE_DOCK_TOP = 96
 
 local Components = {}
 Components.Live = {} :: LiveWidgets
@@ -89,16 +95,47 @@ function Components.begin(): ()
 	end
 end
 
+-- Высота окна меню в пикселях: так же считается его размер (экран минус системные отступы и поля 22).
+function Components.panelHeight(): number
+	local camera = Workspace.CurrentCamera
+	local top, bottom = GuiService:GetGuiInset()
+	local viewport = if camera then camera.ViewportSize.Y else 1080
+	return viewport - top.Y - bottom.Y - 22
+end
+
+-- Низкое окно меню (ландшафтный телефон).
+function Components.compact(): boolean
+	return Components.panelHeight() < COMPACT_BELOW
+end
+
+-- Высота полосы для карты: на низком окне не выше видимой области содержимого.
+function Components.viewHeight(preferred: number): number
+	if not Components.compact() then
+		return preferred
+	end
+	return math.clamp(Components.panelHeight() - CONTENT_INSET - 12, 120, preferred)
+end
+
 -- Нижняя панель вне прокрутки: остаётся на виду при выборе предмета в длинном списке.
-function Components.dock(height: number): Frame
+-- side = true: на низком окне панель встаёт справа от содержимого, а не под ним.
+function Components.dock(height: number, side: boolean?): Frame
 	for _, object in dockFrame:GetChildren() do
 		if object:IsA("GuiObject") then
 			object:Destroy()
 		end
 	end
 	dockFrame.Visible = true
-	dockFrame.Size = UDim2.new(1, -32, 0, height)
-	content.Size = UDim2.new(1, -26, 1, -(CONTENT_INSET + height + 10))
+	if side and Components.compact() then
+		dockFrame.AnchorPoint = Vector2.new(1, 0)
+		dockFrame.Position = UDim2.new(1, -12, 0, SIDE_DOCK_TOP)
+		dockFrame.Size = UDim2.fromOffset(SIDE_DOCK_WIDTH, math.max(150, Components.panelHeight() - SIDE_DOCK_TOP - 8))
+		content.Size = UDim2.new(1, -(26 + SIDE_DOCK_WIDTH + 8), 1, -CONTENT_INSET)
+	else
+		dockFrame.AnchorPoint = Vector2.new(0.5, 1)
+		dockFrame.Position = UDim2.new(0.5, 0, 1, -12)
+		dockFrame.Size = UDim2.new(1, -32, 0, height)
+		content.Size = UDim2.new(1, -26, 1, -(CONTENT_INSET + height + 10))
+	end
 	return dockFrame
 end
 

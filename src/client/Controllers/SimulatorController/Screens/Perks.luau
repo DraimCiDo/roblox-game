@@ -491,7 +491,7 @@ function Perks.render(source: Types.View, _wide: boolean): ()
 	local map: Layout = cachedLayout or layout()
 	cachedLayout = map
 
-	local shell = Components.strip(VIEW_HEIGHT)
+	local shell = Components.strip(Components.viewHeight(VIEW_HEIGHT))
 	local view = Style.frame(shell, BOARD, 14)
 	view.Size = UDim2.fromScale(1, 1)
 	view.ClipsDescendants = true
@@ -638,7 +638,7 @@ function Perks.render(source: Types.View, _wide: boolean): ()
 		Style.textStroke(count, 3)
 	end
 
-	local detailPanel = Components.dock(MOBILE_DOCK)
+	local detailPanel = Components.dock(MOBILE_DOCK, true)
 	local widgets: { [string]: NodeWidget } = {}
 	local function selectPerk(perkKey: string): ()
 		selectedKey = perkKey
