@@ -26,4 +26,6 @@ return table.freeze({
 	MaxPlayers = 6,
 	OrderPrice = 2500,
 	DailySeconds = 900,
+	-- Награда за одно вымытое пятно в мини-игре «Мытьё полов».
+	MopReward = 10,
 })
