@@ -729,13 +729,23 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 				data.Opened += 1
 			end
 		elseif action == "perk" and argument then
-			local perk = perks[argument]
-			local level = data.Perks[argument] or 0
-			local cost = if perk then Catalog.perkCost(perk, level, data.Perks) else nil
-			if not perk or not cost then
+			-- Клиент присылает ключ узла дерева («навык#ступень»): купить можно только следующую ступень по порядку.
+			local node = Catalog.perk(argument)
+			local base = if node then node.Base else nil
+			local step = if node then node.Step else nil
+			if not node or not base or not step then
 				return
 			end
-			local lock = Catalog.perkLock(perk, level, data.Perks, data.Opened)
+			local level = data.Perks[base] or 0
+			if level ~= step - 1 then
+				return
+			end
+			local levels = Catalog.nodeLevels(data.Perks)
+			local cost = Catalog.perkCost(node, 0, levels)
+			if not cost then
+				return
+			end
+			local lock = Catalog.perkLock(node, 0, levels, data.Opened)
 			if lock then
 				tell(player, lock)
 			elseif data.Coins < cost then
@@ -745,7 +755,7 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 				tell(player, "Оставьте монет на следующий заказ.")
 			else
 				data.Coins -= cost
-				data.Perks[argument] = level + 1
+				data.Perks[base] = step
 				Audio.to(player, "perk")
 				updated = true
 			end

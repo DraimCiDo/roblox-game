@@ -218,7 +218,7 @@ local function drawNode(parent: Frame, state: NodeState, position: Vector2, diam
 	local iconColor = if state.Level > 0 then Style.Ink elseif state.Locked then RAIL:Lerp(Style.Muted, 0.35) else color
 	local icon = Icons.draw(
 		button,
-		PERK_ICONS[perk.Key] or "star",
+		PERK_ICONS[perk.Base or perk.Key] or "star",
 		iconColor,
 		if state.Level > 0 then Style.Text else Style.Muted
 	)
@@ -250,7 +250,7 @@ local function drawNode(parent: Frame, state: NodeState, position: Vector2, diam
 	pill.Size = UDim2.fromOffset(40, 17)
 	pill.ZIndex = 6
 	Style.outline(pill, if state.Locked then RAIL else color, 2)
-	local counter = centerText(pill, `{state.Level}/{#perk.Costs}`, 11, Style.Text, true)
+	local counter = centerText(pill, `{perk.Step or state.Level}/{perk.Steps or #perk.Costs}`, 11, Style.Text, true)
 	counter.Size = UDim2.fromScale(1, 1)
 	counter.ZIndex = 7
 
@@ -290,14 +290,17 @@ local function details(panel: Frame, state: NodeState, branches: { [string]: str
 	Components.place(title, inset, 29, width, if wide then 52 else 28)
 	title.TextWrapped = wide
 	title.TextTruncate = Enum.TextTruncate.AtEnd
-	local count = Components.text(panel, `Уровень {state.Level} / {#perk.Costs}`, 13, Style.Muted)
+	local progress = if perk.Step
+		then `Ступень {perk.Step} из {perk.Steps} · {if state.Level > 0 then "изучена" else "не изучена"}`
+		else `Уровень {state.Level} / {#perk.Costs}`
+	local count = Components.text(panel, progress, 13, Style.Muted)
 	Components.place(count, inset, if wide then 82 else 25, width, 16)
 	if not wide then
 		count.TextXAlignment = Enum.TextXAlignment.Right
 		count.Position = UDim2.fromOffset(inset, 9)
 	end
 
-	if wide then
+	if wide and not perk.Step then
 		local pips = Components.pips(panel, #perk.Costs, state.Level, state.Color)
 		pips.Position = UDim2.fromOffset(inset, 106)
 		pips.Size = UDim2.new(width, UDim.new(0, 7))
@@ -308,7 +311,7 @@ local function details(panel: Frame, state: NodeState, branches: { [string]: str
 	Components.place(current, inset, if wide then 126 else 57, width, if wide then 40 else 26)
 	local nextText = if state.Cost
 		then `Далее · {perk.Describe(state.Level + 1)}`
-		else "Максимальный уровень"
+		else "Эта ступень уже изучена"
 	local nextEffect = Components.text(panel, nextText, if wide then 16 else 13, Style.Text)
 	Components.place(nextEffect, inset, if wide then 170 else 83, width, if wide then 60 else 35)
 
@@ -318,7 +321,7 @@ local function details(panel: Frame, state: NodeState, branches: { [string]: str
 		Components.place(reason, inset, if wide then 237 else 117, width, if wide then 44 else 28)
 	end
 	local affordable = state.Cost ~= nil and state.Reason == nil
-	local caption = if state.Cost then `Улучшить · {Components.coin(state.Cost)}` else "Максимум"
+	local caption = if state.Cost then `Изучить · {Components.coin(state.Cost)}` else "Изучено"
 	local buy = Style.button(panel, caption, function()
 		Components.send("perk", perk.Key)
 	end, affordable, if affordable then "primary" else "neutral")
@@ -351,7 +354,7 @@ local function layout(): Layout
 	local roots: { [string]: { Catalog.Perk } } = {}
 	local titles: { { Branch: string, At: Vector2 } } = {}
 	local own: { [string]: string } = {}
-	for _, perk in Catalog.Perks do
+	for _, perk in Catalog.PerkNodes do
 		own[perk.Key] = perk.Branch
 	end
 	local low, high = Vector2.zero, Vector2.zero
@@ -365,7 +368,7 @@ local function layout(): Layout
 		local across = Vector2.new(math.cos(angle), math.sin(angle))
 		local children: { [string]: { Catalog.Perk } } = {}
 		local branchRoots: { Catalog.Perk } = {}
-		for _, perk in Catalog.Perks do
+		for _, perk in Catalog.PerkNodes do
 			if perk.Branch == branch.Key then
 				if perk.Parent and own[perk.Parent] == branch.Key then
 					children[perk.Parent] = children[perk.Parent] or {}
@@ -460,8 +463,11 @@ local function layout(): Layout
 	}
 end
 
-function Perks.render(data: Types.View, _wide: boolean): ()
+function Perks.render(source: Types.View, _wide: boolean): ()
 	disconnect()
+	-- Дерево рисуется узлами с одним уровнем: уровни навыков раскладываются на ступени (Catalog.PerkNodes).
+	local data = table.clone(source)
+	data.Perks = Catalog.nodeLevels(source.Perks)
 	local states: { [string]: NodeState } = {}
 	local branches: { [string]: string } = {}
 	local spent: { [string]: number } = {}
@@ -470,7 +476,7 @@ function Perks.render(data: Types.View, _wide: boolean): ()
 		branches[branch.Key] = branch.Name
 		spent[branch.Key] = 0
 	end
-	for _, perk in Catalog.Perks do
+	for _, perk in Catalog.PerkNodes do
 		local state = stateFor(perk, data)
 		states[perk.Key] = state
 		spent[perk.Branch] += state.Level
@@ -573,7 +579,7 @@ function Perks.render(data: Types.View, _wide: boolean): ()
 			end
 		end
 	end
-	for _, perk in Catalog.Perks do
+	for _, perk in Catalog.PerkNodes do
 		local state = states[perk.Key]
 		local head = map.Heading[perk.Key]
 		local tone = if state.Level > 0 then state.Color elseif state.Locked then RAIL else state.Color:Lerp(RAIL, 0.55)
@@ -639,7 +645,7 @@ function Perks.render(data: Types.View, _wide: boolean): ()
 		end
 		details(detailPanel, states[perkKey], branches, false)
 	end
-	for _, perk in Catalog.Perks do
+	for _, perk in Catalog.PerkNodes do
 		local diameter = if perk.Parent then NODE_DIAMETER else ROOT_DIAMETER
 		local widget = drawNode(chart, states[perk.Key], map.Points[perk.Key], diameter)
 		widgets[perk.Key] = widget
@@ -733,7 +739,7 @@ function Perks.render(data: Types.View, _wide: boolean): ()
 		return Enum.ContextActionResult.Sink
 	end, false, Enum.ContextActionPriority.High.Value, Enum.UserInputType.MouseWheel)
 
-	local first = selectedKey or Catalog.Perks[1].Key
+	local first = selectedKey or Catalog.PerkNodes[1].Key
 	selectPerk(first)
 	Components.prefer(widgets[first].Button)
 end

@@ -12,6 +12,10 @@ export type Perk = {
 	-- Дополнительные условия: уровни других навыков, которые нужно изучить заранее.
 	Needs: { { Key: string, Level: number } }?,
 	Describe: (level: number) -> string,
+	-- Только у узлов дерева (Catalog.PerkNodes): исходный навык, номер ступени и число ступеней.
+	Base: string?,
+	Step: number?,
+	Steps: number?,
 }
 
 local function item(name: string, style: string, color: Color3, size: string?): ItemDefinition
@@ -701,6 +705,58 @@ Catalog.Perks = {
 local perkIndex: { [string]: Perk } = {}
 for _, perk in Catalog.Perks do
 	perkIndex[perk.Key] = perk
+end
+
+-- Узлы дерева навыков: каждая ступень навыка — отдельный узел с единственным уровнем (куплен или нет).
+-- Ступени одного навыка идут цепочкой, первая ступень крепится к нужной ступени родителя.
+-- Сохранённые уровни не меняются: узел «ключ#N» куплен, если уровень навыка не меньше N.
+Catalog.PerkNodes = {} :: { Perk }
+for _, perk in Catalog.Perks do
+	local steps = #perk.Costs
+	for step = 1, steps do
+		local parent: string? = nil
+		if step > 1 then
+			parent = `{perk.Key}#{step - 1}`
+		elseif perk.Parent then
+			parent = `{perk.Parent}#{perk.Required or 1}`
+		end
+		local needs: { { Key: string, Level: number } }? = nil
+		if step == 1 and perk.Needs then
+			local list: { { Key: string, Level: number } } = {}
+			for _, need in perk.Needs do
+				table.insert(list, { Key = `{need.Key}#{need.Level}`, Level = 1 })
+			end
+			needs = list
+		end
+		table.insert(Catalog.PerkNodes, {
+			Key = `{perk.Key}#{step}`,
+			Name = if steps > 1 then `{perk.Name} {step}` else perk.Name,
+			Branch = perk.Branch,
+			Costs = { perk.Costs[step] },
+			Opened = { perk.Opened[step] or 0 },
+			Parent = parent,
+			Required = 1,
+			Needs = needs,
+			Describe = function(_level: number)
+				return perk.Describe(step)
+			end,
+			Base = perk.Key,
+			Step = step,
+			Steps = steps,
+		})
+	end
+end
+for _, node in Catalog.PerkNodes do
+	perkIndex[node.Key] = node
+end
+
+-- Уровни узлов (0 или 1) вместе с обычными уровнями навыков: годится для Catalog.perkCost и Catalog.perkLock.
+function Catalog.nodeLevels(perks: { [string]: number }): { [string]: number }
+	local levels = table.clone(perks)
+	for _, node in Catalog.PerkNodes do
+		levels[node.Key] = if (perks[node.Base :: string] or 0) >= (node.Step :: number) then 1 else 0
+	end
+	return levels
 end
 
 function Catalog.perk(key: string): Perk?
