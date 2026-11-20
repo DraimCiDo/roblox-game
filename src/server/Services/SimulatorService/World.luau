@@ -413,8 +413,9 @@ function World.Build(useForPlot: (number, Player, string, string?) -> ()): { Plo
 		local owner = {
 			surfaceLabel(ownerBoard, `{sign}\nСВОБОДЕН`, 42),
 			surfaceLabel(ownerBoard, `{sign}\nСВОБОДЕН`, 42, Enum.NormalId.Back),
+			-- Указатель перед входом в сектор тоже показывает ник владельца, чтобы игроки не путали сектора.
+			surfaceLabel(requirePart(root, `Указатель сектора 0{index}`), `{sign}\nСВОБОДЕН`, 52),
 		}
-		surfaceLabel(requirePart(root, `Указатель сектора 0{index}`), sign, 52)
 		local spawn = model:FindFirstChildWhichIsA("SpawnLocation")
 		assert(spawn, `[World] В {model.Name} отсутствует вход`)
 		local stations: { [string]: Part } = {
