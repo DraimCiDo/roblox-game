@@ -11,6 +11,8 @@ local CHROME = Color3.fromRGB(196, 204, 214)
 local CYAN = Color3.fromRGB(91, 232, 222)
 local GREEN = Color3.fromRGB(80, 235, 130)
 local AMBER = Color3.fromRGB(255, 181, 86)
+local RED = Color3.fromRGB(255, 80, 90)
+local DARK = Color3.fromRGB(36, 42, 54)
 local CRATE = Color3.fromRGB(150, 112, 70)
 local CLEARANCE = 9
 
@@ -174,6 +176,72 @@ function Hall.Decorate(center: Vector3, floorY: number): number
 		end
 	end
 	return count
+end
+
+
+-- Закрытые ворота в западном торце зала: заготовка под будущую зону. Встают перед сервисными панелями стены
+-- (стена зала на x = -82, её внутренняя грань — на -81.1) и никого не блокируют: стена и так сплошная.
+function Hall.Gate(floorY: number): ()
+	local folder = Instance.new("Folder")
+	folder.Name = "Закрытые ворота"
+	folder.Parent = Workspace
+	local block = Enum.PartType.Block
+	local x = -80.3
+	local function at(y: number, z: number): CFrame
+		return CFrame.new(x, floorY + y, z)
+	end
+	for _, side in { -1, 1 } do
+		local leafSize = Vector3.new(0.4, 10.6, 14.2)
+		local leaf = part(folder, "Створка ворот", block, leafSize, at(5.4, side * 7.2), DARK, Enum.Material.Metal)
+		leaf.CanCollide = true
+		-- Предупреждающие полосы по низу и верху створки.
+		for _, y in { 0.7, 10.2 } do
+			part(folder, "Полоса", block, Vector3.new(0.45, 0.7, 13.6), at(y, side * 7.2), AMBER, Enum.Material.Metal)
+		end
+		for rib = -2, 2 do
+			local ribFrame = at(5.4, side * 7.2 + rib * 2.6)
+			part(folder, "Ребро", block, Vector3.new(0.5, 8.6, 0.25), ribFrame, STEEL, Enum.Material.Metal)
+		end
+	end
+	local frameColor = CHROME:Lerp(STEEL, 0.5)
+	part(folder, "Верхняя балка", block, Vector3.new(0.9, 1, 31.2), at(11.4, 0), frameColor, Enum.Material.Metal)
+	for _, side in { -1, 1 } do
+		part(folder, "Стойка", block, Vector3.new(0.9, 11.4, 1), at(5.7, side * 15.4), frameColor, Enum.Material.Metal)
+	end
+	part(folder, "Замок", block, Vector3.new(0.8, 1.8, 2.2), at(5.4, 0), CHROME, Enum.Material.Metal)
+	local lamp = part(folder, "Сигнал замка", block, Vector3.new(0.3, 0.5, 1.4), at(6.8, 0), RED, Enum.Material.Neon)
+	local light = Instance.new("PointLight")
+	light.Color = RED
+	light.Range = 12
+	light.Brightness = 1.2
+	light.Parent = lamp
+	local plate = part(folder, "Табличка ворот", block, Vector3.new(0.3, 2.4, 13), at(14, 0), DARK, Enum.Material.Metal)
+	local surface = Instance.new("SurfaceGui")
+	surface.Face = Enum.NormalId.Right
+	surface.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	surface.PixelsPerStud = 60
+	surface.LightInfluence = 0
+	surface.MaxDistance = 90
+	surface.Parent = plate
+	local caption = Instance.new("TextLabel")
+	caption.Size = UDim2.fromScale(1, 1)
+	caption.BackgroundTransparency = 1
+	caption.Text = "ЗАКРЫТО · СКОРО ОТКРОЕТСЯ"
+	caption.TextColor3 = AMBER
+	caption.Font = Enum.Font.GothamBold
+	caption.TextScaled = true
+	caption.Parent = surface
+	-- Лампа замка тихо мигает: ворота «живые».
+	task.spawn(function()
+		while lamp.Parent do
+			light.Brightness = 0.4
+			lamp.Material = Enum.Material.SmoothPlastic
+			task.wait(0.9)
+			light.Brightness = 1.2
+			lamp.Material = Enum.Material.Neon
+			task.wait(1.1)
+		end
+	end)
 end
 
 -- Занято ли место декором: пятна мини-игры не должны попадать под предметы.

@@ -892,6 +892,7 @@ function SimulatorService:Start(): ()
 		local center = sum / #plots
 		local floorY = Mop.Start(center, tell, publish)
 		Hall.Decorate(center, floorY)
+		Hall.Gate(floorY)
 	end
 	Remotes.func(Remotes.Functions.GetData).OnServerInvoke = function(player: Player): Types.View?
 		local now = os.clock()
