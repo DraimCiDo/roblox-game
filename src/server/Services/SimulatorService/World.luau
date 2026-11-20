@@ -8,6 +8,7 @@ local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
 local Config = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Containers = require(script.Parent.Containers)
+local DropEffects = require(script.Parent.DropEffects)
 local ItemModels = require(ReplicatedStorage.Shared.ItemModels)
 local Audio = require(script.Parent.Audio)
 local Sector = require(script.Parent.Sector)
@@ -853,6 +854,11 @@ function World.Release(plot: Plot): number
 	return closeAt + GATE_MOVE_TIME
 end
 
+-- Выбранный владельцем эффект выпадения для сектора.
+function World.SetEffect(plot: Plot, key: string): ()
+	plot.Model:SetAttribute("DropEffect", key)
+end
+
 function World.Sync(plot: Plot, order: Types.Order?, use: Use, scatter: boolean, remaining: number): ()
 	if not order or order.Stage == "queued" then
 		if plot.Active then
@@ -905,10 +911,17 @@ function World.Sync(plot: Plot, order: Types.Order?, use: Use, scatter: boolean,
 		lead = Containers.update(model, order, base, live, plot.OpenParts)
 	end
 	local shouldExist: { [string]: boolean } = {}
+	local effectPlayed = false
 	for _, loot in order.Loot do
 		local item = loot.Item
 		shouldExist[item.Id] = true
 		if not plot.Loot[item.Id] then
+			if scatter and not effectPlayed then
+				effectPlayed = true
+				local effect = plot.Model:GetAttribute("DropEffect")
+				local key = if typeof(effect) == "string" then effect else Catalog.DefaultEffect
+				DropEffects.play(base * CFrame.new(0, 2.1, 0), key, lead)
+			end
 			local prop = makeItem(item)
 			addGlow(prop, item.Quality)
 			local target = base * CFrame.new(loot.X, if order.Kind == "cargo" then 0.3 else 0, loot.Z)

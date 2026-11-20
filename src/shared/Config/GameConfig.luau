@@ -16,6 +16,8 @@ local DEFAULT_DATA: Types.PlayerData = {
 	Perks = {},
 	Orders = {},
 	DailyClaim = -1,
+	Effect = "standard",
+	Effects = {},
 }
 
 return table.freeze({

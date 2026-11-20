@@ -1,10 +1,12 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
+local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
 local Components = require(script.Parent.Parent.Components)
 local Sfx = require(script.Parent.Parent.Sfx)
 local Style = require(script.Parent.Parent.Style)
-local Types = require(game:GetService("ReplicatedStorage").Shared.Types)
+local Types = require(ReplicatedStorage.Shared.Types)
 
 -- Настройки: громкость звуков интерфейса и мира. Значение применяется сразу, а на сервер уходит по отпусканию ползунка.
 local Settings = {}
@@ -156,6 +158,57 @@ function Settings.render(data: Types.View): ()
 			Sfx.play("thud")
 		end
 	)
+	Settings.renderEffects(data)
+end
+
+-- Отпечаток выбранного и купленных эффектов: по нему экран настроек перерисовывается после выбора или покупки.
+function Settings.effectsSignature(data: Types.View): string
+	local parts = { data.Effect, tostring(data.Coins) }
+	for _, effect in Catalog.DropEffects do
+		table.insert(parts, if Catalog.effectAvailable(effect, data.Opened, data.Effects) then "1" else "0")
+	end
+	return table.concat(parts, "|")
+end
+
+function Settings.renderEffects(data: Types.View): ()
+	Components.heading("Эффекты выпадения")
+	Components.paragraph(
+		"Выбранный эффект играет, когда из вашего контейнера вылетает добыча. Новые открываются за монеты и достижения."
+	)
+	for _, effect in Catalog.DropEffects do
+		local available = Catalog.effectAvailable(effect, data.Opened, data.Effects)
+		local selected = data.Effect == effect.Key
+		local caption: string
+		local enabled: boolean
+		local tone: Style.ButtonTone
+		local callback: () -> () = function() end
+		if selected then
+			caption, enabled, tone = "Выбран", false, "neutral"
+		elseif available then
+			caption, enabled, tone = "Выбрать", true, "primary"
+			callback = function()
+				Components.send("effect", effect.Key)
+			end
+		elseif effect.Price then
+			caption = Components.coin(effect.Price)
+			enabled, tone = data.Coins >= effect.Price, "reward"
+			callback = function()
+				Components.send("buyEffect", effect.Key)
+			end
+		else
+			caption, enabled, tone = "Закрыт", false, "neutral"
+		end
+		Components.row({
+			Name = effect.Name,
+			Details = effect.Details,
+			Tint = effect.Primary,
+			Caption = caption,
+			Callback = callback,
+			Enabled = enabled,
+			FocusKey = `Эффект {effect.Key}`,
+			Tone = tone,
+		})
+	end
 end
 
 return Settings

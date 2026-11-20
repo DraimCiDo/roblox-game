@@ -767,4 +767,109 @@ function Catalog.condition(quality: number): string
 	return "Идеальное"
 end
 
+-- Эффекты выпадения: цветной выброс частиц в момент, когда из контейнера вылетает добыча.
+-- Получение: Price — покупка за монеты; Opened — награда за число открытых контейнеров (достижение).
+-- Позже сюда же добавятся эффекты за донат (поле Robux) — клиентская часть уже читает Catalog.DropEffects.
+export type DropEffect = {
+	Key: string,
+	Name: string,
+	Details: string,
+	Primary: Color3,
+	Secondary: Color3,
+	Count: number,
+	Speed: number,
+	Gravity: number,
+	Price: number?,
+	Opened: number?,
+}
+
+Catalog.DefaultEffect = "standard"
+Catalog.DropEffects = {
+	{
+		Key = "standard",
+		Name = "Стандартный",
+		Details = "Тёплые искры. Есть у всех.",
+		Primary = rgb(255, 214, 120),
+		Secondary = rgb(255, 150, 70),
+		Count = 24,
+		Speed = 16,
+		Gravity = -30,
+	},
+	{
+		Key = "confetti",
+		Name = "Конфетти",
+		Details = "Разноцветный праздничный залп.",
+		Primary = rgb(255, 99, 160),
+		Secondary = rgb(91, 232, 222),
+		Count = 46,
+		Speed = 20,
+		Gravity = -36,
+		Price = 15000,
+	},
+	{
+		Key = "inferno",
+		Name = "Огненный взрыв",
+		Details = "Награда за 50 открытых контейнеров.",
+		Primary = rgb(255, 120, 40),
+		Secondary = rgb(255, 60, 40),
+		Count = 56,
+		Speed = 26,
+		Gravity = -10,
+		Opened = 50,
+	},
+	{
+		Key = "frost",
+		Name = "Ледяная пыль",
+		Details = "Холодное сияние и медленно падающий иней.",
+		Primary = rgb(190, 240, 255),
+		Secondary = rgb(110, 190, 255),
+		Count = 50,
+		Speed = 14,
+		Gravity = -6,
+		Price = 60000,
+	},
+	{
+		Key = "void",
+		Name = "Разлом пустоты",
+		Details = "Награда за 200 открытых контейнеров.",
+		Primary = rgb(178, 120, 255),
+		Secondary = rgb(60, 20, 120),
+		Count = 64,
+		Speed = 18,
+		Gravity = 4,
+		Opened = 200,
+	},
+	{
+		Key = "gold",
+		Name = "Золотой дождь",
+		Details = "Густой золотой каскад для самых богатых.",
+		Primary = rgb(255, 224, 110),
+		Secondary = rgb(230, 170, 40),
+		Count = 80,
+		Speed = 22,
+		Gravity = -44,
+		Price = 250000,
+	},
+} :: { DropEffect }
+
+local effectIndex: { [string]: DropEffect } = {}
+for _, effect in Catalog.DropEffects do
+	effectIndex[effect.Key] = effect
+end
+
+function Catalog.dropEffect(key: string): DropEffect?
+	return effectIndex[key]
+end
+
+-- Можно ли применить эффект: бесплатный, куплен или получен за достижение.
+function Catalog.effectAvailable(effect: DropEffect, opened: number, owned: { [string]: boolean }): boolean
+	if owned[effect.Key] then
+		return true
+	end
+	if effect.Opened then
+		return opened >= effect.Opened
+	end
+	return effect.Price == nil
+end
+
 return Catalog

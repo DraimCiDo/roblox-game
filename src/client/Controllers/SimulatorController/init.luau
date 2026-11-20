@@ -44,7 +44,7 @@ local CAPTIONS: { [string]: string } = {
 	perks = "Выберите узел, чтобы посмотреть улучшение",
 	daily = "Награда за время в лаборатории",
 	dial = "Три штифта: каждый следующий быстрее",
-	settings = "Громкость звуков",
+	settings = "Громкость и эффекты выпадения",
 }
 local ACCENTS: { [string]: Color3 } = {
 	terminal = Style.Signal,
@@ -270,7 +270,10 @@ selectMenu = function(key: string?): ()
 		Perks.reset()
 		Settings.reset()
 	end
-	signature = if state then fingerprint(state) else ""
+	signature = ""
+	if state then
+		signature = if key == "settings" then Settings.effectsSignature(state) else fingerprint(state)
+	end
 	bindStop(key == "dial")
 	refresh(previous == key)
 	if key and not previous then
@@ -498,7 +501,13 @@ function SimulatorController:Start(): ()
 		if not Settings.isDragging() then
 			Sfx.setVolumes(data.VolumeUi, data.VolumeWorld)
 		end
-		if menu and menu ~= "dial" and menu ~= "settings" then
+		if menu == "settings" and not Settings.isDragging() then
+			local current = Settings.effectsSignature(data)
+			if current ~= signature then
+				signature = current
+				refresh(true)
+			end
+		elseif menu and menu ~= "dial" and menu ~= "settings" then
 			local current = fingerprint(data)
 			if current ~= signature then
 				signature = current

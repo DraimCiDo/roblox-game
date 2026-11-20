@@ -39,6 +39,8 @@ local REMOTE_ACTIONS: { [string]: boolean } = {
 	quickCollect = true,
 	skipTutorial = true,
 	setVolume = true,
+	effect = true,
+	buyEffect = true,
 }
 
 local SimulatorService = {}
@@ -94,6 +96,8 @@ local function view(player: Player): Types.View?
 		Prices = prices,
 		DailyReadyAt = session.ReadyAt,
 		DailyClaim = data.DailyClaim,
+		Effect = data.Effect,
+		Effects = data.Effects,
 	}
 end
 
@@ -194,6 +198,7 @@ local function sync(player: Player, session: Session, scatter: boolean?): ()
 		1 + (data.Perks.orders or 0)
 	)
 	World.UpdateDisplays(session.Plot, data.Displays)
+	World.SetEffect(session.Plot, data.Effect)
 	updateGuide(player, session, data)
 	publish(player)
 end
@@ -755,6 +760,25 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 					data.VolumeWorld = value
 				end
 				updated = true
+			end
+		elseif action == "effect" or action == "buyEffect" then
+			local effect = if argument then Catalog.dropEffect(argument) else nil
+			if effect then
+				local available = Catalog.effectAvailable(effect, data.Opened, data.Effects)
+				if action == "buyEffect" and not available and effect.Price then
+					if data.Coins < effect.Price then
+						tell(player, "Не хватает монет на этот эффект")
+					else
+						data.Coins -= effect.Price
+						data.Effects[effect.Key] = true
+						data.Effect = effect.Key
+						tell(player, `Эффект «{effect.Name}» куплен и выбран`)
+						updated = true
+					end
+				elseif action == "effect" and available then
+					data.Effect = effect.Key
+					updated = true
+				end
 			end
 		elseif action == "skipTutorial" then
 			data.TutorialDone = true

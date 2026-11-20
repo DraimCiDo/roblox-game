@@ -30,6 +30,9 @@ export type PlayerData = {
 	Perks: { [string]: number },
 	Orders: { Order },
 	DailyClaim: number,
+	-- Выбранный эффект выпадения и купленные эффекты.
+	Effect: string,
+	Effects: { [string]: boolean },
 }
 
 export type View = {
@@ -55,6 +58,8 @@ export type View = {
 	Prices: { [string]: number },
 	DailyReadyAt: number,
 	DailyClaim: number,
+	Effect: string,
+	Effects: { [string]: boolean },
 }
 
 return {}
