@@ -56,6 +56,7 @@ docs/                документация, GDD, решения (ADR)
 | Форматировать | `stylua src` |
 | Полная проверка (как в CI) | `./scripts/check.sh` или `./scripts/check.ps1` |
 | Собрать place-файл | `rojo build default.project.json -o build/game.rbxl` |
+| Пересобрать оформление карты в `assets/` | `lune run scripts/map/build.luau` |
 
 ## 5. Стиль кода
 

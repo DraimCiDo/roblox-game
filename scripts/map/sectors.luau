@@ -212,12 +212,14 @@ local function backroomsChamber(sector, folder)
 	-- Тёплый жёлтый свет на дне шахты отвода: контейнеры уходят обратно в Backrooms.
 	local disposal = findPart(sector, "Нижняя точка отвода")
 	if disposal then
-		local glow = solid(folder, "Свет Backrooms в шахте", Vector3.new(6, 0.1, 3), disposal.CFrame * CFrame.new(0, 11.5, 0), FLUORESCENT, Enum.Material.Neon)
+		local glow = solid(folder, "Свет Backrooms в шахте", Vector3.new(6, 0.1, 3), disposal.CFrame * CFrame.new(0, 4, 0), FLUORESCENT, Enum.Material.Neon)
 		glow.Transparency = 1
 		local shaftLight = Instance.new("PointLight")
 		shaftLight.Color = Color3.fromRGB(255, 236, 170)
-		shaftLight.Range = 18
-		shaftLight.Brightness = 1.4
+		shaftLight.Range = 11
+		shaftLight.Brightness = 1.2
+		-- С тенями: свет остаётся в шахте и не пересвечивает площадку сквозь закрытые створки.
+		shaftLight.Shadows = true
 		shaftLight.Parent = glow
 	end
 end
