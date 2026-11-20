@@ -770,11 +770,18 @@ function World.UpdateDisplays(plot: Plot, items: { [string]: Types.Item }): ()
 		if item and not plot.StandModels[slot] then
 			local model = makeItem(item)
 			local lift = plot.Kit.Lift[slot] or 0
-			model:PivotTo(
-				stand.CFrame
-					* CFrame.new(0, stand.Size.Y / 2 + 0.02 + lift, 0)
-					* CFrame.Angles(0, math.rad(plot.Kit.Yaw[slot] or 0), 0)
-			)
+			local position = (stand.CFrame * CFrame.new(0, stand.Size.Y / 2 + 0.02 + lift, 0)).Position
+			-- Лицевая сторона предмета (-Z) смотрит на место, где стоит игрок, на одной высоте с предметом.
+			local viewer = Vector3.new(plot.Spawn.Position.X, position.Y, plot.Spawn.Position.Z)
+			if (viewer - position).Magnitude > 0.5 then
+				model:PivotTo(CFrame.lookAt(position, viewer))
+			else
+				model:PivotTo(
+					stand.CFrame
+						* CFrame.new(0, stand.Size.Y / 2 + 0.02 + lift, 0)
+						* CFrame.Angles(0, math.rad(plot.Kit.Yaw[slot] or 0), 0)
+				)
+			end
 			Sector.setDisplay(plot.Kit, slot, item)
 			model.Parent = plot.Model
 			plot.StandModels[slot] = model
