@@ -637,6 +637,71 @@ local function animate(model: Model, first: CFrame, last: CFrame, length: number
 	end, Enum.EasingStyle.Quad, delay)
 end
 
+-- «Бэкрумс»: контейнер падает не из трубы, а из мерцающего разрыва с жёлтым флуоресцентным светом и пылью.
+local BACKROOMS_YELLOW = Color3.fromRGB(226, 204, 112)
+local BACKROOMS_DIRTY = Color3.fromRGB(150, 128, 62)
+
+local function backroomsRift(at: CFrame, duration: number): ()
+	local rift = Instance.new("Part")
+	rift.Name = "Разрыв бэкрумс"
+	rift.Shape = Enum.PartType.Ball
+	rift.Size = Vector3.one * 2
+	rift.CFrame = at
+	rift.Color = BACKROOMS_YELLOW
+	rift.Material = Enum.Material.Neon
+	rift.Transparency = 1
+	rift.Anchored = true
+	rift.CanCollide = false
+	rift.CanQuery = false
+	rift.CanTouch = false
+	rift.CastShadow = false
+	rift.Parent = Workspace
+	-- Грязноватая «обёртка» вокруг светящегося ядра: обои и пыльный потолок.
+	local shell = rift:Clone()
+	shell.Name = "Оболочка разрыва"
+	shell.Color = BACKROOMS_DIRTY
+	shell.Material = Enum.Material.Fabric
+	shell.Size = Vector3.one * 3
+	shell.Parent = rift
+	local light = Instance.new("PointLight")
+	light.Color = BACKROOMS_YELLOW
+	light.Range = 22
+	light.Brightness = 0
+	light.Parent = rift
+	local dust = Instance.new("ParticleEmitter")
+	dust.Color = ColorSequence.new(BACKROOMS_YELLOW, BACKROOMS_DIRTY)
+	dust.LightEmission = 0.4
+	dust.Size = NumberSequence.new(0.25, 0)
+	dust.Transparency = NumberSequence.new(0.2, 1)
+	dust.Lifetime = NumberRange.new(0.8, 1.6)
+	dust.Speed = NumberRange.new(1, 4)
+	dust.SpreadAngle = Vector2.new(180, 180)
+	dust.Rate = 22
+	dust.Parent = rift
+	local open = TweenInfo.new(0.45, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+	TweenService:Create(rift, open, { Size = Vector3.one * 8, Transparency = 0.2 }):Play()
+	TweenService:Create(shell, open, { Size = Vector3.one * 9.5, Transparency = 0.55 }):Play()
+	-- Лампа дневного света мигает, как в бэкрумс.
+	local rng = Random.new()
+	task.spawn(function()
+		local deadline = os.clock() + duration
+		while os.clock() < deadline and rift.Parent do
+			light.Brightness = if rng:NextNumber() < 0.25 then rng:NextNumber(0, 0.8) else rng:NextNumber(1.6, 2.6)
+			task.wait(rng:NextNumber(0.05, 0.16))
+		end
+		if rift.Parent then
+			local close = TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.In)
+			TweenService:Create(rift, close, { Size = Vector3.one * 1, Transparency = 1 }):Play()
+			TweenService:Create(shell, close, { Size = Vector3.one * 1.5, Transparency = 1 }):Play()
+			TweenService:Create(light, close, { Brightness = 0 }):Play()
+			dust.Enabled = false
+			task.delay(1.8, function()
+				rift:Destroy()
+			end)
+		end
+	end)
+end
+
 local function deliverThroughPipe(plot: Plot, model: Model, base: CFrame, remaining: number): Tween?
 	if remaining <= 0 then
 		model:PivotTo(base)
@@ -646,6 +711,7 @@ local function deliverThroughPipe(plot: Plot, model: Model, base: CFrame, remain
 	local outlet = plot.DeliveryPoint.CFrame
 	plot.PipeLight.Enabled = true
 	plot.GateLights.upper.Enabled = true
+	backroomsRift(entry, remaining * PIPE_TRAVEL_FRACTION + 0.4)
 	local gateLead = math.min(GATE_MOVE_TIME, remaining * 0.22)
 	local descentStart = PIPE_TRAVEL_FRACTION + gateLead / remaining
 	task.delay(remaining * PIPE_TRAVEL_FRACTION, function()
