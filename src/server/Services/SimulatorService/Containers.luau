@@ -117,7 +117,8 @@ local function swingAll(
 	direction: Enum.EasingDirection?,
 	done: (() -> ())?
 ): ()
-	drive(ctx.Model, duration, style, direction, function(alpha)
+	-- Створки двигаются с плавным разгоном и торможением (Sine InOut), если направление не задано явно.
+	drive(ctx.Model, duration, style, direction or Enum.EasingDirection.InOut, function(alpha)
 		for _, piece in parts do
 			pose(ctx, piece, alpha)
 		end
@@ -408,7 +409,7 @@ local function boxStep(ctx: Ctx, step: number, instant: boolean): ()
 		end
 	elseif step == 2 or step == 3 then
 		local flap = layout.Named[if step == 2 then "FlapLeft" else "FlapRight"]
-		swingAll(ctx, { flap }, if instant then 0 else 0.38, Enum.EasingStyle.Back)
+		swingAll(ctx, { flap }, if instant then 0 else 0.5, Enum.EasingStyle.Sine)
 		if not instant then
 			Audio.at(ctx.Model, "flap")
 			sparks(
@@ -421,7 +422,7 @@ local function boxStep(ctx: Ctx, step: number, instant: boolean): ()
 		end
 	else
 		fade(layout.Groups.Flaps, if instant then 0 else 0.3)
-		swingAll(ctx, layout.Groups.Walls, if instant then 0 else 0.55, Enum.EasingStyle.Quad)
+		swingAll(ctx, layout.Groups.Walls, if instant then 0 else 0.7, Enum.EasingStyle.Sine)
 		if not instant then
 			local center = ctx.Base * CFrame.new(0, 1.6, 0)
 			Audio.at(ctx.Model, "confetti")
@@ -593,7 +594,7 @@ local function crateCollapse(ctx: Ctx, instant: boolean): ()
 	end
 	fade(layout.Groups.Lid, 0)
 	fade(layout.Groups.Posts, if instant then 0 else 0.25)
-	swingAll(ctx, layout.Groups.Walls, if instant then 0 else 0.5, Enum.EasingStyle.Quad)
+	swingAll(ctx, layout.Groups.Walls, if instant then 0 else 0.65, Enum.EasingStyle.Sine)
 end
 
 -- ============ Сейф ============
@@ -753,7 +754,7 @@ local function safeOpen(ctx: Ctx, instant: boolean): ()
 	local cavity = layout.Named.Cavity
 	local glow = cavity:FindFirstChildWhichIsA("PointLight")
 	local function swing()
-		swingAll(ctx, layout.Groups.Door, if instant then 0 else 0.8, Enum.EasingStyle.Quad)
+		swingAll(ctx, layout.Groups.Door, if instant then 0 else 1.0, Enum.EasingStyle.Sine)
 		if glow then
 			if instant then
 				glow.Brightness = 2.5
@@ -919,7 +920,7 @@ local function cargoOpen(ctx: Ctx, handle: Part, instant: boolean): ()
 		if ctx.Model:GetAttribute("Releasing") then
 			return
 		end
-		swingAll(ctx, doors, if instant then 0 else 0.95, Enum.EasingStyle.Quad)
+		swingAll(ctx, doors, if instant then 0 else 1.15, Enum.EasingStyle.Sine)
 		local glow = layout.Named.Roof:FindFirstChildWhichIsA("PointLight")
 		if glow then
 			glow.Brightness = 2
@@ -1074,7 +1075,7 @@ local function secretCharge(ctx: Ctx, step: number, instant: boolean): ()
 			shards(ctx.Model, piece, 1, 24)
 		end
 	end
-	swingAll(ctx, layout.Groups.Walls, 0.45, Enum.EasingStyle.Quad)
+	swingAll(ctx, layout.Groups.Walls, 0.6, Enum.EasingStyle.Sine)
 	fade(layout.Groups.Shell, 0.5)
 end
 
