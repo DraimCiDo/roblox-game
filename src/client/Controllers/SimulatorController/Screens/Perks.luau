@@ -78,7 +78,6 @@ local PERK_ICONS: { [string]: Icons.IconName } = {
 	steady = "lock",
 	slow = "clock",
 }
-local VIEW_HEIGHT = 440
 local MOBILE_DOCK = 194
 -- Раскладка: расстояние от ствола задаёт глубина навыка, а соседние листья расходятся в стороны.
 local FIRST_RADIUS = 290
@@ -91,7 +90,9 @@ local CLEARANCE_Y = 118
 local CORE_CLEARANCE = 210
 local ROOT_DIAMETER = 62
 local NODE_DIAMETER = 52
-local MIN_ZOOM = 0.45
+-- Минимум позволяет уместить всё дерево в окне на любом экране.
+local MIN_ZOOM = 0.2
+local SIDE_PANEL = 320
 local MAX_ZOOM = 1.5
 
 type NodeState = {
@@ -492,7 +493,8 @@ function Perks.render(source: Types.View, _wide: boolean): ()
 	local map: Layout = cachedLayout or layout()
 	cachedLayout = map
 
-	local shell = Components.strip(Components.viewHeight(VIEW_HEIGHT))
+	-- Окно перков растянуто на весь экран: карта занимает всю высоту, описание узла — колонка справа.
+	local shell = Components.strip(Components.fillHeight())
 	local view = Style.frame(shell, BOARD, 14)
 	view.Size = UDim2.fromScale(1, 1)
 	view.ClipsDescendants = true
@@ -548,10 +550,26 @@ function Perks.render(source: Types.View, _wide: boolean): ()
 	end
 	scale.Scale = zoom
 	host.CanvasSize = UDim2.fromOffset(map.Size.X * zoom, map.Size.Y * zoom)
-	local function centerOnHub(): ()
+	-- Масштаб «всё дерево целиком»: карта вписывается в окно с небольшим полем и встаёт по центру.
+	-- Границы считаются по самим узлам (с полем под подписи), а не по холсту: у холста есть пустые поля.
+	local low, high = map.Hub, map.Hub
+	for _, point in map.Points do
+		low = low:Min(point)
+		high = high:Max(point)
+	end
+	low -= Vector2.new(70, 60)
+	high += Vector2.new(70, 80)
+	local function fitWhole(): ()
 		local size = host.AbsoluteSize
-		host.CanvasPosition =
-			Vector2.new(math.max(0, map.Hub.X * zoom - size.X / 2), math.max(0, map.Hub.Y * zoom - size.Y * 0.82))
+		if size.X < 1 or size.Y < 1 then
+			return
+		end
+		local bounds = high - low
+		zoom = math.clamp(math.min(size.X / bounds.X, size.Y / bounds.Y), MIN_ZOOM, MAX_ZOOM)
+		scale.Scale = zoom
+		host.CanvasSize = UDim2.fromOffset(map.Size.X * zoom, map.Size.Y * zoom)
+		local middle = (low + high) / 2 * zoom
+		host.CanvasPosition = Vector2.new(math.max(0, middle.X - size.X / 2), math.max(0, middle.Y - size.Y / 2))
 	end
 	-- Размер окна карты известен только после первой раскладки интерфейса.
 	task.delay(0.05, function()
@@ -561,7 +579,7 @@ function Perks.render(source: Types.View, _wide: boolean): ()
 		if scroll then
 			host.CanvasPosition = scroll
 		else
-			centerOnHub()
+			fitWhole()
 		end
 	end)
 	table.insert(
@@ -640,14 +658,16 @@ function Perks.render(source: Types.View, _wide: boolean): ()
 		Style.textStroke(count, 3)
 	end
 
-	local detailPanel = Components.dock(MOBILE_DOCK, true)
+	local detailPanel = Components.dock(MOBILE_DOCK, true, SIDE_PANEL)
+	-- В широкой колонке справа — развёрнутое описание (шкала уровней, крупная кнопка).
+	local wideDetails = not Components.compact()
 	local widgets: { [string]: NodeWidget } = {}
 	local function selectPerk(perkKey: string): ()
 		selectedKey = perkKey
 		for nodeKey, widget in widgets do
 			widget.Apply(nodeKey == perkKey)
 		end
-		details(detailPanel, states[perkKey], branches, false)
+		details(detailPanel, states[perkKey], branches, wideDetails)
 	end
 	for _, perk in Catalog.PerkNodes do
 		local diameter = if perk.Parent then NODE_DIAMETER else ROOT_DIAMETER
@@ -682,8 +702,7 @@ function Perks.render(source: Types.View, _wide: boolean): ()
 	for index, tool in toolList do
 		local control = Style.button(toolbar, tool.Caption, function()
 			if tool.Factor == 0 then
-				setZoom(if Components.compact() then 0.55 else 0.8)
-				centerOnHub()
+				fitWhole()
 			else
 				setZoom(zoom * tool.Factor)
 			end

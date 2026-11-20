@@ -203,7 +203,8 @@ local function refresh(preserveScroll: boolean?): ()
 		return
 	end
 	perksWide = key == "perks" and widePerks()
-	panelBounds.MaxSize = if perksWide then Vector2.new(1050, 700) else Vector2.new(600, 660)
+	-- Дерево навыков — на весь экран, чтобы карта помещалась целиком; остальные меню — компактное окно.
+	panelBounds.MaxSize = if key == "perks" then Vector2.new(10000, 10000) else Vector2.new(600, 660)
 	local content = panel:FindFirstChild("Содержимое") :: ScrollingFrame
 	local canvas = content.CanvasPosition
 	local oldSelection = GuiService.SelectedObject
@@ -493,10 +494,21 @@ local function build(): ()
 	end)
 	local camera = Workspace.CurrentCamera
 	if camera then
+		-- Карта перков растянута на экран: при смене размера окна перерисовываем её (с небольшой задержкой,
+		-- пока размер окна меняется) — высота карты и колонка описания считаются от размера экрана.
+		local resizeSerial = 0
 		camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
-			if menu == "perks" and perksWide ~= widePerks() then
-				refresh()
+			if menu ~= "perks" then
+				return
 			end
+			resizeSerial += 1
+			local serial = resizeSerial
+			task.delay(0.25, function()
+				if serial == resizeSerial and menu == "perks" then
+					Perks.reset()
+					refresh()
+				end
+			end)
 		end)
 	end
 end

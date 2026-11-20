@@ -116,20 +116,27 @@ function Components.viewHeight(preferred: number): number
 	return math.clamp(Components.panelHeight() - CONTENT_INSET - 12, 120, preferred)
 end
 
+-- Высота области содержимого, когда окно растянуто на весь экран (карта перков).
+function Components.fillHeight(): number
+	return math.max(160, Components.panelHeight() - CONTENT_INSET - 12)
+end
+
 -- Нижняя панель вне прокрутки: остаётся на виду при выборе предмета в длинном списке.
 -- side = true: на низком окне панель встаёт справа от содержимого, а не под ним.
-function Components.dock(height: number, side: boolean?): Frame
+-- sideWidth: панель всегда справа, этой ширины (на телефоне — узкая колонка).
+function Components.dock(height: number, side: boolean?, sideWidth: number?): Frame
 	for _, object in dockFrame:GetChildren() do
 		if object:IsA("GuiObject") then
 			object:Destroy()
 		end
 	end
 	dockFrame.Visible = true
-	if side and Components.compact() then
+	if side and (Components.compact() or sideWidth) then
+		local width = if Components.compact() then SIDE_DOCK_WIDTH else sideWidth or SIDE_DOCK_WIDTH
 		dockFrame.AnchorPoint = Vector2.new(1, 0)
 		dockFrame.Position = UDim2.new(1, -12, 0, SIDE_DOCK_TOP)
-		dockFrame.Size = UDim2.fromOffset(SIDE_DOCK_WIDTH, math.max(150, Components.panelHeight() - SIDE_DOCK_TOP - 8))
-		content.Size = UDim2.new(1, -(26 + SIDE_DOCK_WIDTH + 8), 1, -CONTENT_INSET)
+		dockFrame.Size = UDim2.new(0, width, 1, -(SIDE_DOCK_TOP + 10))
+		content.Size = UDim2.new(1, -(26 + width + 8), 1, -CONTENT_INSET)
 	else
 		dockFrame.AnchorPoint = Vector2.new(0.5, 1)
 		dockFrame.Position = UDim2.new(0.5, 0, 1, -12)
