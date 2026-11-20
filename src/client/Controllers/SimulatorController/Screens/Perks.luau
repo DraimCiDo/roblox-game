@@ -336,6 +336,8 @@ end
 function Perks.reset(): ()
 	selectedKey = nil
 	scroll = nil
+	-- На низком окне (телефон) карта стартует мельче, чтобы ветки были видны сразу.
+	zoom = if Components.compact() then 0.55 else 0.8
 	disconnect()
 end
 
@@ -680,7 +682,7 @@ function Perks.render(source: Types.View, _wide: boolean): ()
 	for index, tool in toolList do
 		local control = Style.button(toolbar, tool.Caption, function()
 			if tool.Factor == 0 then
-				setZoom(0.8)
+				setZoom(if Components.compact() then 0.55 else 0.8)
 				centerOnHub()
 			else
 				setZoom(zoom * tool.Factor)

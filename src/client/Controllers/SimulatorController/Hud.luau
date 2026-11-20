@@ -60,6 +60,10 @@ end
 -- Высота колонки «Перки + Награда»: две кнопки и промежуток между ними.
 local SIDE_HEIGHT = BUTTON_SIZE * 2 + 12
 
+-- Масштаб слоя HUD (задаёт контроллер): высоту экрана переводим в единицы слоя.
+local hudScale = 1
+local sideColumn: Frame? = nil
+
 -- Отступ колонки от низа: на низком экране (ландшафтный телефон) уменьшается, чтобы колонка не выходила за верхний край.
 local function sideBottom(): number
 	local wanted = sideOffset().Y
@@ -68,7 +72,7 @@ local function sideBottom(): number
 		return wanted
 	end
 	local top, bottom = GuiService:GetGuiInset()
-	local free = camera.ViewportSize.Y - top.Y - bottom.Y - SIDE_HEIGHT - 8
+	local free = (camera.ViewportSize.Y - top.Y - bottom.Y) / hudScale - SIDE_HEIGHT - 8
 	return math.max(8, math.min(wanted, free))
 end
 
@@ -133,7 +137,7 @@ local function iconButton(
 	return control
 end
 
-function Hud.build(gui: ScreenGui, callbacks: Callbacks): ()
+function Hud.build(gui: GuiBase2d, callbacks: Callbacks): ()
 	-- Монеты: крупная плашка сверху по центру.
 	local pill = plate(gui, Style.Ink, 32)
 	pill.Name = "Баланс"
@@ -233,6 +237,7 @@ function Hud.build(gui: ScreenGui, callbacks: Callbacks): ()
 			side.Position = UDim2.new(1, -offset.X, 1, -sideBottom())
 		end)
 	end
+	sideColumn = side
 	side.AutomaticSize = Enum.AutomaticSize.XY
 	side.Size = UDim2.fromOffset(0, 0)
 	local sideLayout = Instance.new("UIListLayout")
@@ -380,6 +385,15 @@ function Hud.pulse(key: string?): ()
 		Transparency = 0.85,
 	}):Play()
 	pulseRing = ring
+end
+
+-- Масштаб слоя HUD изменился (поворот экрана, смена окна): пересчитать отступ колонки кнопок.
+function Hud.setScale(scale: number): ()
+	hudScale = scale
+	local side = sideColumn
+	if side then
+		side.Position = UDim2.new(1, -sideOffset().X, 1, -sideBottom())
+	end
 end
 
 -- Показывает подсказку управления, пока камера в режиме первого лица (только на клавиатуре).

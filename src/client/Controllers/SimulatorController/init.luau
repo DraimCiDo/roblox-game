@@ -343,7 +343,30 @@ local function build(): ()
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 
-	Hud.build(gui, {
+	-- Слой HUD с общим масштабом: на низком экране (ландшафтный телефон) плашки и обучение мельче,
+	-- чтобы не перекрывать друг друга и центр экрана. Размер слоя 1/scale, поэтому после UIScale он
+	-- снова ровно во весь экран.
+	local hudLayer = Instance.new("Frame")
+	hudLayer.Name = "HUD"
+	hudLayer.BackgroundTransparency = 1
+	hudLayer.Parent = gui
+	local hudScale = Instance.new("UIScale")
+	hudScale.Parent = hudLayer
+	local function fitHud(): ()
+		local camera = Workspace.CurrentCamera
+		local height = if camera then camera.ViewportSize.Y else 800
+		local scale = math.clamp(height / 760, 0.68, 1)
+		hudScale.Scale = scale
+		hudLayer.Size = UDim2.fromScale(1 / scale, 1 / scale)
+		Hud.setScale(scale)
+	end
+	fitHud()
+	local hudCamera = Workspace.CurrentCamera
+	if hudCamera then
+		hudCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fitHud)
+	end
+
+	Hud.build(hudLayer, {
 		Perks = function()
 			toggle("perks")
 		end,
@@ -355,7 +378,7 @@ local function build(): ()
 		end,
 	})
 
-	Guide.build(gui, function()
+	Guide.build(hudLayer, function()
 		send("skipTutorial")
 		Guide.hide()
 	end, Hud.pulse)

@@ -113,7 +113,7 @@ local function mark(target: Instance): ()
 	marker = arrow
 end
 
-function Guide.build(gui: ScreenGui, onSkip: () -> (), onPulse: (string?) -> ()): ()
+function Guide.build(gui: GuiBase2d, onSkip: () -> (), onPulse: (string?) -> ()): ()
 	pulse = onPulse
 	banner = Style.frame(gui, Style.Ink, 16)
 	banner.Name = "Обучение"
