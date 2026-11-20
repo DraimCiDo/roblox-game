@@ -10,6 +10,7 @@ local Config = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Data = require(script.Parent.Parent.PlayerDataService)
 local Economy = require(script.Parent.Economy)
+local Hall = require(script.Parent.Hall)
 
 local Mop = {}
 
@@ -81,10 +82,21 @@ local function stop(player: Player, silent: boolean?): ()
 	end
 end
 
+-- Подбирает свободное место для пятна: пол на уровне зала, нет стен и декора. Если не нашлось — рядом со стойкой.
+local function pickSpotCenter(): Vector3
+	for _ = 1, 20 do
+		local angle = rng:NextNumber(0, math.pi * 2)
+		local distance = rng:NextNumber(SPOT_MIN_RADIUS, SPOT_MAX_RADIUS)
+		local candidate = station.Position + Vector3.new(math.cos(angle) * distance, 0, math.sin(angle) * distance)
+		if Hall.isFree(candidate, floorY, 4.5) then
+			return candidate
+		end
+	end
+	return station.Position + Vector3.new(0, 0, 5)
+end
+
 local function spawnSpot(player: Player, worker: Worker): ()
-	local angle = rng:NextNumber(0, math.pi * 2)
-	local distance = rng:NextNumber(SPOT_MIN_RADIUS, SPOT_MAX_RADIUS)
-	local center = station.Position + Vector3.new(math.cos(angle) * distance, 0, math.sin(angle) * distance)
+	local center = pickSpotCenter()
 	local spot = part(
 		`Пятно ({player.Name})`,
 		Enum.PartType.Cylinder,
@@ -144,7 +156,7 @@ local function toggle(player: Player): ()
 end
 
 -- center — центр общей зоны; notice и update — колбэки основного сервиса (уведомление и обновление интерфейса).
-function Mop.Start(center: Vector3, notice: (Player, string) -> (), update: (Player) -> ()): ()
+function Mop.Start(center: Vector3, notice: (Player, string) -> (), update: (Player) -> ()): number
 	notify = notice
 	refresh = update
 	floorY = floorAt(center)
@@ -210,6 +222,7 @@ function Mop.Start(center: Vector3, notice: (Player, string) -> (), update: (Pla
 			task.wait(1)
 		end
 	end)
+	return floorY
 end
 
 return Mop

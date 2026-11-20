@@ -13,6 +13,7 @@ local Economy = require(script.Economy)
 local World = require(script.World)
 local Tutorial = require(script.Tutorial)
 local ItemAssets = require(script.ItemAssets)
+local Hall = require(script.Hall)
 local Mop = require(script.Mop)
 
 type Session = {
@@ -888,7 +889,9 @@ function SimulatorService:Start(): ()
 		for _, plot in plots do
 			sum += plot.Spawn.Position
 		end
-		Mop.Start(sum / #plots, tell, publish)
+		local center = sum / #plots
+		local floorY = Mop.Start(center, tell, publish)
+		Hall.Decorate(center, floorY)
 	end
 	Remotes.func(Remotes.Functions.GetData).OnServerInvoke = function(player: Player): Types.View?
 		local now = os.clock()
