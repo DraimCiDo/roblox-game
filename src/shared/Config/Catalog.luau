@@ -101,14 +101,17 @@ function Catalog.odds(opened: number, perks: { [string]: number }): { number }
 	local level = Catalog.level(opened)
 	local weights: { number } = {}
 	local total = 0
+	-- Навык шанса типа усиливает этот тип и все более редкие, поэтому прокачка
+	-- младшего типа никогда не снижает долю старших.
+	local luckBoost = 1
 	for tier, base in Catalog.TierWeights do
+		local luck = Catalog.TierLuckPerks[tier]
+		if luck ~= "" then
+			luckBoost *= 1 + Catalog.Effects.TierLuckStep * (perks[luck] or 0)
+		end
 		local weight = 0
 		if level >= Catalog.TierUnlock[tier] then
-			weight = base * (1 + Catalog.Effects.OddsStep * (perks.odds or 0)) ^ (tier - 1)
-			local luck = Catalog.TierLuckPerks[tier]
-			if luck ~= "" then
-				weight *= 1 + Catalog.Effects.TierLuckStep * (perks[luck] or 0)
-			end
+			weight = base * (1 + Catalog.Effects.OddsStep * (perks.odds or 0)) ^ (tier - 1) * luckBoost
 		end
 		weights[tier] = weight
 		total += weight
@@ -480,7 +483,7 @@ Catalog.Perks = {
 		Parent = "odds",
 		Required = 2,
 		Describe = function(level)
-			return `Ящики выпадают чаще на {math.round(level * E.TierLuckStep * 100)}%`
+			return `Ящики и всё более редкие контейнеры выпадают чаще на {math.round(level * E.TierLuckStep * 100)}%`
 		end,
 	},
 	{
@@ -492,7 +495,7 @@ Catalog.Perks = {
 		Parent = "crateLuck",
 		Required = 2,
 		Describe = function(level)
-			return `Сейфы выпадают чаще на {math.round(level * E.TierLuckStep * 100)}%`
+			return `Сейфы и более редкие выпадают чаще на {math.round(level * E.TierLuckStep * 100)}%`
 		end,
 	},
 	{
@@ -504,7 +507,7 @@ Catalog.Perks = {
 		Parent = "safeLuck",
 		Required = 2,
 		Describe = function(level)
-			return `Грузовые чаще на {math.round(level * E.TierLuckStep * 100)}%`
+			return `Грузовые и секретные чаще на {math.round(level * E.TierLuckStep * 100)}%`
 		end,
 	},
 	{
