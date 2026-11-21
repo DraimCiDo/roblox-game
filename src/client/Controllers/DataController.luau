@@ -7,10 +7,10 @@ local Types = require(ReplicatedStorage.Shared.Types)
 
 local DataController = {}
 
-local current: Types.PlayerData? = nil
-local listeners: { (data: Types.PlayerData) -> () } = {}
+local current: Types.View? = nil
+local listeners: { (data: Types.View) -> () } = {}
 
-local function set(data: Types.PlayerData?)
+local function set(data: Types.View?)
 	if not data then
 		return
 	end
@@ -22,14 +22,17 @@ end
 
 function DataController:Start()
 	Remotes.event(Remotes.Events.DataChanged).OnClientEvent:Connect(set)
-	set(Remotes.func(Remotes.Functions.GetData):InvokeServer())
+	local initial = Remotes.func(Remotes.Functions.GetData):InvokeServer()
+	if not current then
+		set(initial)
+	end
 end
 
-function DataController:Get(): Types.PlayerData?
+function DataController:Get(): Types.View?
 	return current
 end
 
-function DataController:OnChanged(listener: (data: Types.PlayerData) -> ())
+function DataController:OnChanged(listener: (data: Types.View) -> ())
 	table.insert(listeners, listener)
 	if current then
 		task.spawn(listener, current)

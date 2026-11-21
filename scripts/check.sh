@@ -5,5 +5,6 @@ cd "$(dirname "$0")/.."
 
 echo "==> StyLua";  stylua --check src
 echo "==> Selene";  selene src
+mkdir -p build
 echo "==> Rojo";    rojo build default.project.json -o build/check.rbxl
 echo "OK: все проверки пройдены"

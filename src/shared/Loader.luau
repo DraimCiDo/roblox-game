@@ -29,7 +29,7 @@ function Loader.load(container: Instance): { [string]: Module }
 	for name, module in modules do
 		local init = module.Init
 		if init then
-			local ok, err = pcall(init, module)
+			local ok, err = pcall(init :: (any) -> any, module)
 			if not ok then
 				warn(`[Loader] {name}:Init() упал: {err}`)
 			end
