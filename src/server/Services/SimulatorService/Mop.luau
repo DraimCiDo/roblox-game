@@ -103,10 +103,31 @@ local function spawnSpot(player: Player, worker: Worker): ()
 		Enum.PartType.Cylinder,
 		Vector3.new(0.08, 4.2, 4.2),
 		CFrame.new(center.X, floorY + 0.06, center.Z) * CFrame.Angles(0, 0, math.rad(90)),
-		Color3.fromRGB(104, 84, 58),
+		Color3.fromRGB(255, 184, 64),
 		Workspace
 	)
-	spot.Transparency = 0.15
+	-- Метка яркая и светится янтарём (цвет акцента CORPA): хорошо видна на тёмном полу зала.
+	spot.Material = Enum.Material.Neon
+	spot.Transparency = 0.3
+	local ring = Instance.new("Part")
+	ring.Name = "Кайма пятна"
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Size = Vector3.new(0.09, 4.8, 4.8)
+	ring.CFrame = spot.CFrame
+	ring.Color = Color3.fromRGB(255, 244, 200)
+	ring.Material = Enum.Material.Neon
+	ring.Transparency = 0.1
+	ring.Anchored = true
+	ring.CanCollide = false
+	ring.CanQuery = false
+	ring.CanTouch = false
+	ring.CastShadow = false
+	ring.Parent = spot
+	local pulse = Instance.new("PointLight")
+	pulse.Color = Color3.fromRGB(255, 184, 64)
+	pulse.Range = 10
+	pulse.Brightness = 1.2
+	pulse.Parent = spot
 	spot:SetAttribute("OwnerId", player.UserId)
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Вымыть"
