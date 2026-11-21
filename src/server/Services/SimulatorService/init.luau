@@ -761,10 +761,10 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 				updated = true
 			end
 		elseif action == "setVolume" then
-			-- Громкость хранится в данных игрока; значение проверяется и округляется до шага 5%.
-			local value = if extra then tonumber(extra) else nil
-			if value and (argument == "ui" or argument == "world") then
-				value = math.clamp(math.round(value * 20) / 20, 0, 1)
+			-- Громкость хранится в данных игрока; приходит целым числом процентов, проверяется и округляется до шага 5%.
+			local percent = if extra then tonumber(extra) else nil
+			if percent and (argument == "ui" or argument == "world") then
+				local value = math.clamp(math.round(percent / 5) * 5, 0, 100) / 100
 				if argument == "ui" then
 					data.VolumeUi = value
 				else

@@ -31,6 +31,12 @@ function Settings.isDragging(): boolean
 	return dragging
 end
 
+-- Громкость уходит на сервер целым числом процентов («35»): сервер принимает аргумент до 4 знаков, а шаг 0,05
+-- даёт дроби вроде 0.6000000000000001 — такие значения отбрасывались, и громкость откатывалась к 60%.
+local function percentText(value: number): string
+	return tostring(math.clamp(math.round(value * 100), 0, 100))
+end
+
 local function pointer(input: InputObject): boolean
 	return input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch
 end
@@ -141,7 +147,7 @@ function Settings.render(data: Types.View): ()
 			Sfx.setVolumes(value, nil)
 		end,
 		function(value)
-			Components.send("setVolume", "ui", tostring(value))
+			Components.send("setVolume", "ui", percentText(value))
 			Sfx.play("click")
 		end
 	)
@@ -154,7 +160,7 @@ function Settings.render(data: Types.View): ()
 			Sfx.setVolumes(nil, value)
 		end,
 		function(value)
-			Components.send("setVolume", "world", tostring(value))
+			Components.send("setVolume", "world", percentText(value))
 			Sfx.play("thud")
 		end
 	)
