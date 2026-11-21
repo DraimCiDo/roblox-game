@@ -832,6 +832,8 @@ end
 -- Позже сюда же добавятся эффекты за донат (поле Robux) — клиентская часть уже читает Catalog.DropEffects.
 export type DropEffect = {
 	Key: string,
+	-- Вид анимации: sparks, confetti, fire, frost, void, gold (см. DropEffects.luau).
+	Style: string,
 	Name: string,
 	Details: string,
 	Primary: Color3,
@@ -847,6 +849,7 @@ Catalog.DefaultEffect = "standard"
 Catalog.DropEffects = {
 	{
 		Key = "standard",
+		Style = "sparks",
 		Name = "Стандартный",
 		Details = "Тёплые искры. Есть у всех.",
 		Primary = rgb(255, 214, 120),
@@ -857,6 +860,7 @@ Catalog.DropEffects = {
 	},
 	{
 		Key = "confetti",
+		Style = "confetti",
 		Name = "Конфетти",
 		Details = "Разноцветный праздничный залп.",
 		Primary = rgb(255, 99, 160),
@@ -868,6 +872,7 @@ Catalog.DropEffects = {
 	},
 	{
 		Key = "inferno",
+		Style = "fire",
 		Name = "Огненный взрыв",
 		Details = "Награда за 50 открытых контейнеров.",
 		Primary = rgb(255, 120, 40),
@@ -879,6 +884,7 @@ Catalog.DropEffects = {
 	},
 	{
 		Key = "frost",
+		Style = "frost",
 		Name = "Ледяная пыль",
 		Details = "Холодное сияние и медленно падающий иней.",
 		Primary = rgb(190, 240, 255),
@@ -890,6 +896,7 @@ Catalog.DropEffects = {
 	},
 	{
 		Key = "void",
+		Style = "void",
 		Name = "Разлом пустоты",
 		Details = "Награда за 200 открытых контейнеров.",
 		Primary = rgb(178, 120, 255),
@@ -901,6 +908,7 @@ Catalog.DropEffects = {
 	},
 	{
 		Key = "gold",
+		Style = "gold",
 		Name = "Золотой дождь",
 		Details = "Густой золотой каскад для самых богатых.",
 		Primary = rgb(255, 224, 110),
