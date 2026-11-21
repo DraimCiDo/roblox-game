@@ -4,6 +4,7 @@
 -- огонь — вспышка и языки пламени, лёд — кристаллы и снег, пустота — воронка, затягивающая и выбрасывающая
 -- частицы, золото — дождь из монет.
 local Debris = game:GetService("Debris")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
@@ -295,22 +296,46 @@ STYLES.void = function(anchor, at, effect)
 	flash(anchor, effect.Secondary, 3, 14, 0.5)
 end
 
--- Золотой дождь: падающие вращающиеся монеты и золотая пыль.
+-- Золотой дождь: монеты падают сверху, кувыркаются, ложатся на пол и гаснут; сверху — золотая пыль.
 STYLES.gold = function(anchor, at, effect)
-	for _ = 1, 34 do
-		local start = at * CFrame.new(around(7) + Vector3.new(0, rng:NextNumber(5, 11), 0))
-		local coin = flyer(
-			start,
-			Vector3.new(0.1, 0.95, 0.95),
-			effect.Primary:Lerp(effect.Secondary, rng:NextNumber()),
-			Enum.Material.Metal,
-			Vector3.new(rng:NextNumber(-3, 3), rng:NextNumber(-12, 2), rng:NextNumber(-3, 3)),
-			Vector3.new(rng:NextNumber(-16, 16), rng:NextNumber(-16, 16), rng:NextNumber(-16, 16)),
-			0.55,
-			rng:NextNumber(1.8, 2.6)
-		)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	local ignore: { Instance } = { anchor }
+	for _, other in Players:GetPlayers() do
+		if other.Character then
+			table.insert(ignore, other.Character)
+		end
+	end
+	params.FilterDescendantsInstances = ignore
+	for _ = 1, 30 do
+		local top = at.Position + around(7) + Vector3.new(0, rng:NextNumber(6, 12), 0)
+		local hit = Workspace:Raycast(top, Vector3.new(0, -40, 0), params)
+		local floorY = if hit then hit.Position.Y + 0.06 else at.Position.Y - 2
+		local coin = Instance.new("Part")
+		coin.Name = "Элемент эффекта"
 		coin.Shape = Enum.PartType.Cylinder
+		coin.Size = Vector3.new(0.1, 0.95, 0.95)
+		coin.Color = effect.Primary:Lerp(effect.Secondary, rng:NextNumber())
+		coin.Material = Enum.Material.Metal
 		coin.Reflectance = 0.35
+		coin.Anchored = true
+		configure(coin)
+		coin.CFrame = CFrame.new(top)
+			* CFrame.Angles(rng:NextNumber(0, 6.28), rng:NextNumber(0, 6.28), rng:NextNumber(0, 6.28))
+		coin.Parent = Workspace
+		local fall = rng:NextNumber(0.7, 1.2)
+		-- Падение с кувырком; цилиндр лежит осью вверх после поворота на 90° вокруг Z.
+		TweenService:Create(
+			coin,
+			TweenInfo.new(fall, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+			{ CFrame = CFrame.new(top.X, floorY, top.Z) * CFrame.Angles(0, rng:NextNumber(0, 6.28), math.rad(90)) }
+		):Play()
+		task.delay(fall + 0.55, function()
+			if coin.Parent then
+				TweenService:Create(coin, TweenInfo.new(0.6), { Transparency = 1 }):Play()
+			end
+		end)
+		Debris:AddItem(coin, fall + 1.4)
 	end
 	local glitter = emitter(anchor, ColorSequence.new(effect.Primary, effect.Secondary), 0.4, NumberRange.new(1, 1.8))
 	glitter.Speed = NumberRange.new(effect.Speed * 0.4, effect.Speed)
