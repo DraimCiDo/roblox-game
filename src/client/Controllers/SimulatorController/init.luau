@@ -611,10 +611,16 @@ function SimulatorController:Start(): ()
 			toggle("perks")
 		elseif input.KeyCode == Enum.KeyCode.G then
 			toggle("daily")
-		elseif input.KeyCode == Enum.KeyCode.O then
-			toggle("settings")
 		end
 	end)
+	-- O приходит с gameProcessed = true (её занимает штатное управление камерой), поэтому через InputBegan она
+	-- не срабатывала — привязываем действие с высоким приоритетом.
+	ContextActionService:BindActionAtPriority("CorpaSettings", function(_, inputState)
+		if inputState == Enum.UserInputState.Begin then
+			toggle("settings")
+		end
+		return Enum.ContextActionResult.Sink
+	end, false, Enum.ContextActionPriority.High.Value, Enum.KeyCode.O)
 	UserInputService.InputEnded:Connect(function(input)
 		if input.KeyCode == Enum.KeyCode.LeftAlt or input.KeyCode == Enum.KeyCode.RightAlt then
 			cursorFree.Visible = false
