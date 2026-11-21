@@ -13,6 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Не делаем checkout кода из PR: pull_request_target запускается с правами записи.
-      - uses: actions/labeler@v6
+      - uses: actions/labeler@v7
         with:
           sync-labels: true
