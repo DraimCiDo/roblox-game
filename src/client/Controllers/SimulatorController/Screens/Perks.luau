@@ -529,13 +529,18 @@ function Perks.render(source: Types.View, _wide: boolean): ()
 	local dragging = false
 	-- Сколько пикселей прошла мышь за нажатие: сдвиг больше порога не считается кликом по узлу.
 	local travelled = 0
+	-- Смещение считается по положению курсора, а не по input.Delta: Delta бывает нулевой, и карта не двигалась.
+	local lastMouse = Vector2.zero
 	local function beginDrag(input: InputObject): ()
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
 			dragging = true
 			travelled = 0
+			lastMouse = UserInputService:GetMouseLocation()
 		end
 	end
+	-- Зажатие по любому месту карты (пустая область, линии, подписи) начинает перетаскивание; узлы ловят его сами.
 	table.insert(connections, surface.InputBegan:Connect(beginDrag))
+	table.insert(connections, view.InputBegan:Connect(beginDrag))
 	local scale = Instance.new("UIScale")
 	scale.Parent = chart
 
@@ -760,7 +765,9 @@ function Perks.render(source: Types.View, _wide: boolean): ()
 		connections,
 		UserInputService.InputChanged:Connect(function(input)
 			if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-				local delta = Vector2.new(input.Delta.X, input.Delta.Y)
+				local current = UserInputService:GetMouseLocation()
+				local delta = current - lastMouse
+				lastMouse = current
 				travelled += delta.Magnitude
 				host.CanvasPosition -= delta
 			end
