@@ -71,6 +71,8 @@ local function slider(
 	Style.outline(knob, Style.Edge, 3)
 
 	local value = initial
+	-- Перетаскивание — своё у каждого ползунка (общий флаг двигал оба сразу, а сохранялся только один).
+	local active = false
 	local function show(): ()
 		percent.Text = if value <= 0 then "Выкл." else `{math.round(value * 100)}%`
 		fill.Size = UDim2.fromScale(value, 1)
@@ -107,6 +109,7 @@ local function slider(
 		connections,
 		hit.InputBegan:Connect(function(input)
 			if pointer(input) then
+				active = true
 				dragging = true
 				setFrom(input)
 			end
@@ -117,7 +120,7 @@ local function slider(
 		UserInputService.InputChanged:Connect(function(input)
 			local moving = input.UserInputType == Enum.UserInputType.MouseMovement
 				or input.UserInputType == Enum.UserInputType.Touch
-			if dragging and moving then
+			if active and moving then
 				setFrom(input)
 			end
 		end)
@@ -125,7 +128,8 @@ local function slider(
 	table.insert(
 		connections,
 		UserInputService.InputEnded:Connect(function(input)
-			if dragging and pointer(input) then
+			if active and pointer(input) then
+				active = false
 				dragging = false
 				onCommit(value)
 			end
