@@ -409,9 +409,8 @@ local function build(): ()
 	cursorFree.Modal = true
 	cursorFree.Visible = false
 	cursorFree.Parent = gui
-	backdrop.Activated:Connect(function()
-		selectMenu(nil)
-	end)
+	-- Окно закрывается только крестиком (и клавишей/кнопкой геймпада): нажатие рядом с окном ничего не делает,
+	-- иначе на телефоне меню закрывается от случайного касания мимо кнопки.
 
 	panel = Style.frame(gui, Style.Panel, 20)
 	panel.Name = "Меню сектора"
