@@ -424,7 +424,10 @@ local function openOrder(
 			local now = Workspace:GetServerTimeNow()
 			local elapsed = now - order.DialStarted
 			local phase = (elapsed % period) / period
-			local hit = elapsed > 0.3 and elapsed <= Economy.DialTimeLimit and math.abs(phase - target) <= tolerance
+			local distance = math.abs(phase - target)
+			local hit = elapsed > 0.3
+				and elapsed <= Economy.DialTimeLimit
+				and math.min(distance, 1 - distance) <= tolerance
 			if hit and stage < Economy.DialStages then
 				-- Штифт встал на место: сразу начинается следующий, более быстрый этап.
 				dialStages[player] = stage + 1
@@ -763,7 +766,12 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 		elseif action == "setVolume" then
 			-- Громкость хранится в данных игрока; приходит целым числом процентов, проверяется и округляется до шага 5%.
 			local percent = if extra then tonumber(extra) else nil
-			if percent and (argument == "ui" or argument == "world") then
+			if
+				percent
+				and percent == percent
+				and math.abs(percent) ~= math.huge
+				and (argument == "ui" or argument == "world")
+			then
 				local value = math.clamp(math.round(percent / 5) * 5, 0, 100) / 100
 				if argument == "ui" then
 					data.VolumeUi = value

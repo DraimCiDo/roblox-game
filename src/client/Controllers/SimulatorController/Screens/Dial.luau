@@ -130,7 +130,8 @@ function Dial.update(round: Round, elapsed: number): ()
 	end
 	local phase = (elapsed % round.Period) / round.Period
 	widgets.Needle.Rotation = angle(phase)
-	local inside = math.abs(phase - round.Target) <= round.Tolerance
+	local distance = math.abs(phase - round.Target)
+	local inside = math.min(distance, 1 - distance) <= round.Tolerance
 	-- Короткий щелчок, когда указатель входит в зелёную зону.
 	if inside and not wasInside then
 		Sfx.play("tick")
