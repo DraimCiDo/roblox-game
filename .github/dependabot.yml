@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # Обновление версий GitHub Actions в .github/workflows
+  # Keep GitHub Actions versions in .github/workflows current
   - package-ecosystem: github-actions
     directory: /
     schedule:

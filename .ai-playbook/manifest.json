@@ -3,11 +3,8 @@
     ".ai-playbook/reference/coordination.md": {
       "hash": "d14af892373c020d1953d1d476ae54f989900bed5ed914c21dd1690c007da51d"
     },
-    ".ai-playbook/reference/draimhorizon.md": {
-      "hash": "15ce737aaf988621029127c3b6007dc8117c0ba0031ce217e10a3673d96de349"
-    },
     ".ai-playbook/reference/git-workflow.md": {
-      "hash": "13afd2014c8fa99d82150a0fbac2f3ef0fa3c79c65ab2e115108846e910c207a"
+      "hash": "0e3b8f0277fc358965d4db796a662b8f01e2f4e5155a41eb8f3b845e3db95500"
     },
     ".ai-playbook/reference/pr-template.md": {
       "hash": "703be946fd9ecb66832ae2fc54aa1731be2ad57e1a26b3d145e7623d4a05d0c1"
@@ -18,26 +15,39 @@
     ".ai-playbook/reference/roblox.md": {
       "hash": "cbd7ad002fdfa0624817ae595d52c8f89c1465ec6b5bdbc765ab78f820cbce87"
     },
-    ".ai-playbook/reference/sunrise-performance.md": {
-      "hash": "d249203d0f3ae4034d7e0b7e7ff2bfc1d940ba5587d849eea4e6da2c814f1b28"
-    },
     ".ai-playbook/reference/task-template.md": {
       "hash": "f835d2d3a2d7582ecc606cb7119332dcda0318cda7cfe013c8e9b4a9b4d49968"
     },
     ".ai-playbook/reference/verification.md": {
-      "hash": "945939c3c860d54048ac187002982e85c6d37ca45aa3ca8407af23550967ea26"
+      "hash": "1c755a8587730f50bd6b87d0958c204cf8531e376f654f05e11a958348203868"
+    },
+    ".github/CODEOWNERS": {
+      "hash": "d2e5ddbf8de5b28f7716cd32e99222b1a2fa16a84404abd277a602689c70f5af"
+    },
+    ".github/dependabot.yml": {
+      "hash": "b66c3293dbf7fcdb24501c4093c5893143bc561877a4637ab69328191913a9a9"
+    },
+    ".github/labeler.yml": {
+      "hash": "d03a1cd1096baa756a495ab8ebbe728cf5ab18ba437145c1125d1602bc9551f6"
+    },
+    ".github/pull_request_template.md": {
+      "hash": "703be946fd9ecb66832ae2fc54aa1731be2ad57e1a26b3d145e7623d4a05d0c1"
+    },
+    ".github/workflows/labeler.yml": {
+      "hash": "de37ef1d4b554ac41c9e15a11dabfb615756f074c4874360d459f0f23645eb68"
     },
     "AGENTS.md": {
       "existed": true,
-      "hash": "822386f1bad4fcb63805ea84197f7e5ee9b3d307be3b9b85ca668e180973fec0",
+      "hash": "5373d0e61ed3cfd4123bcae5ff0e6beaad1ac2fb8e0f65993f0d5eeaad9de469",
       "separator": "\n\n"
     },
     "CLAUDE.md": {
       "existed": true,
-      "hash": "822386f1bad4fcb63805ea84197f7e5ee9b3d307be3b9b85ca668e180973fec0",
+      "hash": "5373d0e61ed3cfd4123bcae5ff0e6beaad1ac2fb8e0f65993f0d5eeaad9de469",
       "separator": "\n\n"
     }
   },
-  "profile": "default",
+  "playbook_version": "0.1.0",
+  "profile": "roblox",
   "version": 2
 }
