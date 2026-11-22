@@ -7,12 +7,13 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  issues: write  # lets the labeler create labels that do not exist yet
 
 jobs:
   label:
     runs-on: ubuntu-latest
     steps:
-      # Не делаем checkout кода из PR: pull_request_target запускается с правами записи.
+      # No checkout of PR code: pull_request_target runs with write permissions.
       - uses: actions/labeler@v7
         with:
           sync-labels: true
