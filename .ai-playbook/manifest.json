@@ -4,7 +4,7 @@
       "hash": "d14af892373c020d1953d1d476ae54f989900bed5ed914c21dd1690c007da51d"
     },
     ".ai-playbook/reference/git-workflow.md": {
-      "hash": "0e3b8f0277fc358965d4db796a662b8f01e2f4e5155a41eb8f3b845e3db95500"
+      "hash": "6258cdd01b3a0dd95cc0976a2c7cf8bfec9a6091c6be68338d569bc5d16b6b39"
     },
     ".ai-playbook/reference/pr-template.md": {
       "hash": "703be946fd9ecb66832ae2fc54aa1731be2ad57e1a26b3d145e7623d4a05d0c1"
@@ -21,6 +21,9 @@
     ".ai-playbook/reference/verification.md": {
       "hash": "1c755a8587730f50bd6b87d0958c204cf8531e376f654f05e11a958348203868"
     },
+    ".coderabbit.yaml": {
+      "hash": "642d9a61664a3ded3ca5aea56fa12b69aaa894fbc028c0298611df8633bb001e"
+    },
     ".github/CODEOWNERS": {
       "hash": "d2e5ddbf8de5b28f7716cd32e99222b1a2fa16a84404abd277a602689c70f5af"
     },
@@ -33,21 +36,24 @@
     ".github/pull_request_template.md": {
       "hash": "703be946fd9ecb66832ae2fc54aa1731be2ad57e1a26b3d145e7623d4a05d0c1"
     },
+    ".github/workflows/guard.yml": {
+      "hash": "976573eafeaab7c9bbd009187d6d6ee0f646c274224c6b2c74f0be30f5b393a0"
+    },
     ".github/workflows/labeler.yml": {
       "hash": "de37ef1d4b554ac41c9e15a11dabfb615756f074c4874360d459f0f23645eb68"
     },
     "AGENTS.md": {
       "existed": true,
-      "hash": "5373d0e61ed3cfd4123bcae5ff0e6beaad1ac2fb8e0f65993f0d5eeaad9de469",
+      "hash": "482722b92fddbc10983f97efeb1f08daba39b6feeea17701d884a15dda2c936e",
       "separator": "\n\n"
     },
     "CLAUDE.md": {
       "existed": true,
-      "hash": "5373d0e61ed3cfd4123bcae5ff0e6beaad1ac2fb8e0f65993f0d5eeaad9de469",
+      "hash": "482722b92fddbc10983f97efeb1f08daba39b6feeea17701d884a15dda2c936e",
       "separator": "\n\n"
     }
   },
-  "playbook_version": "0.1.0",
+  "playbook_version": "0.1.1",
   "profile": "roblox",
   "version": 2
 }

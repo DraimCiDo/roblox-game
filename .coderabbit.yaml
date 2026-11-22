@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# Review settings for CodeRabbit. Draft PRs are reviewed because every PR starts as a draft.
+language: en-US
+reviews:
+  profile: chill
+  poem: false
+  path_filters:
+    - "!.ai-playbook/**"
+  auto_review:
+    enabled: true
+    drafts: true
+  path_instructions:
+    - path: "src/server/**"
+      instructions: |
+        The server is authoritative. Every RemoteEvent/RemoteFunction argument must be validated,
+        saves go only through PlayerDataService, and per-player tables are cleaned on PlayerRemoving.
+    - path: "src/shared/**"
+      instructions: |
+        Everything here is visible to exploiters: no secrets, reward formulas, or anti-cheat logic.
+    - path: "src/client/**"
+      instructions: |
+        Never trust the client with money, damage, positions, or purchases. No per-frame scans or leaked connections.
+    - path: "**"
+      instructions: |
+        Luau must stay --!strict with typed public functions. Do not suggest speculative refactors or
+        comments that only restate the code. Mention missing tests only when behavior changes.
