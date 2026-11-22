@@ -11,6 +11,9 @@ local Remotes = {}
 Remotes.Events = table.freeze({
 	-- Сервер -> клиент: актуальные данные игрока
 	DataChanged = "DataChanged",
+	-- Клиент -> сервер: намерение игрока. Сервер -> клиент: интерфейс и уведомления.
+	Action = "Action",
+	Interface = "Interface",
 })
 
 Remotes.Functions = table.freeze({
@@ -49,10 +52,10 @@ end
 -- Вызывается один раз сервером при старте: создаёт все объявленные Remotes.
 function Remotes.init()
 	assert(RunService:IsServer(), "Remotes.init() вызывается только на сервере")
-	for _, name in Remotes.Events do
+	for _, name in pairs(Remotes.Events) do
 		getOrCreate("RemoteEvent", name)
 	end
-	for _, name in Remotes.Functions do
+	for _, name in pairs(Remotes.Functions) do
 		getOrCreate("RemoteFunction", name)
 	end
 end

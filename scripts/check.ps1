@@ -4,5 +4,6 @@ Set-Location (Join-Path $PSScriptRoot "..")
 
 Write-Host "==> StyLua"; stylua --check src; if ($LASTEXITCODE) { exit $LASTEXITCODE }
 Write-Host "==> Selene"; selene src;         if ($LASTEXITCODE) { exit $LASTEXITCODE }
+New-Item -ItemType Directory -Force -Path build | Out-Null
 Write-Host "==> Rojo";   rojo build default.project.json -o build/check.rbxl; if ($LASTEXITCODE) { exit $LASTEXITCODE }
 Write-Host "OK: все проверки пройдены"
