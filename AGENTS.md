@@ -19,7 +19,7 @@
 2. **Сервер авторитетен.** Клиенту нельзя доверять ничего: деньги, урон, позиции, покупки решает сервер. Каждый аргумент Remote валидируется (скилл `new-remote`).
 3. **Маленькие изменения.** Одна задача = одна ветка = один PR. Не делай попутный рефакторинг.
 4. **Не гадай о дизайне.** Если механика не описана в `docs/GDD.md` или задаче — спроси человека, а не придумывай. Технические решения по мелочам принимай сам и упоминай их в PR.
-5. **Проверяй перед тем как сказать «готово».** `scripts/check` должен проходить. Если не можешь проверить (нет инструментов, нет Studio) — прямо так и скажи.
+5. **Never call work verified without evidence.** Run `scripts/check` and other checks only when the approved plan lists them; report what was not checked (no tools, no Studio) plainly.
 6. **Никогда не выдумывай API Roblox.** Если не уверен в существовании метода/свойства — сверься с документацией (create.roblox.com/docs) или спроси.
 
 ## 3. Структура
@@ -67,7 +67,7 @@ docs/                документация, GDD, решения (ADR)
 - Только `task.wait/spawn/delay/defer`. Запрещены устаревшие `wait()`, `spawn()`, `delay()`.
 - Никаких глобальных переменных и `_G` / `shared`.
 - Состояние модуля — локальные переменные модуля, публичный API — методы таблицы.
-- Комментарии и сообщения — на русском. Идентификаторы — на английском.
+- Comments and messages are in English, like identifiers. Existing Russian comments may stay until their file is touched.
 - Каждая таблица вида `{ [Player]: ... }` чистится в `Players.PlayerRemoving`.
 - Ошибки, которые надо видеть, — `warn(...)` с префиксом `[ИмяМодуля]`. Отладочные `print` в PR не оставлять.
 
@@ -81,13 +81,13 @@ docs/                документация, GDD, решения (ADR)
 ## 7. Git и PR
 
 - Работа ведётся в ветках: `feat/<кратко>`, `fix/<кратко>`, `chore/...`, `docs/...`. В `main` напрямую не пушить. GitHub это технически не запрещает (бесплатный тариф), поэтому правило абсолютное: хук `.githooks/pre-push` не обходить (`--no-verify` запрещён).
-- Коммиты — Conventional Commits, на русском: `feat(shop): добавить покупку за Robux`.
+- Commits use Conventional Commits in English: `feat(shop): add Robux purchase`.
 - Запрещено: `git push --force` в общие ветки, `git reset --hard` без просьбы, переписывание чужой истории, коммит `Packages/`, `*.rbxl`, `sourcemap.json`.
-- PR — по шаблону. Обязателен раздел «Как проверить» с шагами в Studio.
+- PRs follow `.github/pull_request_template.md` (Problem / Changes / Verification / Risks); put the Studio reproduction steps under Verification.
 - Агент не мержит PR сам. Мерж — после ревью человека и зелёного CI.
 - Новые зависимости (Wally) — только после согласования с командой.
 - Мерж только Squash and merge; заголовок PR становится сообщением коммита — пиши его в стиле Conventional Commits.
-- Метки: агент ставит на свой PR `ai:made`. Метки `area:*`, `data-schema`, `documentation`, `chore` проставляются автоматически по файлам. Задачи с меткой `ai:ready` можно брать в работу; `needs-design` и `blocked` — не брать.
+- Labels `area:*`, `data-schema`, `documentation`, `chore` are applied automatically by changed files. Tasks labeled `ai:ready` may be taken; do not take `needs-design` or `blocked`. The `ai:made` label is not applied unless the owner asks.
 
 ## 8. Скиллы (пошаговые инструкции)
 

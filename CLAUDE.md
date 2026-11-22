@@ -11,7 +11,7 @@
 - Разрешения на частые безопасные команды — в `.claude/settings.json`. Личные настройки — в `.claude/settings.local.json` (не коммитится).
 - Для крупной задачи сначала составь план (Plan mode) и согласуй его, затем реализуй.
 - Для параллельной работы используй отдельные worktree — по одному на задачу.
-- Ответы и комментарии — на русском.
+- Reply in the language the owner writes in; write comments, commits, and PRs in English.
 
 
 <!-- ai-playbook:start -->
