@@ -16,16 +16,16 @@ end
 local root = Instance.new("Folder")
 root.Name = FOLDER
 
-local DISPLAY = Font.new("rbxasset://fonts/families/Jura.json", Enum.FontWeight.Bold)
-local BOLD = Font.new("rbxasset://fonts/families/RobotoCondensed.json", Enum.FontWeight.Bold)
+local DISPLAY = Font.new("rbxasset://fonts/families/Montserrat.json", Enum.FontWeight.Heavy)
+local BOLD = Font.new("rbxasset://fonts/families/Nunito.json", Enum.FontWeight.ExtraBold)
 
-local GRAPHITE = Color3.fromRGB(30, 36, 44)
-local STEEL = Color3.fromRGB(52, 62, 74)
-local DARK = Color3.fromRGB(16, 20, 26)
-local CYAN = Color3.fromRGB(72, 222, 255)
-local AMBER = Color3.fromRGB(255, 184, 64)
-local TEXT = Color3.fromRGB(232, 242, 250)
-local MUTED = Color3.fromRGB(134, 154, 175)
+local GRAPHITE = Color3.fromRGB(62, 72, 140)
+local STEEL = Color3.fromRGB(120, 138, 214)
+local DARK = Color3.fromRGB(34, 36, 82)
+local CYAN = Color3.fromRGB(80, 210, 255)
+local AMBER = Color3.fromRGB(255, 196, 56)
+local TEXT = Color3.fromRGB(255, 255, 255)
+local MUTED = Color3.fromRGB(205, 213, 255)
 
 local FLOOR_Y = -0.05
 local CEILING_Y = 19
@@ -106,11 +106,13 @@ end
 
 -- 0. Свет сцены: неон слегка светится (Bloom), лёгкая цветокоррекция, экспозиция под тёмные материалы.
 local Lighting = game:GetService("Lighting")
-Lighting.ExposureCompensation = 0.15
-Lighting.Ambient = Color3.fromRGB(96, 108, 120)
+Lighting.ExposureCompensation = -0.1
+Lighting.Ambient = Color3.fromRGB(134, 138, 170)
+Lighting.OutdoorAmbient = Color3.fromRGB(126, 130, 164)
+Lighting.Brightness = 1.1
 local bloom = Lighting:FindFirstChild("Свечение неона") or Instance.new("BloomEffect")
 bloom.Name = "Свечение неона"
-bloom.Intensity = 0.55
+bloom.Intensity = 0.3
 bloom.Size = 22
 bloom.Threshold = 0.92
 bloom.Parent = Lighting
@@ -118,8 +120,8 @@ local grade = Lighting:FindFirstChild("Цветокоррекция") or Instanc
 grade.Name = "Цветокоррекция"
 grade.Brightness = 0.03
 grade.Contrast = 0.1
-grade.Saturation = 0.06
-grade.TintColor = Color3.fromRGB(240, 248, 255)
+grade.Saturation = 0.18
+grade.TintColor = Color3.fromRGB(255, 250, 242)
 grade.Parent = Lighting
 
 -- Старая инженерка коридора под потолком зала проходила сквозь ядро и кольцо света — убираем её.
@@ -147,14 +149,14 @@ for _, piece in LAB:GetChildren() do
 			or piece.Name == "Главный коридор"
 		then
 			piece.Material = Enum.Material.SmoothPlastic
-			piece.Color = Color3.fromRGB(42, 47, 54)
+			piece.Color = Color3.fromRGB(150, 164, 214)
 			piece.Reflectance = 0
 		elseif piece.Name == "Стена октагона" then
-			piece.Material = Enum.Material.Metal
-			piece.Color = Color3.fromRGB(40, 47, 57)
+			piece.Material = Enum.Material.SmoothPlastic
+			piece.Color = Color3.fromRGB(78, 94, 168)
 		elseif piece.Name == "Перекрытие" or piece.Name:find("^Перекрытие ·") then
 			piece.Material = Enum.Material.SmoothPlastic
-			piece.Color = Color3.fromRGB(14, 17, 22)
+			piece.Color = Color3.fromRGB(54, 62, 118)
 		elseif piece.Name == "Разметка коридора" or piece.Name == "Cargo guide stripe" then
 			piece.Transparency = 1
 		end
@@ -169,7 +171,7 @@ for _, offset in { -60, -40, -20, 20, 40, 60 } do
 	trim(part(floor, "Шов плитки", Vector3.new(160, 0.04, 0.12), CFrame.new(0, FLOOR_Y + 0.02, offset), DARK))
 end
 ring(floor, "Кольцо ядра", center + Vector3.new(0, 0.03, 0), 15, 0.35, 0.06, 64, CYAN, Enum.Material.Neon)
-ring(floor, "Внешнее кольцо", center + Vector3.new(0, 0.03, 0), 34, 0.18, 0.06, 96, STEEL, Enum.Material.Metal)
+ring(floor, "Внешнее кольцо", center + Vector3.new(0, 0.03, 0), 34, 0.18, 0.06, 96, STEEL, Enum.Material.SmoothPlastic)
 
 local portals = {
 	{ Key = "01", At = Vector3.new(-57, 0, 57) },
@@ -211,10 +213,10 @@ trim(
 -- 3. Ядро CORPA в центре: подиум, светящаяся колонна, кольца-обручи и кольцо света под потолком.
 local core = group("Ядро CORPA")
 local vertical = CFrame.Angles(0, 0, math.rad(90))
-part(core, "Подиум ядра", Vector3.new(0.9, 20, 20), CFrame.new(0, FLOOR_Y + 0.45, 0) * vertical, GRAPHITE, Enum.Material.Metal, Enum.PartType.Cylinder)
+part(core, "Подиум ядра", Vector3.new(0.9, 20, 20), CFrame.new(0, FLOOR_Y + 0.45, 0) * vertical, GRAPHITE, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
 part(core, "Ступень подиума", Vector3.new(0.5, 24, 24), CFrame.new(0, FLOOR_Y + 0.25, 0) * vertical, DARK, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
 ring(core, "Кромка подиума", Vector3.new(0, FLOOR_Y + 0.92, 0), 10, 0.25, 0.08, 48, CYAN, Enum.Material.Neon)
-part(core, "Цоколь колонны", Vector3.new(2.2, 7, 7), CFrame.new(0, FLOOR_Y + 2, 0) * vertical, STEEL, Enum.Material.Metal, Enum.PartType.Cylinder)
+part(core, "Цоколь колонны", Vector3.new(2.2, 7, 7), CFrame.new(0, FLOOR_Y + 2, 0) * vertical, STEEL, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
 local column = trim(
 	part(core, "Колонна энергии", Vector3.new(CEILING_Y - 3, 3.2, 3.2), CFrame.new(0, FLOOR_Y + 3 + (CEILING_Y - 3) / 2, 0) * vertical, CYAN, Enum.Material.Neon, Enum.PartType.Cylinder)
 )
@@ -224,34 +226,24 @@ glow.Color = CYAN
 glow.Range = 26
 glow.Brightness = 2.2
 glow.Parent = column
-part(core, "Оголовок колонны", Vector3.new(1.2, 6, 6), CFrame.new(0, CEILING_Y - 0.6, 0) * vertical, STEEL, Enum.Material.Metal, Enum.PartType.Cylinder)
+part(core, "Оголовок колонны", Vector3.new(1.2, 6, 6), CFrame.new(0, CEILING_Y - 0.6, 0) * vertical, STEEL, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
 for index, height in { 5.5, 10, 14.5 } do
 	local radius = 3.4 + index * 0.6
-	ring(core, "Обруч ядра", Vector3.new(0, height, 0), radius, 0.3, 0.3, 32, if index == 2 then AMBER else STEEL, if index == 2 then Enum.Material.Neon else Enum.Material.Metal)
+	ring(core, "Обруч ядра", Vector3.new(0, height, 0), radius, 0.3, 0.3, 32, if index == 2 then AMBER else STEEL, if index == 2 then Enum.Material.Neon else Enum.Material.SmoothPlastic)
 end
 ring(core, "Кольцо света", Vector3.new(0, CEILING_Y - 0.25, 0), 13, 0.9, 0.2, 64, CYAN, Enum.Material.Neon)
-ring(core, "Корпус кольца света", Vector3.new(0, CEILING_Y - 0.1, 0), 13, 1.6, 0.25, 64, DARK, Enum.Material.Metal)
+ring(core, "Корпус кольца света", Vector3.new(0, CEILING_Y - 0.1, 0), 13, 1.6, 0.25, 64, DARK, Enum.Material.SmoothPlastic)
 
 -- 4. Колонны в углах восьмиугольника с вертикальной подсветкой.
 local columns = group("Колонны зала")
 for k = 0, 7 do
 	local a = math.rad(22.5 + 45 * k)
 	local dir = Vector3.new(math.cos(a), 0, math.sin(a))
-	local at = dir * 84.5
-	local frame = CFrame.lookAt(Vector3.new(at.X, FLOOR_Y + CEILING_Y / 2, at.Z), Vector3.new(0, FLOOR_Y + CEILING_Y / 2, 0))
-	part(columns, "Колонна", Vector3.new(3.2, CEILING_Y, 2.4), frame, GRAPHITE, Enum.Material.Metal)
-	trim(part(columns, "Подсветка колонны", Vector3.new(0.35, CEILING_Y - 3, 0.1), frame * CFrame.new(0, 0, -1.25), CYAN, Enum.Material.Neon))
-	part(columns, "База колонны", Vector3.new(4, 1, 3.2), frame * CFrame.new(0, -CEILING_Y / 2 + 0.5, 0), STEEL, Enum.Material.Metal)
-	local cap = part(columns, "Капитель колонны", Vector3.new(4, 1, 3.2), frame * CFrame.new(0, CEILING_Y / 2 - 0.5, 0), STEEL, Enum.Material.Metal)
-	-- Прожектор с капители высвечивает стену и пол у колонны.
-	local wash = Instance.new("SpotLight")
-	wash.Face = Enum.NormalId.Bottom
-	wash.Angle = 75
-	wash.Range = 24
-	wash.Brightness = 1.6
-	wash.Color = Color3.fromRGB(190, 236, 255)
-	wash.Shadows = false
-	wash.Parent = cap
+	local at = dir * 83.5
+	local foot = CFrame.lookAt(Vector3.new(at.X, FLOOR_Y, at.Z), Vector3.new(0, FLOOR_Y, 0))
+	Kit.place(columns, "column", foot, CEILING_Y)
+	local solid = part(columns, "Колонна", Vector3.new(4, CEILING_Y, 4), foot * CFrame.new(0, CEILING_Y / 2, 0), STEEL)
+	solid.Transparency = 1
 end
 
 -- 5. Таблички «СЕКТОР 0N» над порталами (на стене над проёмом, лицом в зал).

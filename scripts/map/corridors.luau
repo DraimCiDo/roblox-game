@@ -6,11 +6,11 @@
 local LAB = workspace:FindFirstChild("CORPA — испытательная лаборатория")
 assert(LAB, "Нет модели лаборатории")
 
-local AMBER = Color3.fromRGB(255, 184, 64)
-local FLOOR = Color3.fromRGB(42, 47, 54)
-local WALL = Color3.fromRGB(40, 47, 57)
-local PANEL = Color3.fromRGB(30, 36, 44)
-local DARK = Color3.fromRGB(18, 22, 28)
+local AMBER = Color3.fromRGB(255, 196, 56)
+local FLOOR = Color3.fromRGB(150, 164, 214)
+local WALL = Color3.fromRGB(78, 94, 168)
+local PANEL = Color3.fromRGB(96, 112, 190)
+local DARK = Color3.fromRGB(34, 36, 82)
 
 -- Направления от центра зала на порталы шести секторов.
 local PORTALS = {
@@ -24,15 +24,15 @@ local PORTALS = {
 
 -- Перекраска по имени детали: {материал, цвет}.
 local RESTYLE = {
-	["Стена соединительного перехода"] = { Enum.Material.Metal, WALL },
-	["Матовая панель перехода"] = { Enum.Material.Metal, PANEL },
-	["Простенок прохода"] = { Enum.Material.Metal, WALL },
+	["Стена соединительного перехода"] = { Enum.Material.SmoothPlastic, WALL },
+	["Матовая панель перехода"] = { Enum.Material.SmoothPlastic, PANEL },
+	["Простенок прохода"] = { Enum.Material.SmoothPlastic, WALL },
 	["Настил соединительной галереи"] = { Enum.Material.SmoothPlastic, FLOOR },
 	["Перекрытие соединительной галереи"] = { Enum.Material.SmoothPlastic, DARK },
-	["Минеральная панель портала"] = { Enum.Material.Metal, PANEL },
-	["Вставка входного портала"] = { Enum.Material.Metal, PANEL },
-	["Верхняя вставка входного портала"] = { Enum.Material.Metal, PANEL },
-	["Бетонный цоколь"] = { Enum.Material.Metal, DARK },
+	["Минеральная панель портала"] = { Enum.Material.SmoothPlastic, PANEL },
+	["Вставка входного портала"] = { Enum.Material.SmoothPlastic, PANEL },
+	["Верхняя вставка входного портала"] = { Enum.Material.SmoothPlastic, PANEL },
+	["Бетонный цоколь"] = { Enum.Material.SmoothPlastic, DARK },
 }
 
 local function trim(parent, name, size, frame, color)

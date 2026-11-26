@@ -47,6 +47,7 @@ local environment = {
 	NumberSequence = roblox.NumberSequence,
 }
 setmetatable(environment, { __index = getfenv and getfenv(0) or _G })
+environment.Kit = luau.load(fs.readFile("scripts/map/kit.luau"), { debugName = "kit", environment = environment })()
 
 for _, path in BUILDERS do
 	local chunk = luau.load(fs.readFile(path), { debugName = path, environment = environment })

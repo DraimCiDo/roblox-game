@@ -80,16 +80,16 @@ sound thud: {Fallback="rbxasset://sounds/action_jump_land.mp3",Id=9116488438,Ran
 sound tick: {Fallback="rbxasset://sounds/volume_slider.ogg",FallbackPitch=2.8,Id=12221976,Jitter=0.04,Volume=0.3}
 sound whoosh: {Fallback="rbxasset://sounds/action_jump_land.mp3",FallbackPitch=1.2,Id=1.567501226e+10,Range=90,Volume=0.5}
 sound woodCrash: {Fallback="rbxasset://sounds/impact_explosion_03.mp3",FallbackPitch=1.2,Id=9120828793,Range=90,Volume=0.7}
-color Amber: "1, 0.72156864, 0.2509804"
-color Card: "0.08627451, 0.11764706, 0.16078432"
-color Cyan: "0.28235295, 0.87058824, 1"
-color Edge: "0.1882353, 0.26666668, 0.34509805"
-color Ink: "0.023529412, 0.03529412, 0.05490196"
-color Muted: "0.5254902, 0.6039216, 0.6862745"
-color Panel: "0.05490196, 0.07450981, 0.105882354"
-color Signal: "0.2901961, 0.9098039, 0.59607846"
-color Text: "0.9098039, 0.9490196, 0.98039216"
-color Warning: "1, 0.3372549, 0.41568628"
+color Amber: "1, 0.76862746, 0.21960784"
+color Card: "0.32156864, 0.3764706, 0.7372549"
+color Cyan: "0.3137255, 0.8235294, 1"
+color Edge: "0.13333334, 0.1254902, 0.3137255"
+color Ink: "0.09411765, 0.08627451, 0.21960784"
+color Muted: "0.8039216, 0.8352941, 1"
+color Panel: "0.21176471, 0.24313726, 0.50980395"
+color Signal: "0.36078432, 0.8392157, 0.28235295"
+color Text: "1, 1, 1"
+color Warning: "1, 0.3372549, 0.36862746"
 perk orders: {Branch="logistics",Costs={1=19200,2=70000,3=240000,4=740000},Key="orders",Name="Очередь",Opened={1=6,2=40,3=200,4=700}}
 describe orders: {1="Заказов одновременно: 1",2="Заказов одновременно: 2",3="Заказов одновременно: 3",4="Заказов одновременно: 4",5="Заказов одновременно: 5"}
 perk delivery: {Branch="logistics",Costs={1=41000,2=140000,3=280000,4=560000,5=1700000},Key="delivery",Name="Быстрая доставка",Opened={1=15,2=70,3=220,4=520,5=1000},Parent="orders",Required=1}
