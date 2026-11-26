@@ -1,53 +1,55 @@
 --!strict
--- Мини-игра «Мытьё полов» в центре карты: подзаработок для тех, кому не хватает на контейнер.
--- Игрок берёт швабру у стойки, сервер выдаёт ему по одному пятну на полу; за каждое вымытое пятно — монеты.
--- Остановиться можно, снова подойдя к стойке. Всё решает сервер: клиент только нажимает кнопки подсказок.
+-- Mopping job in the hall, a side income. The player takes a mop at the stand, steps into the hologram
+-- marker over a dirty spot and scrubs every piece of mud away by moving the mop head over it.
+-- The server decides everything: it watches where the mop head is, the client only presses the stand prompt.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config.GameConfig)
+local Remotes = require(ReplicatedStorage.Shared.Network.Remotes)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Data = require(script.Parent.Parent.Services.PlayerDataService)
 local Economy = require(script.Parent.Parent.Economy.Economy)
 local Rules = require(script.Parent.Parent.Config.Rules)
 local Hall = require(script.Parent.Parent.World.Hall)
+local Dirt = require(script.Parent.Parent.Visuals.Dirt)
+local MopLooks = require(script.Parent.Parent.Visuals.Mop)
 local Texts = require(ReplicatedStorage.Shared.Config.Texts.Notices)
 local Format = require(ReplicatedStorage.Shared.Util.Format)
 
 local Mop = {}
 
-type Worker = { Spot: Part?, Count: number, LastAt: number }
+type Worker = {
+	Mop: Model,
+	Head: Part,
+	LastHead: Vector3,
+	Spot: Dirt.Spot?,
+	-- Set when the player has stepped into the marker of the current spot.
+	StartedAt: number?,
+	Count: number,
+}
+
+local TICK = 0.1
 
 local workers: { [Player]: Worker } = {}
 local station: Part
-local stationPrompt: ProximityPrompt
+local folder: Folder
 local floorY = 0
 local rng = Random.new()
 local notify: (Player, string) -> ()
 local refresh: (Player) -> ()
 
-local function part(
-	name: string,
-	shape: Enum.PartType,
-	size: Vector3,
-	frame: CFrame,
-	color: Color3,
-	parent: Instance
-): Part
-	local result = Instance.new("Part")
-	result.Name = name
-	result.Shape = shape
-	result.Size = size
-	result.CFrame = frame
-	result.Color = color
-	result.Material = Enum.Material.SmoothPlastic
-	result.Anchored = true
-	result.CanCollide = false
-	result.CanQuery = false
-	result.CanTouch = false
-	result.Parent = parent
-	return result
+-- Reward for the n-th spot of one shift: grows every few spots up to a limit.
+local function rewardFor(count: number): number
+	local steps = math.floor((count - 1) / Config.MopStreakStep)
+	return math.min(Config.MopReward + steps * Config.MopRewardBonus, Config.MopRewardMax)
+end
+
+-- nil hides the progress bar of the client.
+local function showProgress(player: Player, share: number?): ()
+	Remotes.event(Remotes.Events.Interface):FireClient(player, "mop", share)
 end
 
 local function floorAt(origin: Vector3): number
@@ -60,7 +62,7 @@ local function floorAt(origin: Vector3): number
 		end
 	end
 	params.FilterDescendantsInstances = ignore
-	-- Луч начинается под потолком зала: сверху от +40 он попадал в крышу и декор вставал на неё.
+	-- The ray starts below the hall ceiling, otherwise it hits the roof.
 	local hit = Workspace:Raycast(origin + Vector3.new(0, 8, 0), Vector3.new(0, -40, 0), params)
 	return if hit then hit.Position.Y else origin.Y
 end
@@ -72,91 +74,113 @@ local function stop(player: Player, silent: boolean?): ()
 	end
 	workers[player] = nil
 	if worker.Spot then
-		worker.Spot:Destroy()
+		worker.Spot.Model:Destroy()
 	end
-	if not silent and player.Parent then
-		notify(player, Format(Texts.mopStopped, { count = worker.Count }))
+	worker.Mop:Destroy()
+	if player.Character then
+		player.Character:SetAttribute("Mopping", nil)
+	end
+	if player.Parent then
+		showProgress(player, nil)
+		if not silent then
+			notify(player, Format(Texts.mopStopped, { count = worker.Count }))
+		end
 	end
 end
 
--- Подбирает свободное место для пятна: пол на уровне зала, нет стен и декора. Если не нашлось — рядом со стойкой.
+-- A free place for a spot: level floor without walls or decor. Falls back to a place next to the stand.
 local function pickSpotCenter(): Vector3
-	for _ = 1, 20 do
+	local center = station.Position
+	for _ = 1, 30 do
 		local angle = rng:NextNumber(0, math.pi * 2)
 		local distance = rng:NextNumber(Rules.Mop.SpotMinRadius, Rules.Mop.SpotMaxRadius)
-		local candidate = station.Position + Vector3.new(math.cos(angle) * distance, 0, math.sin(angle) * distance)
-		if Hall.isFree(candidate, floorY, 4.5) then
-			return candidate
+		local candidate = center + Vector3.new(math.cos(angle) * distance, 0, math.sin(angle) * distance)
+		if Hall.isFree(candidate, floorY, 6) then
+			return Vector3.new(candidate.X, floorY, candidate.Z)
 		end
 	end
-	return station.Position + Vector3.new(0, 0, 5)
+	return Vector3.new(center.X, floorY, center.Z + Rules.Mop.SpotMinRadius)
 end
 
 local function spawnSpot(player: Player, worker: Worker): ()
-	local center = pickSpotCenter()
-	local spot = part(
-		`Пятно ({player.Name})`,
-		Enum.PartType.Cylinder,
-		Vector3.new(0.08, 4.2, 4.2),
-		CFrame.new(center.X, floorY + 0.06, center.Z) * CFrame.Angles(0, 0, math.rad(90)),
-		Color3.fromRGB(255, 184, 64),
-		Workspace
-	)
-	-- Метка яркая и светится янтарём (цвет акцента CORPA): хорошо видна на тёмном полу зала.
-	spot.Material = Enum.Material.Neon
-	spot.Transparency = 0.3
-	local ring = Instance.new("Part")
-	ring.Name = "Кайма пятна"
-	ring.Shape = Enum.PartType.Cylinder
-	ring.Size = Vector3.new(0.09, 4.8, 4.8)
-	ring.CFrame = spot.CFrame
-	ring.Color = Color3.fromRGB(255, 244, 200)
-	ring.Material = Enum.Material.Neon
-	ring.Transparency = 0.1
-	ring.Anchored = true
-	ring.CanCollide = false
-	ring.CanQuery = false
-	ring.CanTouch = false
-	ring.CastShadow = false
-	ring.Parent = spot
-	local pulse = Instance.new("PointLight")
-	pulse.Color = Color3.fromRGB(255, 184, 64)
-	pulse.Range = 10
-	pulse.Brightness = 1.2
-	pulse.Parent = spot
-	spot:SetAttribute("OwnerId", player.UserId)
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = Texts.mopWash
-	prompt.ObjectText = Format(Texts.mopSpotObject, { name = player.DisplayName })
-	prompt.HoldDuration = Rules.Mop.CleanTime
-	prompt.MaxActivationDistance = 9
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = spot
-	prompt.Triggered:Connect(function(actor)
-		local current = workers[actor]
-		if actor ~= player or not current or current.Spot ~= spot then
-			return
-		end
-		local root = actor.Character and actor.Character:FindFirstChild("HumanoidRootPart")
-		if not root or not root:IsA("BasePart") or (root.Position - spot.Position).Magnitude > Rules.Mop.SpotReach then
-			return
-		end
-		local now = os.clock()
-		if now - current.LastAt < Rules.Mop.MinInterval then
-			return
-		end
-		current.LastAt = now
-		current.Count += 1
-		spot:Destroy()
-		current.Spot = nil
-		Data:Update(actor, function(data: Types.PlayerData)
-			Economy.credit(data, Config.MopReward)
-		end)
-		refresh(actor)
-		notify(actor, Format(Texts.mopReward, { reward = Config.MopReward }))
-		spawnSpot(actor, current)
+	local caption = Format(Texts.mopMarker, { name = player.DisplayName })
+	worker.Spot = Dirt.spawn(folder, pickSpotCenter(), Rules.Mop.ChunkCount, Rules.Mop.MarkerRadius, caption)
+	worker.StartedAt = nil
+	showProgress(player, nil)
+end
+
+local function finish(player: Player, worker: Worker): ()
+	local spot = worker.Spot
+	if not spot then
+		return
+	end
+	spot.Model:Destroy()
+	worker.Spot = nil
+	worker.Count += 1
+	local reward = rewardFor(worker.Count)
+	Data:Update(player, function(data: Types.PlayerData)
+		Economy.credit(data, reward)
 	end)
-	worker.Spot = spot
+	refresh(player)
+	notify(player, Format(Texts.mopReward, { reward = reward, count = worker.Count }))
+	spawnSpot(player, worker)
+end
+
+local function flat(offset: Vector3): number
+	return Vector3.new(offset.X, 0, offset.Z).Magnitude
+end
+
+local function scrub(player: Player, worker: Worker): ()
+	local spot = worker.Spot
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not spot or not root or not root:IsA("BasePart") then
+		return
+	end
+	local at = worker.Head.Position
+	-- Capped, so that a jump across the hall does not count as scrubbing.
+	local moved = math.min(flat(at - worker.LastHead), Rules.Mop.MaxStep)
+	worker.LastHead = at
+
+	if not worker.StartedAt then
+		if flat(root.Position - spot.Center) > Rules.Mop.MarkerRadius then
+			return
+		end
+		worker.StartedAt = os.clock()
+		spot.Marker:Destroy()
+		showProgress(player, 0)
+		return
+	end
+
+	local changed = false
+	for index = #spot.Chunks, 1, -1 do
+		local chunk = spot.Chunks[index]
+		if moved > 0.05 and flat(at - chunk.Position) <= Rules.Mop.ScrubRadius then
+			chunk.Progress = math.min(chunk.Progress + moved, Rules.Mop.ChunkWork)
+			Dirt.fade(chunk, chunk.Progress / Rules.Mop.ChunkWork)
+			changed = true
+		end
+	end
+	local done = 0
+	for _, chunk in spot.Chunks do
+		done += chunk.Progress / Rules.Mop.ChunkWork
+	end
+	-- The last piece stays until the minimum time has passed.
+	local early = os.clock() - (worker.StartedAt :: number) < Rules.Mop.MinCleanTime
+	local left = 0
+	for index = #spot.Chunks, 1, -1 do
+		local chunk = spot.Chunks[index]
+		if chunk.Progress >= Rules.Mop.ChunkWork then
+			chunk.Model:Destroy()
+		else
+			left += 1
+		end
+	end
+	if left == 0 and not early then
+		finish(player, worker)
+	elseif changed then
+		showProgress(player, done / #spot.Chunks)
+	end
 end
 
 local function toggle(player: Player): ()
@@ -164,80 +188,59 @@ local function toggle(player: Player): ()
 		stop(player)
 		return
 	end
-	if not Data:Get(player) then
+	local character = player.Character
+	if not character or not Data:Get(player) then
 		return
 	end
-	local worker: Worker = { Spot = nil, Count = 0, LastAt = 0 }
+	local mop, head = MopLooks.equip(character)
+	if not mop or not head then
+		return
+	end
+	character:SetAttribute("Mopping", true)
+	local worker: Worker = { Mop = mop, Head = head, LastHead = head.Position, Spot = nil, StartedAt = nil, Count = 0 }
 	workers[player] = worker
-	notify(player, Format(Texts.mopStarted, { reward = Config.MopReward }))
+	notify(player, Format(Texts.mopStarted, { reward = Config.MopReward, max = Config.MopRewardMax }))
 	spawnSpot(player, worker)
 end
 
--- center — центр общей зоны; notice и update — колбэки основного сервиса (уведомление и обновление интерфейса).
+-- center: middle of the work area; notice and update are callbacks of the main service.
 function Mop.Start(center: Vector3, notice: (Player, string) -> (), update: (Player) -> ()): number
 	notify = notice
 	refresh = update
 	floorY = floorAt(center)
-	local folder = Instance.new("Folder")
+	folder = Instance.new("Folder")
 	folder.Name = "Мытьё полов"
 	folder.Parent = Workspace
-	station = part(
-		"Стойка со шваброй",
-		Enum.PartType.Block,
-		Vector3.new(2.4, 0.4, 2.4),
-		CFrame.new(center.X, floorY + 0.2, center.Z),
-		Color3.fromRGB(98, 106, 178),
-		folder
-	)
-	station.CanQuery = true
-	part(
-		"Ведро",
-		Enum.PartType.Cylinder,
-		Vector3.new(1.8, 1.5, 1.5),
-		CFrame.new(center.X - 0.5, floorY + 1.15, center.Z) * CFrame.Angles(0, 0, math.rad(90)),
-		Color3.fromRGB(70, 196, 255),
-		folder
-	)
-	part(
-		"Швабра",
-		Enum.PartType.Cylinder,
-		Vector3.new(4.6, 0.2, 0.2),
-		CFrame.new(center.X + 0.5, floorY + 2.6, center.Z) * CFrame.Angles(0, 0, math.rad(90)),
-		Color3.fromRGB(196, 204, 214),
-		folder
-	)
-	part(
-		"Насадка швабры",
-		Enum.PartType.Block,
-		Vector3.new(1.4, 0.3, 0.7),
-		CFrame.new(center.X + 0.5, floorY + 0.55, center.Z),
-		Color3.fromRGB(232, 234, 238),
-		folder
-	)
-	stationPrompt = Instance.new("ProximityPrompt")
-	stationPrompt.ObjectText = Texts.mopStationObject
-	stationPrompt.ActionText = Texts.mopTake
-	stationPrompt.MaxActivationDistance = 9
-	stationPrompt.RequiresLineOfSight = false
-	stationPrompt.Parent = station
-	stationPrompt.Triggered:Connect(toggle)
+	station = MopLooks.station(folder, CFrame.new(center.X, floorY, center.Z))
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "MopStation"
+	prompt.ObjectText = Texts.mopStationObject
+	prompt.ActionText = Texts.mopTake
+	prompt.MaxActivationDistance = 9
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = station
+	prompt.Triggered:Connect(toggle)
 
 	Players.PlayerRemoving:Connect(function(player)
 		stop(player, true)
 	end)
-	task.spawn(function()
-		while true do
-			for player in workers do
-				local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-				local far = true
-				if root and root:IsA("BasePart") then
-					far = (root.Position - station.Position).Magnitude > Rules.Mop.MaxDistance
-				end
-				if far then
-					stop(player)
-				end
+
+	local elapsed = 0
+	RunService.Heartbeat:Connect(function(delta)
+		elapsed += delta
+		if elapsed < TICK then
+			return
+		end
+		elapsed = 0
+		for player, worker in workers do
+			local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			local gone = worker.Mop.Parent ~= player.Character or not root or not root:IsA("BasePart")
+			if gone or ((root :: BasePart).Position - station.Position).Magnitude > Rules.Mop.MaxDistance then
+				stop(player)
+			else
+				scrub(player, worker)
 			end
-			task.wait(1)
 		end
 	end)
 	return floorY

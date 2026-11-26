@@ -162,4 +162,6 @@ return {
 	deliveryOdds = "Шансы доставки",
 	arrivesIn = "Прибытие через {time}",
 	atAirlock = "Контейнер у шлюза.",
+	-- Mopping job
+	mopProgress = "Очистка пятна",
 }

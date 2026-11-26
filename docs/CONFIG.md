@@ -9,7 +9,7 @@ diff of `tests/snapshot.txt`: it lists exactly what changed in prices, odds and 
 | Item prices, drop weights, items per container, delivery time, opening steps | `src/server/Config/Loot.luau` |
 | Quality chances and price multiplier, order price share, daily reward, safe mini-game | `src/server/Config/Balance.luau` |
 | Distances, action rate limit, gallery interval, mopping job | `src/server/Config/Rules.luau` |
-| Start coins, mop reward, minimum order price, daily reward delay | `src/shared/Config/GameConfig.luau` |
+| Start coins, mop reward and its streak bonus, minimum order price, daily reward delay | `src/shared/Config/GameConfig.luau` |
 | Container names, laboratory levels, container odds | `src/shared/Config/Containers.luau` |
 | Item names, sizes, colors | `src/shared/Config/Items.luau` |
 | Collections | `src/shared/Config/Collections.luau` |
