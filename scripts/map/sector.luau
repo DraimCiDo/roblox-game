@@ -261,22 +261,34 @@ local function buildSector(model, F, spawn)
 	end
 	-- Plain transparency: Glass would hide the see-through things behind the pipe.
 	local function glass(from, to, extra)
-		local piece = tube(pipe, "Стекло трубы", from, to, PIPE_RADIUS * 2, GLASS, Enum.Material.SmoothPlastic, extra)
-		piece.Transparency = 0.78
-		piece.Reflectance = 0.18
+		local piece = tube(pipe, "Стекло трубы", from, to, PIPE_RADIUS * 2, Color3.fromRGB(150, 235, 255), Enum.Material.SmoothPlastic, extra)
+		piece.Transparency = 0.68
+		piece.Reflectance = 0.08
 		piece.CastShadow = false
 	end
+	-- A hoop of segments around the pipe: a solid cylinder would read as a disc blocking it.
 	local function collar(at, along, width, color, material)
-		tube(pipe, "Кольцо трубы", at - along * (width / 2), at + along * (width / 2), PIPE_RADIUS * 2 + 0.7, color, material or Enum.Material.Metal)
+		local u = if math.abs(along.Y) > 0.9 then V(1, 0, 0) else V(0, 1, 0)
+		local v = along:Cross(u).Unit
+		local count, radius = 24, PIPE_RADIUS + 0.12
+		for index = 0, count - 1 do
+			local angle = index / count * math.pi * 2
+			local radial = u * math.cos(angle) + v * math.sin(angle)
+			local tangent = v * math.cos(angle) - u * math.sin(angle)
+			local frame = CFrame.fromMatrix(at + radial * radius, radial, tangent)
+			local size = V(0.45, 2 * math.pi * radius / count + 0.1, width)
+			part(pipe, "Кольцо трубы", size, frame, color, material or Enum.Material.Metal, false)
+		end
 	end
 	local startZ, bendZ = DOOR_Z - 0.4, BEND
 	glass(V(0, PIPE_Y, startZ), V(0, PIPE_Y, bendZ))
-	-- Quarter bend from the horizontal run into the vertical drop.
+	-- Quarter bend into the vertical drop: a ribbed metal elbow.
 	local previous = V(0, PIPE_Y, bendZ)
-	for step = 1, 7 do
-		local angle = step / 7 * math.pi / 2
+	for step = 1, 8 do
+		local angle = step / 8 * math.pi / 2
 		local point = V(0, PIPE_Y - BEND + math.cos(angle) * BEND, BEND - math.sin(angle) * BEND)
-		glass(previous, point, 0.25)
+		local rib = if step % 2 == 0 then STEEL else Color3.fromRGB(176, 188, 240)
+		tube(pipe, "Колено трубы", previous, point, PIPE_RADIUS * 2 + (step % 2) * 0.12, rib, Enum.Material.Metal, 0.2)
 		previous = point
 	end
 	glass(V(0, PIPE_Y - BEND, 0), V(0, NOZZLE_Y, 0))
