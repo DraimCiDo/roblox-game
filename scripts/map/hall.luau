@@ -243,6 +243,15 @@ for k = 0, 7 do
 	trim(part(trims, "Верхняя полоса", Vector3.new(66, 1.6, 0.15), frame * CFrame.new(0, -1.3, 0.05), DARK))
 end
 
+-- The vent grilles of the east wall hang over the logo.
+for _, piece in LAB:GetChildren() do
+	if piece:IsA("BasePart") and (piece.Name == "Корпус вентиляции" or piece.Name == "Ламель вентиляции") then
+		if piece.CFrame.Position.X > 70 then
+			piece:Destroy()
+		end
+	end
+end
+
 -- Wall panels along the octagon, between the portals and corner columns.
 local panels = Instance.new("Folder")
 panels.Name = "Панели зала"

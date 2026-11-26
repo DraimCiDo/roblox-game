@@ -146,7 +146,7 @@ local function buildSector(model, F, spawn)
 		{ V(26.6 + WIDEN - SHAFT, 1, SHAFT * 2), V((26.6 + WIDEN + SHAFT) / 2, -0.55, 0) },
 	}
 	for _, slab in floorParts do
-		part(shell, "Пол сектора", slab[1], place(slab[2]), FLOOR)
+		part(shell, "Пол сектора", slab[1], place(slab[2]), FLOOR, Enum.Material.CeramicTiles)
 	end
 	-- Checker floor around the shaft.
 	local tileX, tileZ = (53.2 + WIDEN * 2) / 8, 63 / 8
@@ -155,13 +155,14 @@ local function buildSector(model, F, spawn)
 			local x, z = (i - 3.5) * tileX, (j - 3.5) * tileZ
 			local overShaft = math.abs(x) - tileX / 2 < SHAFT and math.abs(z) - tileZ / 2 < SHAFT
 			if (i + j) % 2 == 0 and not overShaft then
-				glow(shell, "Плитка пола", V(tileX, 0.02, tileZ), place(V(x, -0.04, z)), Color3.fromRGB(145, 156, 208))
+				glow(shell, "Плитка пола", V(tileX, 0.02, tileZ), place(V(x, -0.04, z)), Color3.fromRGB(145, 156, 208)).Material = Enum.Material.CeramicTiles
 			end
 		end
 	end
 	for _, side in { -1, 1 } do
-		part(shell, "Стена сектора", V(1.1, CEIL + 0.6, 63.4), place(V(wing(side * 26.65), CEIL / 2, 0.15)), WALL, Enum.Material.SmoothPlastic)
-		part(shell, "Фронтальная стена", V(16.4 + WIDEN, CEIL + 0.6, 1.1), place(V(side * (18.15 + WIDEN / 2), CEIL / 2, -30.93)), WALL, Enum.Material.SmoothPlastic)
+		part(shell, "Стена сектора", V(1.1, CEIL + 0.6, 63.4), place(V(wing(side * 26.65), CEIL / 2, 0.15)), WALL, Enum.Material.Plaster)
+		part(shell, "Панель стены", V(0.2, 3.4, 62), place(V(wing(side * 26), 1.7, 0.15)), GRAPHITE, Enum.Material.DiamondPlate, false)
+		part(shell, "Фронтальная стена", V(16.4 + WIDEN, CEIL + 0.6, 1.1), place(V(side * (18.15 + WIDEN / 2), CEIL / 2, -30.93)), WALL, Enum.Material.Plaster)
 		-- Рёбра стен.
 		for z = -24, 24, 8 do
 			part(shell, "Ребро стены", V(0.5, CEIL, 0.6), place(V(wing(side * 25.85), CEIL / 2, z)), GRAPHITE, Enum.Material.SmoothPlastic)
@@ -170,7 +171,7 @@ local function buildSector(model, F, spawn)
 		glow(shell, "Подсветка стены", V(0.1, 0.14, 61), place(V(wing(side * 26.05), 14.2, 0)), CYAN)
 	end
 	part(shell, "Перемычка входа", V(20, CEIL - 11.65 + 0.6, 1.16), place(V(0, (11.65 + CEIL + 0.6) / 2, -30.9)), WALL, Enum.Material.SmoothPlastic)
-	part(shell, "Задняя стена", V(53.2 + WIDEN * 2, CEIL + 0.6, 1.4), place(V(0, CEIL / 2, 31.3)), WALL, Enum.Material.SmoothPlastic)
+	part(shell, "Задняя стена", V(53.2 + WIDEN * 2, CEIL + 0.6, 1.4), place(V(0, CEIL / 2, 31.3)), WALL, Enum.Material.Plaster)
 	glow(shell, "Подсветка стены", V(52 + WIDEN * 2, 0.18, 0.1), place(V(0, 0.35, 30.55)), CYAN)
 	part(shell, "Потолок сектора", V(53.9 + WIDEN * 2, 1, 63), place(V(0, CEIL + 0.5, 0)), CEILING)
 	-- Арка входа: неоновый контур проёма изнутри.
@@ -352,29 +353,53 @@ local function buildSector(model, F, spawn)
 
 	-- ===== Левое крыло: автоматизированный склад =====
 	-- Не «Склад»: так называется деталь-станция, которую сервер ищет через FindFirstChild.
+	-- A vault rack of ten lockers (5 columns, 2 rows); the server builds the inside of each module.
 	local store = folder("Зона склада")
-	local columns = { 6.4, 9.54 }
-	for row = 0, 4 do
-		for _, z in columns do
+	local LOCKERS = { 0.5, 4.1, 7.7, 11.3, 14.9 }
+	local function plate(name, size, at, color, material, solid)
+		return part(store, name, size, place(at), color, material, solid)
+	end
+	for _, y in { 1.9, 5.0 } do
+		for _, z in LOCKERS do
 			-- Задняя стенка ячейки (+X модуля) — в стену: лицевая сторона модуля смотрит в +Z, правый вектор −X.
-			part(model, "Складской модуль", V(1.4, 1.4, 2.6), place(V(wing(-25.2), 0.8 + row * 1.55, z), V(0, 0, 1)), STEEL, Enum.Material.SmoothPlastic)
+			part(model, "Складской модуль", V(1.6, 2.8, 3.2), place(V(wing(-24.6), y, z), V(0, 0, 1)), STEEL, Enum.Material.SmoothPlastic)
 		end
 	end
-	for _, z in { 4.9, 7.97, 11.04 } do
-		part(store, "Стойка стеллажа", V(0.6, 8.4, 0.25), place(V(wing(-24.6), 4.2, z)), GRAPHITE, Enum.Material.SmoothPlastic)
-		glow(store, "Подсветка стеллажа", V(0.08, 8, 0.08), place(V(wing(-24.28), 4.2, z)), AMBER)
+	local PLATE = Color3.fromRGB(74, 82, 150)
+	plate("Задняя стенка стеллажа", V(0.4, 7, 19), V(wing(-25.6), 3.5, 7.7), PLATE, Enum.Material.DiamondPlate)
+	for index = 0, 5 do
+		local z = -1.3 + index * 3.6
+		plate("Стойка стеллажа", V(2.2, 7, 0.4), V(wing(-24.65), 3.5, z), GRAPHITE, Enum.Material.Metal, false)
+		for _, y in { 0.5, 3.45, 6.4 } do
+			local rivet = plate("Заклёпка", V(0.12, 0.22, 0.22), V(wing(-23.52), y, z), STEEL, Enum.Material.Metal, false)
+			rivet.Shape = Enum.PartType.Cylinder
+		end
 	end
-	part(store, "Козырёк стеллажа", V(2.4, 0.3, 6.6), place(V(wing(-25.1), 8.55, 7.97)), GRAPHITE, Enum.Material.SmoothPlastic)
-	part(store, "Портал манипулятора", V(0.4, 0.4, 7.4), place(V(wing(-23.6), 9.2, 7.97)), STEEL, Enum.Material.SmoothPlastic, false)
-	part(store, "Каретка манипулятора", V(1.2, 0.9, 1.2), place(V(wing(-23.6), 8.6, 9.0)), AMBER:Lerp(DARK, 0.3), Enum.Material.SmoothPlastic, false)
-	glow(store, "Контур склада", V(0.14, 0.03, 14), place(V(wing(-14.8), 0.02, 8)), AMBER)
-	glow(store, "Контур склада", V(11, 0.03, 0.14), place(V(wing(-20.3), 0.02, 1)), AMBER)
-	glow(store, "Контур склада", V(11, 0.03, 0.14), place(V(wing(-20.3), 0.02, 15)), AMBER)
-	part(model, "Склад", V(5.8, 2.04, 2.55), place(V(wing(-20.6), 1.02, 7.97), V(1, 0, 0)), GRAPHITE, Enum.Material.SmoothPlastic)
-	glow(store, "Подсветка стола", V(0.1, 0.08, 5.8), place(V(wing(-19.3), 0.15, 7.97)), AMBER)
-	local storagePanel = part(model, "Панель склада", V(9, 1.8, 0.3), place(V(wing(-25.4), 14.9, 7.97), V(1, 0, 0)), DARK, Enum.Material.SmoothPlastic, false)
+	for _, beam in { { 0.25, 0.5 }, { 3.45, 0.3 }, { 6.65, 0.5 } } do
+		plate("Балка стеллажа", V(2.3, beam[2], 18.4), V(wing(-24.65), beam[1], 7.7), GRAPHITE, Enum.Material.Metal, false)
+	end
+	-- Hazard header over the rack with the zone sign on it.
+	plate("Козырёк стеллажа", V(2.6, 0.5, 19.2), V(wing(-24.6), 7.15, 7.7), DARK, Enum.Material.Metal, false)
+	for index = 0, 15 do
+		local stripe = plate("Разметка козырька", V(0.1, 0.5, 0.6), V(wing(-23.28), 7.15, -1.3 + index * 1.2), AMBER, Enum.Material.SmoothPlastic, false)
+		stripe.CastShadow = false
+	end
+	local storagePanel = part(model, "Панель склада", V(9, 1.9, 0.4), place(V(wing(-23.9), 8.4, 7.7), V(1, 0, 0)), DARK, Enum.Material.SmoothPlastic, false)
 	storagePanel.CanQuery = false
-	downlight(part(model, "Рассеиватель сервисного поста", V(0.4, 0.1, 6), place(V(wing(-22.6), 7.2, 7.97)), LAMP, Enum.Material.Neon, false), 1.1, 12, 100)
+	for _, z in { 3.0, 12.4 } do
+		plate("Кронштейн таблички", V(0.4, 1.2, 0.3), V(wing(-24.2), 7.9, z), STEEL, Enum.Material.Metal, false)
+	end
+	glow(store, "Свет козырька", V(0.12, 0.12, 18), place(V(wing(-23.4), 6.84, 7.7)), LAMP).Material = Enum.Material.Neon
+	downlight(part(model, "Рассеиватель сервисного поста", V(0.4, 0.1, 6), place(V(wing(-22.8), 6.8, 7.7)), LAMP, Enum.Material.Neon, false), 1.1, 12, 100)
+	-- Floor of the zone: tread plate with a hazard border.
+	plate("Настил склада", V(10, 0.05, 20), V(wing(-20.6), -0.01, 7.7), Color3.fromRGB(122, 134, 196), Enum.Material.DiamondPlate, false)
+	glow(store, "Контур склада", V(0.4, 0.04, 20.4), place(V(wing(-15.5), 0.03, 7.7)), AMBER)
+	for _, z in { -2.4, 17.8 } do
+		glow(store, "Контур склада", V(10.2, 0.04, 0.4), place(V(wing(-20.6), 0.03, z)), AMBER)
+	end
+	-- The prompt stays on this part; the counter mesh stands in its place.
+	local counter = part(model, "Склад", V(5.8, 2.04, 2.55), place(V(wing(-19.6), 1.02, 7.7), V(1, 0, 0)), GRAPHITE, Enum.Material.SmoothPlastic)
+	counter.Transparency = 1
 
 	-- ===== Правое крыло: галерея витрин =====
 	local gallery = folder("Галерея витрин")
@@ -415,7 +440,7 @@ local function buildSector(model, F, spawn)
 	for _, side in { -1, 1 } do
 		local inward = V(-side, 0, 0)
 		local x = wing(side * 25.9)
-		local panels = if side == 1 then { -13, 17.5, 27 } else { -24, -13, 17.5, 27 }
+		local panels = if side == 1 then { -13, 17.5, 27 } else { -24, -13, 25 }
 		for _, z in panels do
 			Kit.place(kit, "wall", foot(V(x - side * 0.3, 0, z), inward), 13)
 		end
@@ -445,7 +470,11 @@ local function buildSector(model, F, spawn)
 
 	-- Order terminal beside its desk, shelves by the storage, pedestals under the displays.
 	Kit.place(kit, "terminal", foot(V(wing(20.2), 0, -19.6), V(-1, 0, 0)), 7)
-	Kit.place(kit, "shelf", foot(V(wing(-24), 0, -2.5), V(1, 0, 0)), 9)
+	Kit.place(kit, "counter", foot(V(wing(-19.6), 0, 7.7), V(1, 0, 0)), 2.9)
+	-- The generated counter has only a rim on top: close it with a wooden board.
+	part(kit, "Столешница", V(2.2, 0.16, 3.9), place(V(wing(-19.6), 2.2, 7.7)), Color3.fromRGB(196, 132, 74), Enum.Material.WoodPlanks, false)
+	Kit.place(kit, "arm", foot(V(wing(-22.8), 0, -5), V(1, 0, 0.6).Unit), 6.5)
+	Kit.place(kit, "crates", foot(V(wing(-22.8), 0, 20.4), V(1, 0, -0.3).Unit), 4.5)
 	for slot = 1, 6 do
 		Kit.place(kit, "pedestal", foot(V(wing(22.6), 0, -15 + (slot - 1) * 5.6), V(-1, 0, 0)), 1.5)
 	end

@@ -16,11 +16,18 @@ local WARM = Common.WARM
 local brick = Common.brick
 local cylinder = Common.cylinder
 local clearItems = Common.clearItems
-local fit = Common.fit
 
 local Storage = {}
 
 local STORAGE_PER_CELL = 5
+-- Place of each find in a locker: share of the width from the middle and the level (0 floor, 1 shelf).
+local SLOTS = {
+	{ -0.32, 0 },
+	{ 0, 0 },
+	{ 0.32, 0 },
+	{ -0.18, 1 },
+	{ 0.18, 1 },
+}
 
 -- ============ Склад ============
 
@@ -52,10 +59,20 @@ local function buildCell(kit: Kit, module: Part): Cell
 		folder,
 		"Подсветка полки",
 		place(Vector3.new(0, h / 2 - 0.1, 0)),
-		Vector3.new(d - 0.3, 0.03, w - 0.4),
+		Vector3.new(d * 0.3, 0.04, w * 0.6),
 		WARM,
-		Enum.Material.Neon
+		Enum.Material.SmoothPlastic
 	)
+	-- Two levels: three finds below, two on the glass shelf.
+	local glass = brick(
+		folder,
+		"Полка",
+		place(Vector3.new(0.1, 0.02, 0)),
+		Vector3.new(d - 0.35, 0.08, w - 0.12),
+		CHROME,
+		Enum.Material.Glass
+	)
+	glass.Transparency = 0.4
 	local frame: { Part } = {}
 	local front = -d / 2 + 0.03
 	for _, side in { -1, 1 } do
@@ -67,7 +84,7 @@ local function buildCell(kit: Kit, module: Part): Cell
 				place(Vector3.new(front, side * (h / 2 - 0.04), 0)),
 				Vector3.new(0.06, 0.08, w),
 				CYAN,
-				Enum.Material.Neon
+				Enum.Material.SmoothPlastic
 			)
 		)
 		table.insert(
@@ -78,7 +95,7 @@ local function buildCell(kit: Kit, module: Part): Cell
 				place(Vector3.new(front, 0, side * (w / 2 - 0.04))),
 				Vector3.new(0.06, h, 0.08),
 				CYAN,
-				Enum.Material.Neon
+				Enum.Material.SmoothPlastic
 			)
 		)
 	end
@@ -88,23 +105,23 @@ local function buildCell(kit: Kit, module: Part): Cell
 		"Створка",
 		place(Vector3.new(front + 0.02, 0, 0)),
 		Vector3.new(0.04, h - 0.12, w - 0.12),
-		DEEP,
-		Enum.Material.Metal
+		STEEL,
+		Enum.Material.DiamondPlate
 	)
-	door.Transparency = 0.12
+	door.Transparency = 0
 	table.insert(shutter, door)
 	table.insert(
 		shutter,
-		brick(folder, "Замок", place(Vector3.new(front - 0.04, 0, 0)), Vector3.new(0.1, 0.34, 0.28), AMBER)
+		brick(folder, "Замок", place(Vector3.new(front - 0.04, 0, 0)), Vector3.new(0.14, 0.7, 0.6), AMBER)
 	)
 	table.insert(
 		shutter,
 		cylinder(
 			folder,
 			"Дужка замка",
-			place(Vector3.new(front - 0.04, 0.22, 0)) * CFrame.Angles(math.pi / 2, 0, 0),
-			0.1,
-			0.22,
+			place(Vector3.new(front - 0.04, 0.45, 0)) * CFrame.Angles(math.pi / 2, 0, 0),
+			0.14,
+			0.45,
 			CHROME
 		)
 	)
@@ -127,7 +144,7 @@ function Storage.setStorage(kit: Kit, capacity: number, inventory: { Types.Item 
 			piece.Transparency = if built then 0 else 0.35
 		end
 		for _, piece in cell.Shutter do
-			piece.Transparency = if built then 1 else (if piece.Name == "Створка" then 0.12 else 0)
+			piece.Transparency = if built then 1 else 0
 		end
 		cell.Module.Transparency = 1
 		cell.Module.CanCollide = built
@@ -150,11 +167,16 @@ function Storage.setStorage(kit: Kit, capacity: number, inventory: { Types.Item 
 				local item = inventory[(index - 1) * STORAGE_PER_CELL + slot]
 				local mini = kit.MakeMini(item, false)
 				mini.Parent = kit.Root
-				fit(mini, 0.42, size.Y - 0.22)
-				local z = (slot - 3) * (size.Z - 0.3) / STORAGE_PER_CELL
+				-- Minis are tiny: grow them to fill their place.
+				local extents = mini:GetExtentsSize()
+				local width, height = size.Z * 0.27, size.Y / 2 - 0.3
+				local scale = math.min(width / math.max(extents.X, extents.Z, 0.01), height / math.max(extents.Y, 0.01))
+				mini:ScaleTo(mini:GetScale() * scale)
+				local z, level = SLOTS[slot][1] * size.Z, SLOTS[slot][2]
+				local floor = if level == 0 then -size.Y / 2 + 0.07 else 0.07
 				mini:PivotTo(
 					cell.Module.CFrame
-						* CFrame.new(cell.Center + Vector3.new(0.05, -size.Y / 2 + 0.07, z))
+						* CFrame.new(cell.Center + Vector3.new(0.05, floor, z))
 						* CFrame.Angles(0, math.rad(90), 0)
 				)
 				table.insert(cell.Items, mini)
