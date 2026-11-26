@@ -1,6 +1,6 @@
 # Предметы и референсы Creator Store
 
-Список взят из Notion (раздел «Весь список предметов»). Модели загружаются на сервере при старте через `InsertService:LoadAsset` (`SimulatorService/ItemAssets.luau`): из них удаляются скрипты, звуки и соединения, размер приводится к размеру предмета. Если модель не загрузилась, используется встроенная процедурная. Готовые шаблоны видны в `ServerStorage.ItemTemplates` во время Play. Отключить загрузку: атрибут `Workspace.UseStoreModels = false`. Ключ — идентификатор в `src/shared/Config/Catalog.luau`.
+Список взят из Notion (раздел «Весь список предметов»). Модели загружаются на сервере при старте через `InsertService:LoadAsset` (`server/World/ItemAssets.luau`): из них удаляются скрипты, звуки и соединения, размер приводится к размеру предмета. Если модель не загрузилась, используется встроенная процедурная. Готовые шаблоны видны в `ServerStorage.ItemTemplates` во время Play. Отключить загрузку: атрибут `Workspace.UseStoreModels = false`. Ключ — идентификатор в `src/shared/Config/Items.luau`.
 
 ## Картонная коробка
 

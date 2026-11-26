@@ -27,20 +27,23 @@
 ```
 src/
   server/            → ServerScriptService.Server
-    Main.server.luau     точка входа (не трогать без нужды)
-    Services/            серверные системы, грузятся автоматически
+    Main.server.luau     entry point
+    Services/            loaded automatically (Loader)
+    Gameplay/ Economy/ World/ Visuals/ Network/   plain modules by domain
+    Config/              server-only loot, balance and rules
   client/            → StarterPlayer.StarterPlayerScripts.Client
-    Main.client.luau     точка входа
-    Controllers/         клиентские системы, грузятся автоматически
-  shared/            → ReplicatedStorage.Shared (видно и серверу, и клиенту!)
-    Loader.luau          загрузчик Init/Start
-    Remotes.luau         единый реестр сетевых событий
-    Types.luau           общие типы
-    Config/              конфиги (без секретов)
-    Util/                утилиты без состояния
-Packages/            Wally-пакеты (генерируются, не редактировать, не коммитить)
-docs/                документация, GDD, решения (ADR)
-.claude/skills/      пошаговые инструкции для типовых задач (для всех агентов)
+    Main.client.luau     entry point
+    Controllers/         loaded automatically (Loader)
+    UI/ Visuals/ Audio/  plain modules by domain
+  shared/            → ReplicatedStorage.Shared (visible to server and client!)
+    Catalog.luau         read API and rules over Config
+    Config/              editable content (no secrets); Config/Texts/ for player-visible strings
+    Network/Remotes.luau the only registry of remotes
+    Models/ Types.luau Loader.luau Util/
+tests/               Lune checks (link check, rules snapshot)
+Packages/            Wally packages (generated: do not edit or commit)
+docs/                docs, GDD, decisions (ADR); docs/CONFIG.md says what to edit where
+.claude/skills/      step-by-step instructions for typical tasks (for all agents)
 ```
 
 Жизненный цикл модуля: `Loader` делает `require` всех детей папки → `:Init()` у всех → `:Start()` у всех (каждый в своём потоке). Подробно — скилл `new-module`.
@@ -57,6 +60,8 @@ docs/                документация, GDD, решения (ADR)
 | Полная проверка (как в CI) | `./scripts/check.sh` или `./scripts/check.ps1` |
 | Собрать place-файл | `rojo build default.project.json -o build/game.rbxl` |
 | Пересобрать оформление карты в `assets/` | `lune run scripts/map/build.luau` |
+| Link check and rules snapshot | `lune run tests/requires.luau`, `lune run tests/snapshot.luau` |
+| Progression pace | `lune run scripts/balance.luau` |
 
 ## 5. Стиль кода
 
@@ -69,6 +74,7 @@ docs/                документация, GDD, решения (ADR)
 - Состояние модуля — локальные переменные модуля, публичный API — методы таблицы.
 - Comments and messages are in English, like identifiers. Existing Russian comments may stay until their file is touched.
 - Каждая таблица вида `{ [Player]: ... }` чистится в `Players.PlayerRemoving`.
+- Player-visible strings go to `shared/Config/Texts/`, tunable numbers to the configs listed in `docs/CONFIG.md`.
 - Ошибки, которые надо видеть, — `warn(...)` с префиксом `[ИмяМодуля]`. Отладочные `print` в PR не оставлять.
 
 ## 6. Безопасность и данные
