@@ -421,6 +421,9 @@ local function buildSector(model, F, spawn)
 		for _, px in { 13, 20 } do
 			Kit.place(kit, "wall", foot(V(side * px, 0, 30.2), V(0, 0, -1)), 11)
 		end
+		for _, px in { 15, 23 } do
+			Kit.place(kit, "wall", foot(V(side * px, 0, -29.7), V(0, 0, 1)), 11)
+		end
 	end
 	-- Order terminal beside its desk, shelves by the storage, pedestals under the displays.
 	Kit.place(kit, "terminal", foot(V(wing(20.2), 0, -19.6), V(-1, 0, 0)), 7)

@@ -163,6 +163,64 @@ for _, piece in LAB:GetChildren() do
 	end
 end
 
+-- 1b. Everything left from the old industrial look gets a cartoon color by name.
+local TRIM = Color3.fromRGB(236, 238, 252)
+local FRAME = Color3.fromRGB(98, 106, 178)
+local PANEL = Color3.fromRGB(150, 166, 232)
+local ACCENT = Color3.fromRGB(70, 196, 255)
+local WARM = Color3.fromRGB(255, 190, 52)
+local RECOLOR = {
+	["Утопленная сервисная панель"] = PANEL,
+	["Кабельный лоток"] = FRAME,
+	["Корпус вентиляции"] = TRIM,
+	["Вертикальный шов"] = FRAME,
+	["Корпус светильника перехода"] = TRIM,
+	["Лицевая балка входного портала"] = WARM,
+	["Маркер края перехода"] = WARM,
+	["Нескользящая ось галереи"] = PANEL,
+	["Нижняя направляющая перехода"] = FRAME,
+	["Посадочная полоска маршрута"] = ACCENT,
+	["Профиль входного портала"] = WARM,
+	["Рама входа в переход"] = TRIM,
+	["Рельефная нижняя кромка портала"] = TRIM,
+	["Рукав кабеля в переходе"] = FRAME,
+	["Светильник перехода"] = Color3.fromRGB(255, 244, 214),
+	["Светильник подхода"] = Color3.fromRGB(255, 244, 214),
+	["Световая полоса"] = ACCENT,
+	["Кромка указателя"] = WARM,
+	["Терминал рейтинга"] = FRAME,
+	["Указатель сектора 01"] = FRAME,
+	["Указатель сектора 02"] = FRAME,
+	["Указатель сектора 03"] = FRAME,
+	["Указатель сектора 04"] = FRAME,
+	["Указатель сектора 05"] = FRAME,
+	["Указатель сектора 06"] = FRAME,
+	["Утопленный корпус светильника подхода"] = TRIM,
+}
+for _, piece in LAB:GetChildren() do
+	local color = piece:IsA("BasePart") and RECOLOR[piece.Name]
+	if color then
+		piece.Color = color
+		if piece.Material ~= Enum.Material.Neon then
+			piece.Material = Enum.Material.SmoothPlastic
+		end
+	end
+end
+
+-- Wall panels along the octagon, between the portals and corner columns.
+local panels = Instance.new("Folder")
+panels.Name = "Панели зала"
+panels.Parent = root
+for k = 0, 7 do
+	local a = math.rad(45 * k)
+	local out = Vector3.new(math.cos(a), 0, math.sin(a))
+	local along = Vector3.new(-out.Z, 0, out.X)
+	for _, offset in { -27, -18, 18, 27 } do
+		local at = out * 81 + along * offset
+		Kit.place(panels, "wall", CFrame.lookAt(Vector3.new(at.X, FLOOR_Y, at.Z), Vector3.new(at.X - out.X, FLOOR_Y, at.Z - out.Z)), 11)
+	end
+end
+
 -- 2. Пол: плитка-сетка, кольцо вокруг ядра и световые дорожки к секторам и воротам.
 local floor = group("Пол · разметка")
 local center = Vector3.new(0, FLOOR_Y, 0)

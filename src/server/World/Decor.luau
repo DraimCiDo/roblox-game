@@ -33,8 +33,22 @@ local function template(piece: string): MeshPart?
 	return result
 end
 
+-- The widened sectors reach into the voxel landscape around them: empty each room.
+local function clearRooms(root: Instance): ()
+	for _, sector in root:GetChildren() do
+		local ceiling = sector:FindFirstChild("Потолок сектора", true)
+		if ceiling and ceiling:IsA("BasePart") then
+			local height = ceiling.Position.Y
+			local size = Vector3.new(ceiling.Size.X - 1, height, ceiling.Size.Z - 1)
+			local frame = ceiling.CFrame - Vector3.new(0, height / 2, 0)
+			workspace.Terrain:FillBlock(frame, size, Enum.Material.Air)
+		end
+	end
+end
+
 -- Yields while meshes download: call from its own thread.
 function Decor.build(root: Instance): number
+	clearRooms(root)
 	local built = 0
 	for _, mark in root:GetDescendants() do
 		local piece = mark:GetAttribute("KitPiece")
