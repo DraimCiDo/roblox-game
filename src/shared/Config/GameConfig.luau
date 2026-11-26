@@ -28,6 +28,10 @@ return table.freeze({
 	MaxPlayers = 6,
 	OrderPrice = 2500,
 	DailySeconds = 900,
-	-- Награда за одно вымытое пятно в мини-игре «Мытьё полов».
+	-- Mopping job: the reward starts at MopReward, grows by MopRewardBonus every MopStreakStep spots
+	-- of one shift (taking the mop until putting it back) and stops at MopRewardMax.
 	MopReward = 10,
+	MopStreakStep = 5,
+	MopRewardBonus = 5,
+	MopRewardMax = 50,
 })

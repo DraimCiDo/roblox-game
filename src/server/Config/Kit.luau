@@ -53,4 +53,20 @@ return {
 		Texture = "rbxassetid://131949955634027",
 		Size = { 3.434, 3, 2.394 },
 	},
+	-- Dirt of the mopping job. Size sets the proportions the mesh is stretched to: flat and wide.
+	-- No texture: the generated ones looked pale, a mud material reads better.
+	mud = {
+		Mesh = "rbxassetid://100360730243009",
+		Texture = "",
+		Color = Color3.fromRGB(150, 104, 64),
+		Material = Enum.Material.Mud,
+		Size = { 5, 0.4, 5 },
+	},
+	clump = {
+		Mesh = "rbxassetid://82030224166452",
+		Texture = "",
+		Color = Color3.fromRGB(118, 80, 50),
+		Material = Enum.Material.Mud,
+		Size = { 1.6, 0.6, 1.5 },
+	},
 }

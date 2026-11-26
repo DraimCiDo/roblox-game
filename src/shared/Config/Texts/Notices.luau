@@ -48,10 +48,10 @@ return {
 
 	-- Mop
 	mopStopped = "Работа закончена: вымыто пятен — {count}",
-	mopWash = "Вымыть",
-	mopSpotObject = "Пятно · {name}",
-	mopReward = "+{reward} монет за уборку",
-	mopStarted = "Вы взяли швабру. Мойте пятна на полу — {reward} монет за каждое",
+	mopMarker = "Грязь · {name}",
+	mopReward = "+{reward} монет за уборку · пятно №{count}",
+	mopStarted = "Вы взяли швабру. Зайдите в метку и затирайте грязь: от {reward} до {max} монет за пятно",
 	mopStationObject = "Мытьё полов",
 	mopTake = "Взять швабру",
+	mopPut = "Поставить швабру",
 }
