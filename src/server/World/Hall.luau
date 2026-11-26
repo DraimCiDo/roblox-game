@@ -10,14 +10,14 @@ local Texts = require(ReplicatedStorage.Shared.Config.Texts.World)
 
 local Hall = {}
 
-local STEEL = Color3.fromRGB(52, 62, 76)
-local CHROME = Color3.fromRGB(196, 204, 214)
-local CYAN = Color3.fromRGB(91, 232, 222)
+local STEEL = Color3.fromRGB(98, 106, 178)
+local CHROME = Color3.fromRGB(236, 238, 252)
+local CYAN = Color3.fromRGB(70, 196, 255)
 local GREEN = Color3.fromRGB(80, 235, 130)
-local AMBER = Color3.fromRGB(255, 181, 86)
+local AMBER = Color3.fromRGB(255, 190, 52)
 local RED = Color3.fromRGB(255, 80, 90)
-local DARK = Color3.fromRGB(36, 42, 54)
-local CRATE = Color3.fromRGB(150, 112, 70)
+local DARK = Color3.fromRGB(72, 78, 142)
+local CRATE = Color3.fromRGB(255, 146, 52)
 local CLEARANCE = 9
 
 local placed: { Vector3 } = {}
