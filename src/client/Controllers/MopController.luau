@@ -19,7 +19,7 @@ local MopController = {}
 local TRACE_STEP = 0.9
 local TRACE_SECONDS = 7
 local MAX_TRACES = 90
-local WATER = Color3.fromRGB(70, 150, 255)
+local WATER = Color3.fromRGB(150, 200, 255)
 
 -- Arm angles holding the handle in front of the body.
 local R15_POSE: { [string]: CFrame } = {
@@ -70,12 +70,14 @@ local function trace(character: Model): ()
 	end
 	local mark = Instance.new("Part")
 	mark.Name = "Мокрый след"
-	mark.Size = Vector3.new(2.2, 0.02, (at - previous).Magnitude + 0.25)
-	mark.CFrame = CFrame.lookAt((at + previous) / 2 + Vector3.yAxis * 0.035, at + Vector3.yAxis * 0.035)
+	mark.Size = Vector3.new(1.9, 0.02, (at - previous).Magnitude)
+	-- Slightly different heights keep crossing marks from flickering.
+	local lift = Vector3.yAxis * (0.025 + math.random() * 0.012)
+	mark.CFrame = CFrame.lookAt((at + previous) / 2 + lift, at + lift)
 	mark.Color = WATER
-	mark.Material = Enum.Material.Glass
-	mark.Transparency = 0.55
-	mark.Reflectance = 0.15
+	mark.Material = Enum.Material.SmoothPlastic
+	mark.Transparency = 0.72
+	mark.Reflectance = 0.2
 	mark.Anchored = true
 	mark.CanCollide = false
 	mark.CanQuery = false
@@ -106,19 +108,27 @@ local function buildBar(): ()
 	gui.DisplayOrder = 11
 	bar = Style.frame(gui, Style.Ink, 14)
 	bar.AnchorPoint = Vector2.new(0.5, 1)
-	bar.Position = UDim2.new(0.5, 0, 1, -110)
-	bar.Size = UDim2.fromOffset(280, 58)
+	-- Above the tutorial panel at the bottom and below the balance on low screens.
+	bar.Position = UDim2.fromScale(0.5, 0.7)
+	bar.Size = UDim2.fromOffset(240, 52)
 	bar.Visible = false
 	Style.outline(bar, Style.Edge, 3)
 	local caption = Style.label(bar, Texts.mopProgress, 16, Style.Text, Style.Display)
-	caption.Position = UDim2.fromOffset(0, 6)
+	caption.Position = UDim2.fromOffset(0, 4)
 	caption.Size = UDim2.new(1, 0, 0, 20)
 	caption.TextXAlignment = Enum.TextXAlignment.Center
 	local track = Style.frame(bar, Style.Track, 8)
-	track.Position = UDim2.fromOffset(14, 32)
-	track.Size = UDim2.new(1, -28, 0, 16)
+	track.Position = UDim2.fromOffset(12, 28)
+	track.Size = UDim2.new(1, -24, 0, 14)
 	fill = Style.frame(track, Style.Signal, 8)
 	fill.Size = UDim2.fromScale(0, 1)
+	-- The same shrinking on low screens as the HUD layer.
+	local scale = Instance.new("UIScale")
+	local camera = Workspace.CurrentCamera
+	if camera then
+		scale.Scale = math.clamp(camera.ViewportSize.Y / 760, 0.68, 1)
+	end
+	scale.Parent = bar
 	gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 end
 

@@ -25,6 +25,10 @@ local function template(piece: string): MeshPart?
 		return nil
 	end
 	result.TextureID = entry.Texture
+	if entry.Color then
+		result.Color = entry.Color
+		result.Material = entry.Material
+	end
 	result.Anchored = true
 	result.CanCollide = false
 	result.CanTouch = false

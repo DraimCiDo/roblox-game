@@ -81,6 +81,23 @@ function Mop.station(parent: Instance, foot: CFrame): Part
 	return base
 end
 
+-- Where the hands end up in the arm pose of the client (MopController), relative to the root.
+local function hands(character: Model, root: BasePart): Vector3
+	local upper = character:FindFirstChild("RightUpperArm") or character:FindFirstChild("Right Arm")
+	if not upper or not upper:IsA("BasePart") then
+		return Vector3.new(0.1, -0.7, -1.2)
+	end
+	local lower = character:FindFirstChild("RightLowerArm")
+	local hand = character:FindFirstChild("RightHand")
+	local length = upper.Size.Y * 0.8
+	if lower and lower:IsA("BasePart") and hand and hand:IsA("BasePart") then
+		length = upper.Size.Y + lower.Size.Y * 0.8 + hand.Size.Y / 2
+	end
+	local shoulder = root.CFrame:PointToObjectSpace(upper.Position).Y + upper.Size.Y / 2
+	local angle = math.rad(55)
+	return Vector3.new(0.1, shoulder - length * math.cos(angle), -length * math.sin(angle))
+end
+
 -- Puts a mop into the character's hands: welded to the root so the head always slides on the floor.
 -- Returns the model and the head part, whose position the server reads while cleaning.
 function Mop.equip(character: Model): (Model?, Part?)
@@ -94,10 +111,13 @@ function Mop.equip(character: Model): (Model?, Part?)
 
 	local model = Instance.new("Model")
 	model.Name = "Швабра в руках"
-	local foot = root.CFrame * CFrame.new(0, floor, -REACH)
+	local held = hands(character, root)
+	local foot = root.CFrame * CFrame.new(0, floor, -math.max(REACH, -held.Z + 1.7))
 	local pad = head(model, foot)
-	local grip = (root.CFrame * CFrame.new(0.15, 0.45, -0.75)).Position
-	rod(model, "Черенок", grip, (foot * CFrame.new(0, 0.5, 0)).Position, 0.22, HANDLE)
+	local low = (foot * CFrame.new(0, 0.5, 0)).Position
+	local grip = root.CFrame:PointToWorldSpace(held)
+	-- The handle sticks out a little above the hands.
+	rod(model, "Черенок", grip + (grip - low).Unit * 0.5, low, 0.22, HANDLE)
 
 	for _, piece in model:GetChildren() do
 		if piece:IsA("BasePart") then

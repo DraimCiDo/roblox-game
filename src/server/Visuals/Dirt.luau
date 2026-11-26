@@ -52,12 +52,12 @@ local function marker(parent: Instance, center: Vector3, radius: number, caption
 		)
 	end
 	local diamond = CFrame.new(center + Vector3.yAxis * 4.2) * CFrame.Angles(math.rad(45), 0, math.rad(45))
-	local gem = neon(model, "Ромб", Vector3.one * 0.9, diamond, 0.25)
+	local gem = neon(model, "Ромб", Vector3.one * 0.6, diamond, 0.4)
 
 	local light = Instance.new("PointLight")
 	light.Color = HOLOGRAM
 	light.Range = 10
-	light.Brightness = 1.4
+	light.Brightness = 0.8
 	light.Parent = gem
 
 	local billboard = Instance.new("BillboardGui")
