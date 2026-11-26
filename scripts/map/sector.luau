@@ -148,11 +148,16 @@ local function buildSector(model, F, spawn)
 	for _, slab in floorParts do
 		part(shell, "Пол сектора", slab[1], place(slab[2]), FLOOR)
 	end
-	for _, x in { -24, -12, 0, 12, 24 } do
-		glow(shell, "Шов плитки", V(0.1, 0.03, 62), place(V(x, -0.04, 0)), DARK).Material = Enum.Material.SmoothPlastic
-	end
-	for _, z in { -24, -12, 12, 24 } do
-		glow(shell, "Шов плитки", V(53 + WIDEN * 2, 0.03, 0.1), place(V(0, -0.04, z)), DARK).Material = Enum.Material.SmoothPlastic
+	-- Checker floor around the shaft.
+	local tileX, tileZ = (53.2 + WIDEN * 2) / 8, 63 / 8
+	for i = 0, 7 do
+		for j = 0, 7 do
+			local x, z = (i - 3.5) * tileX, (j - 3.5) * tileZ
+			local overShaft = math.abs(x) - tileX / 2 < SHAFT and math.abs(z) - tileZ / 2 < SHAFT
+			if (i + j) % 2 == 0 and not overShaft then
+				glow(shell, "Плитка пола", V(tileX, 0.02, tileZ), place(V(x, -0.04, z)), Color3.fromRGB(145, 156, 208))
+			end
+		end
 	end
 	for _, side in { -1, 1 } do
 		part(shell, "Стена сектора", V(1.1, CEIL + 0.6, 63.4), place(V(wing(side * 26.65), CEIL / 2, 0.15)), WALL, Enum.Material.SmoothPlastic)
@@ -413,9 +418,6 @@ local function buildSector(model, F, spawn)
 		for _, z in { -24, -13, 17.5, 27 } do
 			Kit.place(kit, "wall", foot(V(x - side * 0.3, 0, z), inward), 13)
 		end
-		for _, z in { -18.5, 0, 22 } do
-			Kit.place(kit, "pipe", foot(V(x - side * 0.8, 15.5, z), inward), 4.6)
-		end
 		Kit.place(kit, "column", foot(V(wing(side * 25), 0, -29.5), V(0, 0, 1)), 14)
 		Kit.place(kit, "column", foot(V(wing(side * 25), 0, 29.5), V(0, 0, -1)), 14)
 		for _, px in { 13, 20 } do
@@ -425,6 +427,21 @@ local function buildSector(model, F, spawn)
 			Kit.place(kit, "wall", foot(V(side * px, 0, -29.7), V(0, 0, 1)), 11)
 		end
 	end
+	-- Two continuous pipe runs high on each side wall, with joint collars.
+	local PIPE_GREEN = Color3.fromRGB(86, 214, 120)
+	local function pipeRun(x, y, diameter)
+		local along = CFrame.Angles(0, math.rad(90), 0)
+		glow(kit, "Труба стены", V(61.6, diameter, diameter), place(V(x, y, 0)) * along, PIPE_GREEN).Shape = Enum.PartType.Cylinder
+		for z = -28, 28, 14 do
+			glow(kit, "Хомут трубы", V(0.8, diameter + 0.45, diameter + 0.45), place(V(x, y, z)) * along, STEEL).Shape = Enum.PartType.Cylinder
+		end
+	end
+	for _, side in { -1, 1 } do
+		local x = wing(side * 25.2)
+		pipeRun(x, 17, 1.3)
+		pipeRun(x, 19, 0.8)
+	end
+
 	-- Order terminal beside its desk, shelves by the storage, pedestals under the displays.
 	Kit.place(kit, "terminal", foot(V(wing(20.2), 0, -19.6), V(-1, 0, 0)), 7)
 	Kit.place(kit, "shelf", foot(V(wing(-24), 0, -2.5), V(1, 0, 0)), 9)

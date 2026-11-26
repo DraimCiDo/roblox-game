@@ -114,7 +114,7 @@ function World.Build(useForPlot: (number, Player, string, string?) -> ()): { Plo
 	for _, name in { "Светильник перехода", "Светильник подхода" } do
 		local hall = name == "Светильник подхода"
 		for _, fixture in authoredParts(root, name) do
-			downlight(fixture, Color3.fromRGB(224, 236, 232), if hall then 0.7 else 0.55, if hall then 32 else 16, 120)
+			downlight(fixture, Color3.fromRGB(224, 236, 232), if hall then 0.7 else 0.55, if hall then 42 else 16, 120)
 		end
 	end
 	local leaderboardParts = authoredParts(root, "Терминал рейтинга")

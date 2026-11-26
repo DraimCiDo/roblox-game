@@ -1,5 +1,5 @@
 --!strict
--- Turns the kit placeholders of the scene (parts with a KitPiece attribute) into meshes.
+-- Creates the cartoon kit meshes: from the placeholders of the scene (KitPiece attribute) and on demand.
 local AssetService = game:GetService("AssetService")
 
 local Kit = require(script.Parent.Parent.Config.Kit)
@@ -33,6 +33,21 @@ local function template(piece: string): MeshPart?
 	return result
 end
 
+-- Puts a piece with its bottom centre at `foot`, scaled to `height`. The mesh appears once downloaded.
+function Decor.place(parent: Instance, piece: string, foot: CFrame, height: number): ()
+	task.spawn(function()
+		local source = template(piece)
+		if source then
+			local mesh = source:Clone()
+			local native = (Kit :: any)[piece].Size
+			mesh.Name = `Декор: {piece}`
+			mesh.Size = Vector3.new(native[1], native[2], native[3]) * (height / native[2])
+			mesh.CFrame = foot * CFrame.new(0, height / 2, 0)
+			mesh.Parent = parent
+		end
+	end)
+end
+
 -- The widened sectors reach into the voxel landscape around them: empty each room.
 local function clearRooms(root: Instance): ()
 	for _, sector in root:GetChildren() do
@@ -47,9 +62,20 @@ local function clearRooms(root: Instance): ()
 	end
 end
 
+-- The hall is taller than the cave it was carved in: empty everything under its ceiling.
+local function clearHall(root: Instance): ()
+	local ceiling = root:FindFirstChild("Перекрытие")
+	if ceiling and ceiling:IsA("BasePart") then
+		local height = ceiling.Position.Y
+		local center = CFrame.new(ceiling.Position.X, height / 2, ceiling.Position.Z)
+		workspace.Terrain:FillCylinder(center, height, 80, Enum.Material.Air)
+	end
+end
+
 -- Yields while meshes download: call from its own thread.
 function Decor.build(root: Instance): number
 	clearRooms(root)
+	clearHall(root)
 	local built = 0
 	for _, mark in root:GetDescendants() do
 		local piece = mark:GetAttribute("KitPiece")

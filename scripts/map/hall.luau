@@ -28,7 +28,7 @@ local TEXT = Color3.fromRGB(255, 255, 255)
 local MUTED = Color3.fromRGB(205, 213, 255)
 
 local FLOOR_Y = -0.05
-local CEILING_Y = 19
+local CEILING_Y = 26
 
 local function part(parent, name, size, frame, color, material, shape)
 	local p = Instance.new("Part")
@@ -207,6 +207,42 @@ for _, piece in LAB:GetChildren() do
 	end
 end
 
+-- The authored hall was 19 studs high: lift the ceiling, stretch the walls and move the lamps up.
+for _, piece in LAB:GetChildren() do
+	if not piece:IsA("BasePart") then
+		continue
+	end
+	local at = piece.CFrame.Position
+	local function moveTo(y)
+		piece.CFrame = piece.CFrame.Rotation + Vector3.new(at.X, y, at.Z)
+	end
+	if piece.Name == "Перекрытие" or piece.Name:find("^Перекрытие ·") then
+		moveTo(CEILING_Y + 0.5)
+	elseif piece.Name == "Стена октагона" then
+		-- Six walls stand on the corridor portals, the east and west ones reach the floor.
+		local bottom = if math.abs(at.X) > 80 and math.abs(at.Z) < 1 then -3 else 11.65
+		piece.Size = Vector3.new(piece.Size.X, CEILING_Y - bottom, piece.Size.Z)
+		moveTo((CEILING_Y + bottom) / 2)
+	elseif piece.Name == "Светильник подхода" then
+		moveTo(CEILING_Y - 0.64)
+	elseif piece.Name == "Утопленный корпус светильника подхода" then
+		moveTo(CEILING_Y - 0.44)
+	end
+end
+
+-- Second light strip high on the walls, so the taller room does not end in a dark band.
+local trims = Instance.new("Folder")
+trims.Name = "Верхние полосы"
+trims.Parent = root
+for k = 0, 7 do
+	local a = math.rad(45 * k)
+	local out = Vector3.new(math.cos(a), 0, math.sin(a))
+	local at = out * 80.9 + Vector3.new(0, 20.5, 0)
+	local frame = CFrame.lookAt(at, at - out)
+	trim(part(trims, "Верхняя полоса", Vector3.new(66, 0.5, 0.2), frame, AMBER))
+	trim(part(trims, "Верхняя полоса", Vector3.new(66, 1.6, 0.15), frame * CFrame.new(0, -1.3, 0.05), DARK))
+end
+
 -- Wall panels along the octagon, between the portals and corner columns.
 local panels = Instance.new("Folder")
 panels.Name = "Панели зала"
@@ -224,9 +260,15 @@ end
 -- 2. Пол: плитка-сетка, кольцо вокруг ядра и световые дорожки к секторам и воротам.
 local floor = group("Пол · разметка")
 local center = Vector3.new(0, FLOOR_Y, 0)
-for _, offset in { -60, -40, -20, 20, 40, 60 } do
-	trim(part(floor, "Шов плитки", Vector3.new(0.12, 0.04, 160), CFrame.new(offset, FLOOR_Y + 0.02, 0), DARK))
-	trim(part(floor, "Шов плитки", Vector3.new(160, 0.04, 0.12), CFrame.new(0, FLOOR_Y + 0.02, offset), DARK))
+local TILE = 10
+for i = -8, 7 do
+	for j = -8, 7 do
+		local x, z = (i + 0.5) * TILE, (j + 0.5) * TILE
+		-- Only whole tiles inside the octagon.
+		if (i + j) % 2 == 0 and math.abs(x) + math.abs(z) + TILE <= 112 then
+			trim(part(floor, "Плитка пола", Vector3.new(TILE, 0.02, TILE), CFrame.new(x, FLOOR_Y + 0.01, z), Color3.fromRGB(145, 156, 208)))
+		end
+	end
 end
 ring(floor, "Кольцо ядра", center + Vector3.new(0, 0.03, 0), 15, 0.35, 0.06, 64, CYAN, Enum.Material.SmoothPlastic)
 ring(floor, "Внешнее кольцо", center + Vector3.new(0, 0.03, 0), 34, 0.18, 0.06, 96, STEEL, Enum.Material.SmoothPlastic)
@@ -268,29 +310,23 @@ trim(
 	part(floor, "Дорожка к воротам", Vector3.new(60, 0.06, 0.35), CFrame.new(-46, FLOOR_Y + 0.03, 0), AMBER:Lerp(DARK, 0.3), Enum.Material.SmoothPlastic)
 )
 
--- 3. Ядро CORPA в центре: подиум, светящаяся колонна, кольца-обручи и кольцо света под потолком.
+-- 3. CORPA reactor in the middle: a two-step podium, the reactor mesh and a light ring above it.
 local core = group("Ядро CORPA")
 local vertical = CFrame.Angles(0, 0, math.rad(90))
 part(core, "Подиум ядра", Vector3.new(0.9, 20, 20), CFrame.new(0, FLOOR_Y + 0.45, 0) * vertical, GRAPHITE, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
 part(core, "Ступень подиума", Vector3.new(0.5, 24, 24), CFrame.new(0, FLOOR_Y + 0.25, 0) * vertical, DARK, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
 ring(core, "Кромка подиума", Vector3.new(0, FLOOR_Y + 0.92, 0), 10, 0.25, 0.08, 48, CYAN, Enum.Material.SmoothPlastic)
-part(core, "Цоколь колонны", Vector3.new(2.2, 7, 7), CFrame.new(0, FLOOR_Y + 2, 0) * vertical, STEEL, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
-local column = trim(
-	part(core, "Колонна энергии", Vector3.new(CEILING_Y - 3, 3.2, 3.2), CFrame.new(0, FLOOR_Y + 3 + (CEILING_Y - 3) / 2, 0) * vertical, CYAN, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
-)
-column.Transparency = 0.25
+Kit.place(core, "reactor", CFrame.new(0, FLOOR_Y + 0.9, 0), 22)
+local solid = part(core, "Корпус реактора", Vector3.new(20, 11, 11), CFrame.new(0, FLOOR_Y + 11, 0) * vertical, CYAN, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
+solid.Transparency = 1
+solid.CastShadow = false
 local glow = Instance.new("PointLight")
 glow.Color = CYAN
-glow.Range = 26
-glow.Brightness = 2.2
-glow.Parent = column
-part(core, "Оголовок колонны", Vector3.new(1.2, 6, 6), CFrame.new(0, CEILING_Y - 0.6, 0) * vertical, STEEL, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
-for index, height in { 5.5, 10, 14.5 } do
-	local radius = 3.4 + index * 0.6
-	ring(core, "Обруч ядра", Vector3.new(0, height, 0), radius, 0.3, 0.3, 32, if index == 2 then AMBER else STEEL, if index == 2 then Enum.Material.SmoothPlastic else Enum.Material.SmoothPlastic)
-end
-ring(core, "Кольцо света", Vector3.new(0, CEILING_Y - 0.25, 0), 13, 0.9, 0.2, 64, CYAN, Enum.Material.SmoothPlastic)
-ring(core, "Корпус кольца света", Vector3.new(0, CEILING_Y - 0.1, 0), 13, 1.6, 0.25, 64, DARK, Enum.Material.SmoothPlastic)
+glow.Range = 30
+glow.Brightness = 1.6
+glow.Parent = solid
+ring(core, "Кольцо света", Vector3.new(0, CEILING_Y - 0.25, 0), 14, 0.9, 0.2, 64, CYAN, Enum.Material.SmoothPlastic)
+ring(core, "Корпус кольца света", Vector3.new(0, CEILING_Y - 0.1, 0), 14, 1.6, 0.25, 64, DARK, Enum.Material.SmoothPlastic)
 
 -- 4. Колонны в углах восьмиугольника с вертикальной подсветкой.
 local columns = group("Колонны зала")
@@ -333,7 +369,7 @@ surfaceText(logo, Enum.NormalId.Front, {
 	{ Text = "CORPA", Color = TEXT, Font = DISPLAY, Height = 0.6 },
 	{ Text = "ИСПЫТАТЕЛЬНАЯ ЛАБОРАТОРИЯ · ГОРИЗОНТ −1", Color = CYAN, Font = BOLD, Height = 0.22 },
 }, 14)
-local westFrame = CFrame.lookAt(Vector3.new(-80.9, 15.5, 0), Vector3.new(0, 15.5, 0))
+local westFrame = CFrame.lookAt(Vector3.new(-80.9, 23, 0), Vector3.new(0, 23, 0))
 local service = part(brand, "Табличка служебного крыла", Vector3.new(26, 3.2, 0.2), westFrame, DARK, Enum.Material.SmoothPlastic)
 trim(part(brand, "Рамка служебного крыла", Vector3.new(26.6, 0.16, 0.12), westFrame * CFrame.new(0, -1.7, -0.12), AMBER, Enum.Material.SmoothPlastic))
 surfaceText(service, Enum.NormalId.Front, {

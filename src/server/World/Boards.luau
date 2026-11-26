@@ -52,10 +52,21 @@ local function rankingBoard(
 	local screen = part(
 		terminal,
 		"Экран рейтинга",
-		terminal.CFrame * CFrame.new(0, terminal.Size.Y / 2 + 3.25, 0),
-		Vector3.new(8.8, 6.6, 0.42),
+		terminal.CFrame * CFrame.new(0, terminal.Size.Y / 2 + 4.4, 0),
+		Vector3.new(11.4, 8.55, 0.42),
 		INK
 	)
+	for _, y in { -4.45, 4.45 } do
+		local frame = part(
+			terminal,
+			"Рамка рейтинга",
+			screen.CFrame * CFrame.new(0, y, 0),
+			Vector3.new(12, 0.35, 0.7),
+			accent
+		)
+		frame.CanCollide = false
+		frame.CanQuery = false
+	end
 	local faces = {}
 	for _, side in { Enum.NormalId.Front, Enum.NormalId.Back } do
 		local surface = Instance.new("SurfaceGui")
@@ -95,7 +106,7 @@ local function rankingBoard(
 		local step = if rowCount <= 6 then 58 else 34
 		for index = 1, rowCount do
 			local row = Instance.new("Frame")
-			row.BackgroundColor3 = if index % 2 == 1 then Color3.fromRGB(26, 42, 49) else Color3.fromRGB(19, 33, 41)
+			row.BackgroundColor3 = if index % 2 == 1 then Color3.fromRGB(54, 62, 130) else Color3.fromRGB(40, 44, 100)
 			row.BorderSizePixel = 0
 			row.Position = UDim2.fromOffset(16, 122 + (index - 1) * step)
 			row.Size = UDim2.fromOffset(608, step - 3)

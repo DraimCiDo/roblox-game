@@ -10,7 +10,7 @@ Rojo собирает готовый плейс из трёх моделей. `C
 
 ## Mesh kit
 
-The cartoon meshes are listed in `src/server/Config/Kit.luau`. Builders place them with `Kit.place` (`scripts/map/kit.luau`), which only writes an invisible part with a `KitPiece` attribute: Rojo cannot sync a mesh into Studio, so `server/World/Decor.luau` creates the meshes when the server starts. In Studio edit mode the kit is therefore not visible; press Play to see it. `Decor` also empties the terrain inside the sector rooms.
+The cartoon meshes are listed in `src/server/Config/Kit.luau`. Builders place them with `Kit.place` (`scripts/map/kit.luau`), which only writes an invisible part with a `KitPiece` attribute: Rojo cannot sync a mesh into Studio, so `server/World/Decor.luau` creates the meshes when the server starts. In Studio edit mode the kit is therefore not visible; press Play to see it. The runtime hall props and the vault gate (`server/World/Hall.luau`) use the same kit through `Decor.place`. `Decor` also empties the terrain inside the hall and the sector rooms.
 
 ## Оформление карты кодом (основной способ)
 
