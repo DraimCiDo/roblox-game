@@ -15,14 +15,14 @@ assert(LAB, "Нет модели лаборатории")
 local UP = Vector3.new(0, 1, 0)
 
 -- Палитра «Лаборатория CORPA».
-local FLOOR = Color3.fromRGB(150, 164, 214)
-local WALL = Color3.fromRGB(78, 94, 168)
-local GRAPHITE = Color3.fromRGB(62, 72, 140)
-local STEEL = Color3.fromRGB(120, 138, 214)
-local DARK = Color3.fromRGB(34, 36, 82)
-local CEILING = Color3.fromRGB(54, 62, 118)
-local CYAN = Color3.fromRGB(80, 210, 255)
-local AMBER = Color3.fromRGB(255, 196, 56)
+local FLOOR = Color3.fromRGB(164, 176, 222)
+local WALL = Color3.fromRGB(120, 140, 214)
+local GRAPHITE = Color3.fromRGB(98, 106, 178)
+local STEEL = Color3.fromRGB(236, 238, 252)
+local DARK = Color3.fromRGB(52, 50, 110)
+local CEILING = Color3.fromRGB(86, 96, 160)
+local CYAN = Color3.fromRGB(70, 196, 255)
+local AMBER = Color3.fromRGB(255, 190, 52)
 local VIOLET = Color3.fromRGB(186, 124, 255)
 local GLASS = Color3.fromRGB(196, 228, 240)
 local LAMP = Color3.fromRGB(255, 244, 214)
@@ -88,7 +88,7 @@ local function buildSector(model, F, spawn)
 		return p
 	end
 	local function glow(parent, name, size, cf, color)
-		local p = part(parent, name, size, cf, color, Enum.Material.Neon, false)
+		local p = part(parent, name, size, cf, color, Enum.Material.SmoothPlastic, false)
 		p.CastShadow = false
 		return p
 	end
@@ -416,8 +416,8 @@ local function buildSector(model, F, spawn)
 		for _, z in { -18.5, 0, 22 } do
 			Kit.place(kit, "pipe", foot(V(x - side * 0.8, 15.5, z), inward), 4.6)
 		end
-		Kit.place(kit, "column", foot(V(wing(side * 24.5), 0, -29), V(0, 0, 1)), CEIL)
-		Kit.place(kit, "column", foot(V(wing(side * 24.5), 0, 29), V(0, 0, -1)), CEIL)
+		Kit.place(kit, "column", foot(V(wing(side * 25), 0, -29.5), V(0, 0, 1)), 14)
+		Kit.place(kit, "column", foot(V(wing(side * 25), 0, 29.5), V(0, 0, -1)), 14)
 		for _, px in { 13, 20 } do
 			Kit.place(kit, "wall", foot(V(side * px, 0, 30.2), V(0, 0, -1)), 11)
 		end

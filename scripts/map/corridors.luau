@@ -7,10 +7,10 @@ local LAB = workspace:FindFirstChild("CORPA — испытательная ла�
 assert(LAB, "Нет модели лаборатории")
 
 local AMBER = Color3.fromRGB(255, 196, 56)
-local FLOOR = Color3.fromRGB(150, 164, 214)
-local WALL = Color3.fromRGB(78, 94, 168)
-local PANEL = Color3.fromRGB(96, 112, 190)
-local DARK = Color3.fromRGB(34, 36, 82)
+local FLOOR = Color3.fromRGB(164, 176, 222)
+local WALL = Color3.fromRGB(120, 140, 214)
+local PANEL = Color3.fromRGB(150, 166, 232)
+local DARK = Color3.fromRGB(52, 50, 110)
 
 -- Направления от центра зала на порталы шести секторов.
 local PORTALS = {
@@ -46,7 +46,7 @@ local function trim(parent, name, size, frame, color)
 	p.Size = size
 	p.CFrame = frame
 	p.Color = color
-	p.Material = Enum.Material.Neon
+	p.Material = Enum.Material.SmoothPlastic
 	p.Parent = parent
 	return p
 end
