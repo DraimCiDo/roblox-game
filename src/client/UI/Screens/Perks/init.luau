@@ -1,9 +1,12 @@
 --!strict
+-- Perk tree: a tab per branch, a tidy left-to-right grid of the visible steps and a card with the
+-- selected one. What is visible and where it stands is decided by Shared/PerkTree.
 local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local PerkTree = require(ReplicatedStorage.Shared.PerkTree)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Components = require(script.Parent.Parent.Components)
 local Icons = require(script.Parent.Parent.Icons)
@@ -11,37 +14,29 @@ local Sfx = require(script.Parent.Parent.Parent.Audio.Sfx)
 local Style = require(script.Parent.Parent.Style)
 local Texts = require(ReplicatedStorage.Shared.Config.Texts.UI)
 local Format = require(ReplicatedStorage.Shared.Util.Format)
-local LayoutOf = require(script.Layout)
+local Card = require(script.Card)
 local Look = require(script.Look)
 local Node = require(script.Node)
-local BOARD = Look.BOARD
-local PANEL = Look.PANEL
-local RAIL = Look.RAIL
-local BRANCH_COLORS = Look.BRANCH_COLORS
-local ROOT_DIAMETER = LayoutOf.ROOT_DIAMETER
-local NODE_DIAMETER = LayoutOf.NODE_DIAMETER
-type Layout = LayoutOf.Layout
-local layout = LayoutOf.layout
-type NodeState = Node.NodeState
-type NodeWidget = Node.NodeWidget
-local stateFor = Node.stateFor
-local curve = Node.curve
-local centerText = Node.centerText
-local drawNode = Node.drawNode
-local details = Node.details
 
 local Perks = {}
 
-local MOBILE_DOCK = 194
--- Минимум позволяет уместить всё дерево в окне на любом экране.
-local MIN_ZOOM = 0.2
-local SIDE_PANEL = 320
-local MAX_ZOOM = 1.5
+local COLUMN = 142
+local ROW = 140
+local MARGIN = 84
+local COMPACT_MARGIN = 64
+local TAB_HEIGHT = 52
+local TAB_WIDTH = 150
+local MOBILE_DOCK = 200
+local SIDE_PANEL = 300
+local MIN_ZOOM = 0.45
+local MAX_ZOOM = 1.4
+
+local selectedBranch: string? = nil
 local selectedKey: string? = nil
-local zoom = 0.8
+local zoom = 1
 local scroll: Vector2? = nil
+local tabScroll = Vector2.zero
 local connections: { RBXScriptConnection } = {}
-local cachedLayout: Layout? = nil
 
 local function disconnect(): ()
 	for _, connection in connections do
@@ -51,65 +46,240 @@ local function disconnect(): ()
 end
 
 function Perks.reset(): ()
+	selectedBranch = nil
 	selectedKey = nil
 	scroll = nil
-	-- На низком окне (телефон) карта стартует мельче, чтобы ветки были видны сразу.
-	zoom = if Components.compact() then 0.55 else 0.8
+	tabScroll = Vector2.zero
+	-- Smaller on a short window (phone), so that more of the branch is visible.
+	zoom = if Components.compact() then 0.6 elseif Components.panelHeight() > 800 then 1.25 else 1
 	disconnect()
 end
 
-function Perks.render(source: Types.View, _wide: boolean): ()
-	disconnect()
-	-- Дерево рисуется узлами с одним уровнем: уровни навыков раскладываются на ступени (Catalog.PerkNodes).
-	local data = table.clone(source)
-	data.Perks = Catalog.nodeLevels(source.Perks)
-	local states: { [string]: NodeState } = {}
-	local branches: { [string]: string } = {}
-	local spent: { [string]: number } = {}
-	local owned, total, ready = 0, 0, 0
-	for _, branch in Catalog.Branches do
-		branches[branch.Key] = branch.Name
-		spent[branch.Key] = 0
-	end
-	for _, perk in Catalog.PerkNodes do
-		local state = stateFor(perk, data)
-		states[perk.Key] = state
-		spent[perk.Branch] += state.Level
-		owned += state.Level
-		total += #perk.Costs
-		if state.Ready then
-			ready += 1
+local function infoFor(perk: Catalog.Perk, state: PerkTree.State, data: Types.View): Node.Info
+	local levels = Catalog.nodeLevels(data.Perks)
+	local cost = Catalog.perkCost(perk, 0, levels)
+	local reason: string? = nil
+	if state == "available" and cost then
+		reason = Catalog.perkLock(perk, 0, levels, data.Opened)
+		if not reason then
+			if data.Coins < cost then
+				reason = Format(Texts.perkMissingCoins, { coins = Components.coin(cost - data.Coins) })
+			elseif data.Coins - cost < data.OrderPrice then
+				reason = Format(Texts.perkKeepCoins, { coins = Components.coin(data.OrderPrice) })
+			end
 		end
 	end
-	local map: Layout = cachedLayout or layout()
-	cachedLayout = map
+	return { Perk = perk, State = state, Cost = cost, Reason = reason }
+end
 
-	-- Окно перков растянуто на весь экран: карта занимает всю высоту, описание узла — колонка справа.
+local function branchInfo(branch: string, data: Types.View): ({ [string]: Node.Info }, boolean)
+	local infos: { [string]: Node.Info } = {}
+	local ready = false
+	for key, state in PerkTree.states(branch, data.Perks) do
+		local perk = Catalog.perk(key)
+		if perk then
+			local info = infoFor(perk, state, data)
+			infos[key] = info
+			if state == "available" and not info.Reason then
+				ready = true
+			end
+		end
+	end
+	return infos, ready
+end
+
+-- The first node worth looking at: one that can be bought, else one that is next.
+local function firstSelection(infos: { [string]: Node.Info }): string?
+	local available: string?
+	for _, perk in Catalog.PerkNodes do
+		local info = infos[perk.Key]
+		if info and info.State == "available" then
+			if not info.Reason then
+				return perk.Key
+			end
+			available = available or perk.Key
+		end
+	end
+	if available then
+		return available
+	end
+	for _, perk in Catalog.PerkNodes do
+		if infos[perk.Key] then
+			return perk.Key
+		end
+	end
+	return nil
+end
+
+local function drawTabs(parent: Frame, data: Types.View, current: string, height: number): TextButton?
+	local strip = Instance.new("ScrollingFrame")
+	strip.Name = "Branches"
+	strip.BackgroundTransparency = 1
+	strip.BorderSizePixel = 0
+	strip.Size = UDim2.new(1, 0, 0, height)
+	strip.CanvasSize = UDim2.new()
+	strip.AutomaticCanvasSize = Enum.AutomaticSize.X
+	strip.ScrollingDirection = Enum.ScrollingDirection.X
+	strip.ScrollBarThickness = 0
+	strip.Selectable = false
+	strip.Parent = parent
+	local list = Instance.new("UIListLayout")
+	list.FillDirection = Enum.FillDirection.Horizontal
+	list.Padding = UDim.new(0, 8)
+	list.SortOrder = Enum.SortOrder.LayoutOrder
+	list.Parent = strip
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft = UDim.new(0, 3)
+	pad.PaddingTop = UDim.new(0, 3)
+	pad.Parent = strip
+
+	local active: TextButton? = nil
+	for index, branch in Catalog.Branches do
+		local infos, ready = branchInfo(branch.Key, data)
+		local locked = next(infos) == nil
+		local tab = Style.button(strip, branch.Name, function()
+			selectedBranch = branch.Key
+			selectedKey = nil
+			scroll = nil
+			tabScroll = strip.CanvasPosition
+			Components.redraw()
+		end, true, "neutral")
+		tab.Name = `Branch:{branch.Key}`
+		tab.LayoutOrder = index
+		tab.Size = UDim2.fromOffset(TAB_WIDTH, height - 6)
+		tab.TextSize = 16
+		local color = Look.BranchColors[branch.Key] or Style.Cyan
+		tab.BackgroundColor3 = if locked then Style.Track else color
+		tab.TextColor3 = if locked then Style.Muted else Style.Text
+		if branch.Key == current then
+			active = tab
+			local outline = tab:FindFirstChild("Outline") :: UIStroke?
+			if outline then
+				outline.Color = Style.Text
+			end
+		else
+			tab.BackgroundTransparency = if locked then 0 else 0.35
+		end
+		if locked then
+			local lock = Icons.draw(tab, "lock", Style.Muted)
+			lock.Position = UDim2.fromOffset(8, 11)
+			lock.Size = UDim2.fromOffset(22, 22)
+		elseif ready then
+			local mark = Style.frame(tab, Style.Signal, 20)
+			mark.AnchorPoint = Vector2.new(1, 0)
+			mark.Position = UDim2.new(1, -4, 0, 4)
+			mark.Size = UDim2.fromOffset(14, 14)
+			Style.circle(mark)
+			Style.outline(mark, Style.Edge, 2)
+		end
+	end
+	task.defer(function()
+		strip.CanvasPosition = tabScroll
+	end)
+	return active
+end
+
+local function lockedMessage(view: Frame, branch: string): ()
+	local needed = PerkTree.unlockedBy(branch)
+	local icon = Style.frame(view)
+	icon.AnchorPoint = Vector2.new(0.5, 1)
+	icon.Position = UDim2.new(0.5, 0, 0.5, -10)
+	icon.Size = UDim2.fromOffset(72, 72)
+	Icons.draw(icon, "lock", Style.Amber, Style.Ink)
+	local note = Components.text(
+		view,
+		if needed then Format(Texts.perkBranchLocked, { name = needed.Name }) else Texts.perkHiddenName,
+		20,
+		Style.Text,
+		true
+	)
+	note.AnchorPoint = Vector2.new(0.5, 0)
+	note.Position = UDim2.fromScale(0.5, 0.5)
+	note.Size = UDim2.new(1, -40, 0, 90)
+	note.TextXAlignment = Enum.TextXAlignment.Center
+	note.TextYAlignment = Enum.TextYAlignment.Top
+	Style.textStroke(note, 2)
+end
+
+function Perks.render(data: Types.View, _wide: boolean): ()
+	disconnect()
+	local current = selectedBranch
+	if not current then
+		-- Open on the first branch that has something to buy.
+		for _, branch in Catalog.Branches do
+			local _, ready = branchInfo(branch.Key, data)
+			if ready then
+				current = branch.Key
+				break
+			end
+		end
+		current = current or Catalog.Branches[1].Key
+		selectedBranch = current
+	end
+	local branch = current :: string
+	local branchName = branch
+	for _, entry in Catalog.Branches do
+		if entry.Key == branch then
+			branchName = entry.Name
+		end
+	end
+	local infos = branchInfo(branch, data)
+
+	local compact = Components.compact()
+	local tabHeight = if compact then Style.TouchSize else TAB_HEIGHT
 	local shell = Components.strip(Components.fillHeight())
-	local view = Style.frame(shell, BOARD, 14)
-	view.Size = UDim2.fromScale(1, 1)
+	local activeTab = drawTabs(shell, data, branch, tabHeight)
+	local view = Style.frame(shell, Style.Track, 14)
+	view.Position = UDim2.fromOffset(0, tabHeight + 4)
+	view.Size = UDim2.new(1, 0, 1, -(tabHeight + 4))
 	view.ClipsDescendants = true
-	Style.outline(view, Style.Edge, 2)
-	Style.gloss(view)
+	Style.outline(view, Style.Edge, 3)
+
+	local owned = 0
+	local total = 0
+	for _, perk in Catalog.PerkNodes do
+		total += 1
+		if (data.Perks[perk.Base :: string] or 0) >= (perk.Step :: number) then
+			owned += 1
+		end
+	end
+	local summary =
+		Components.text(view, Format(Texts.perkTotal, { owned = owned, total = total }), 14, Style.Muted, true)
+	summary.AnchorPoint = Vector2.new(0, 1)
+	summary.Position = UDim2.new(0, 10, 1, -6)
+	summary.Size = UDim2.fromOffset(260, 18)
+	summary.ZIndex = 10
+	summary.Visible = not compact
+	Style.textStroke(summary, 2)
+
+	if next(infos) == nil then
+		lockedMessage(view, branch)
+		if activeTab then
+			Components.prefer(activeTab)
+		end
+		return
+	end
+
+	local dock = Components.dock(MOBILE_DOCK, true, SIDE_PANEL)
 
 	local host = Instance.new("ScrollingFrame")
-	host.Name = "Дерево"
+	host.Name = "Tree"
 	host.BackgroundTransparency = 1
 	host.BorderSizePixel = 0
 	host.Size = UDim2.fromScale(1, 1)
 	host.ScrollingDirection = Enum.ScrollingDirection.XY
-	-- Касание и трекпад двигают карту встроенной прокруткой; мышь перетаскивает карту вручную (ниже).
-	-- Встроенная прокрутка нужна только для касаний; с мышью она бы перехватывала колесо, а карту двигает перетаскивание.
+	-- Touch uses the built-in scrolling; with a mouse it would swallow the wheel, so the mouse drags by hand.
 	host.ScrollingEnabled = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
 	host.Active = true
 	host.ScrollBarThickness = 0
 	host.Selectable = false
 	host.Parent = view
 	local chart = Style.frame(host, nil)
-	chart.Size = UDim2.fromOffset(map.Size.X, map.Size.Y)
-	-- Прозрачная кнопка на всю карту под узлами: гарантированно получает нажатия мыши на пустом месте.
+	local scale = Instance.new("UIScale")
+	scale.Parent = chart
+	-- Transparent button under the nodes, so that pressing empty space starts a drag.
 	local surface = Instance.new("TextButton")
-	surface.Name = "Поверхность"
+	surface.Name = "Surface"
 	surface.BackgroundTransparency = 1
 	surface.Text = ""
 	surface.AutoButtonColor = false
@@ -117,10 +287,59 @@ function Perks.render(source: Types.View, _wide: boolean): ()
 	surface.Size = UDim2.fromScale(1, 1)
 	surface.ZIndex = 1
 	surface.Parent = chart
+
+	local states: { [string]: PerkTree.State } = {}
+	for key, info in infos do
+		states[key] = info.State
+	end
+	local cells, columns, rows = PerkTree.layout(branch, states)
+	local margin = if compact then COMPACT_MARGIN else MARGIN
+	local content = Vector2.new((columns - 1) * COLUMN, (rows - 1) * ROW) + Vector2.one * margin * 2
+	chart.Size = UDim2.fromOffset(content.X, content.Y)
+	local function pointOf(key: string): Vector2
+		local cell = cells[key]
+		return Vector2.new(margin + cell.Column * COLUMN, margin + cell.Row * ROW)
+	end
+
+	-- Centers a small tree in the window and sizes the canvas of a big one.
+	local function fit(): ()
+		scale.Scale = zoom
+		local size = host.AbsoluteSize
+		local scaled = content * zoom
+		chart.Position = UDim2.fromOffset(math.max(0, (size.X - scaled.X) / 2), math.max(0, (size.Y - scaled.Y) / 2))
+		host.CanvasSize = UDim2.fromOffset(scaled.X, scaled.Y)
+	end
+	local function setZoom(value: number, anchor: Vector2?): ()
+		local previous = zoom
+		zoom = math.clamp(value, MIN_ZOOM, MAX_ZOOM)
+		local focus = anchor or host.AbsoluteSize / 2
+		local before = host.CanvasPosition
+		fit()
+		host.CanvasPosition = (before + focus) * (zoom / previous) - focus
+	end
+
+	local color = Look.BranchColors[branch] or Style.Cyan
+	for key in cells do
+		local parent = infos[key].Perk.Parent
+		if parent and cells[parent] then
+			local lit = infos[key].State == "owned"
+			Node.link(chart, pointOf(parent), pointOf(key), if lit then color else Style.Edge)
+		end
+	end
+
+	local selectors: { [string]: (boolean) -> () } = {}
+	local buttons: { [string]: TextButton } = {}
+	local function pick(key: string): ()
+		selectedKey = key
+		for other, apply in selectors do
+			apply(other == key)
+		end
+		Card.render(dock, infos[key], branchName)
+	end
+
 	local dragging = false
-	-- Сколько пикселей прошла мышь за нажатие: сдвиг больше порога не считается кликом по узлу.
+	-- Pixels moved during a press: more than a few means a drag, not a click on a node.
 	local travelled = 0
-	-- Смещение считается по положению курсора, а не по input.Delta: Delta бывает нулевой, и карта не двигалась.
 	local lastMouse = Vector2.zero
 	local function beginDrag(input: InputObject): ()
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -129,224 +348,75 @@ function Perks.render(source: Types.View, _wide: boolean): ()
 			lastMouse = UserInputService:GetMouseLocation()
 		end
 	end
-	-- Зажатие по любому месту карты (пустая область, линии, подписи) начинает перетаскивание; узлы ловят его сами.
 	table.insert(connections, surface.InputBegan:Connect(beginDrag))
 	table.insert(connections, view.InputBegan:Connect(beginDrag))
-	local scale = Instance.new("UIScale")
-	scale.Parent = chart
 
-	local function setZoom(value: number, anchor: Vector2?): ()
-		local previous = scale.Scale
-		zoom = math.clamp(value, MIN_ZOOM, MAX_ZOOM)
-		scale.Scale = zoom
-		host.CanvasSize = UDim2.fromOffset(map.Size.X * zoom, map.Size.Y * zoom)
-		-- Масштаб относительно точки обзора, чтобы карта не «уезжала».
-		local focus = anchor or host.AbsoluteSize / 2
-		host.CanvasPosition = (host.CanvasPosition + focus) * (zoom / previous) - focus
-	end
-	scale.Scale = zoom
-	host.CanvasSize = UDim2.fromOffset(map.Size.X * zoom, map.Size.Y * zoom)
-	-- Масштаб «всё дерево целиком»: карта вписывается в окно с небольшим полем и встаёт по центру.
-	-- Границы считаются по самим узлам (с полем под подписи), а не по холсту: у холста есть пустые поля.
-	local low, high = map.Hub, map.Hub
-	for _, point in map.Points do
-		low = low:Min(point)
-		high = high:Max(point)
-	end
-	low -= Vector2.new(70, 60)
-	high += Vector2.new(70, 80)
-	local function fitWhole(): ()
-		local size = host.AbsoluteSize
-		if size.X < 1 or size.Y < 1 then
-			return
-		end
-		local bounds = high - low
-		zoom = math.clamp(math.min(size.X / bounds.X, size.Y / bounds.Y), MIN_ZOOM, MAX_ZOOM)
-		scale.Scale = zoom
-		host.CanvasSize = UDim2.fromOffset(map.Size.X * zoom, map.Size.Y * zoom)
-		local middle = (low + high) / 2 * zoom
-		host.CanvasPosition = Vector2.new(math.max(0, middle.X - size.X / 2), math.max(0, middle.Y - size.Y / 2))
-	end
-	-- Размер окна карты известен только после первой раскладки интерфейса.
-	task.delay(0.05, function()
-		if not host.Parent then
-			return
-		end
-		if scroll then
-			host.CanvasPosition = scroll
-		else
-			fitWhole()
-		end
-	end)
-	table.insert(
-		connections,
-		host:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
-			scroll = host.CanvasPosition
-		end)
-	)
-
-	-- Линии: ствол к корням веток, затем связи родитель → потомок и дополнительные условия.
-	for _, branch in Catalog.Branches do
-		local color = BRANCH_COLORS[branch.Key] or Style.Cyan
-		for _, root in map.Roots[branch.Key] do
-			local head = map.Heading[root.Key]
-			if not root.Parent then
-				local lit = states[root.Key].Level > 0
-				local tone = if lit then color elseif states[root.Key].Locked then RAIL else color:Lerp(RAIL, 0.55)
-				curve(chart, map.Hub, map.Points[root.Key], head, head, tone, if lit then 9 else 4)
-			end
-		end
-	end
 	for _, perk in Catalog.PerkNodes do
-		local state = states[perk.Key]
-		local head = map.Heading[perk.Key]
-		local tone = if state.Level > 0 then state.Color elseif state.Locked then RAIL else state.Color:Lerp(RAIL, 0.55)
-		local thickness = if state.Level > 0 then 9 elseif state.Locked then 2 else 4
-		if perk.Parent then
-			curve(chart, map.Points[perk.Parent], map.Points[perk.Key], map.Heading[perk.Parent], head, tone, thickness)
+		local info = infos[perk.Key]
+		if not info or not cells[perk.Key] then
+			continue
 		end
-		if perk.Needs then
-			for _, need in perk.Needs do
-				local met = (data.Perks[need.Key] or 0) >= need.Level
-				curve(
-					chart,
-					map.Points[need.Key],
-					map.Points[perk.Key],
-					map.Heading[need.Key],
-					head,
-					if met then state.Color else RAIL,
-					2
-				)
-			end
-		end
-	end
-
-	-- Ствол: ядро лаборатории и названия веток с суммой изученных уровней.
-	local core = Style.frame(chart, PANEL, 60)
-	core.AnchorPoint = Vector2.new(0.5, 0.5)
-	core.Position = UDim2.fromOffset(map.Hub.X, map.Hub.Y)
-	core.Size = UDim2.fromOffset(104, 104)
-	core.ZIndex = 4
-	Style.outline(core, Style.Text, 4)
-	local coreLevel =
-		centerText(core, Format(Texts.perkLabLevel, { level = Catalog.level(data.Opened) }), 24, Style.Text, true)
-	coreLevel.Position = UDim2.fromOffset(0, 24)
-	coreLevel.Size = UDim2.new(1, 0, 0, 30)
-	coreLevel.ZIndex = 5
-	Style.textStroke(coreLevel, 2)
-	local coreNote = centerText(core, Format(Texts.perkOpened, { opened = data.Opened }), 12, Style.Muted)
-	coreNote.Position = UDim2.fromOffset(0, 58)
-	coreNote.Size = UDim2.new(1, 0, 0, 18)
-	coreNote.ZIndex = 5
-	for _, title in map.Titles do
-		local color = BRANCH_COLORS[title.Branch] or Style.Cyan
-		local name = centerText(chart, branches[title.Branch], 17, color, true)
-		name.AnchorPoint = Vector2.new(0.5, 0.5)
-		name.Position = UDim2.fromOffset(title.At.X, title.At.Y - 16)
-		name.Size = UDim2.fromOffset(170, 22)
-		name.TextWrapped = false
-		name.ZIndex = 3
-		Style.textStroke(name, 2)
-		local count = centerText(chart, tostring(spent[title.Branch]), 30, Style.Text, true)
-		count.AnchorPoint = Vector2.new(0.5, 0.5)
-		count.Position = UDim2.fromOffset(title.At.X, title.At.Y + 12)
-		count.Size = UDim2.fromOffset(120, 34)
-		count.ZIndex = 3
-		Style.textStroke(count, 3)
-	end
-
-	local detailPanel = Components.dock(MOBILE_DOCK, true, SIDE_PANEL)
-	-- В широкой колонке справа — развёрнутое описание (шкала уровней, крупная кнопка).
-	local wideDetails = not Components.compact()
-	local widgets: { [string]: NodeWidget } = {}
-	local function selectPerk(perkKey: string): ()
-		selectedKey = perkKey
-		for nodeKey, widget in widgets do
-			widget.Apply(nodeKey == perkKey)
-		end
-		details(detailPanel, states[perkKey], branches, wideDetails)
-	end
-	for _, perk in Catalog.PerkNodes do
-		local diameter = if perk.Parent then NODE_DIAMETER else ROOT_DIAMETER
-		local widget = drawNode(chart, states[perk.Key], map.Points[perk.Key], diameter)
-		widgets[perk.Key] = widget
-		table.insert(connections, widget.Button.InputBegan:Connect(beginDrag))
-		widget.Button.Activated:Connect(function()
+		local button, apply = Node.draw(chart, info, pointOf(perk.Key))
+		selectors[perk.Key] = apply
+		buttons[perk.Key] = button
+		table.insert(connections, button.InputBegan:Connect(beginDrag))
+		button.Activated:Connect(function()
 			if travelled > 6 then
 				return
 			end
 			Sfx.play("click")
-			selectPerk(perk.Key)
+			pick(perk.Key)
 		end)
 	end
 
-	-- Управление картой: кнопки масштаба и центра, колесо мыши и перетаскивание.
+	local chosen = if selectedKey and infos[selectedKey] then selectedKey else firstSelection(infos)
+	if chosen then
+		pick(chosen)
+		Components.prefer(buttons[chosen])
+	end
+
+	fit()
+	task.defer(function()
+		if not host.Parent then
+			return
+		end
+		fit()
+		if scroll then
+			host.CanvasPosition = scroll
+		elseif chosen then
+			host.CanvasPosition = pointOf(chosen) * zoom - host.AbsoluteSize / 2
+		end
+		table.insert(
+			connections,
+			host:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+				scroll = host.CanvasPosition
+			end)
+		)
+	end)
+	table.insert(connections, host:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit))
+
 	local toolbar = Style.frame(view, nil)
 	toolbar.AnchorPoint = Vector2.new(1, 0)
 	toolbar.Position = UDim2.new(1, -8, 0, 8)
-	toolbar.Size = UDim2.fromOffset(46, 150)
+	toolbar.Size = UDim2.fromOffset(Style.TouchSize, Style.TouchSize * 2 + 8)
 	toolbar.ZIndex = 10
-	local layoutList = Instance.new("UIListLayout")
-	layoutList.Padding = UDim.new(0, 6)
-	layoutList.SortOrder = Enum.SortOrder.LayoutOrder
-	layoutList.Parent = toolbar
-	-- «Центр» рисуется иконкой: глифа прицела нет в шрифтах с кириллицей.
-	local toolList: { { Caption: string, Factor: number } } = {
-		{ Caption = "+", Factor = 1.2 },
-		{ Caption = "−", Factor = 1 / 1.2 },
-		{ Caption = "", Factor = 0 },
-	}
-	for index, tool in toolList do
+	toolbar.Visible = not (compact and UserInputService.TouchEnabled)
+	for index, tool in { { Caption = "+", Factor = 1.2 }, { Caption = "-", Factor = 1 / 1.2 } } do
 		local control = Style.button(toolbar, tool.Caption, function()
-			if tool.Factor == 0 then
-				fitWhole()
-			else
-				setZoom(zoom * tool.Factor)
-			end
+			setZoom(zoom * tool.Factor)
 		end, true, "neutral")
-		control.Name = if tool.Factor == 0 then "Центр" else tool.Caption
-		control.LayoutOrder = index
-		control.Size = UDim2.fromOffset(46, 42)
+		control.Position = UDim2.fromOffset(0, (index - 1) * (Style.TouchSize + 8))
+		control.Size = UDim2.fromOffset(Style.TouchSize, Style.TouchSize)
 		control.TextSize = 24
 		control.ZIndex = 10
-		if tool.Factor == 0 then
-			local mark = Icons.draw(control, "target", Style.Cyan)
-			mark.AnchorPoint = Vector2.new(0.5, 0.5)
-			mark.Position = UDim2.fromScale(0.5, 0.5)
-			mark.Size = UDim2.fromOffset(24, 24)
-			mark.ZIndex = 11
-		end
 	end
-	local summary = Components.text(
-		view,
-		if ready > 0
-			then Format(Texts.perkTotalReady, { owned = owned, total = total, ready = ready })
-			else Format(Texts.perkTotal, { owned = owned, total = total }),
-		13,
-		Style.Muted,
-		true
-	)
-	-- Плашка поверх карты, чтобы надпись не смешивалась с узлами под ней.
-	summary.AutomaticSize = Enum.AutomaticSize.X
-	summary.Position = UDim2.fromOffset(8, 8)
-	summary.Size = UDim2.fromOffset(0, 24)
-	summary.TextWrapped = false
-	summary.ZIndex = 10
-	summary.BackgroundColor3 = Style.Panel
-	summary.BackgroundTransparency = 0.1
-	local summaryPad = Instance.new("UIPadding")
-	summaryPad.PaddingLeft = UDim.new(0, 8)
-	summaryPad.PaddingRight = UDim.new(0, 8)
-	summaryPad.Parent = summary
-	Style.round(summary, 4)
-	Style.outline(summary, Style.Edge, 1)
 
 	table.insert(
 		connections,
 		UserInputService.InputEnded:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton1 then
 				dragging = false
-				-- Activated срабатывает сразу после отпускания, поэтому сдвиг сбрасываем с небольшой задержкой.
+				-- Activated fires right after release, so the distance is cleared a little later.
 				task.delay(0.1, function()
 					travelled = 0
 				end)
@@ -357,16 +427,15 @@ function Perks.render(source: Types.View, _wide: boolean): ()
 		connections,
 		UserInputService.InputChanged:Connect(function(input)
 			if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-				local current = UserInputService:GetMouseLocation()
-				local delta = current - lastMouse
-				lastMouse = current
+				-- Cursor position, not input.Delta: Delta can be zero here.
+				local mouse = UserInputService:GetMouseLocation()
+				local delta = mouse - lastMouse
+				lastMouse = mouse
 				travelled += delta.Magnitude
 				host.CanvasPosition -= delta
 			end
 		end)
 	)
-	-- Колесо над картой меняет масштаб. Над прокручиваемым кадром колесо получает сам интерфейс,
-	-- поэтому слушаем событие карты, а не ContextActionService (туда колесо над GUI не доходит).
 	table.insert(
 		connections,
 		host.InputChanged:Connect(function(input)
@@ -376,7 +445,6 @@ function Perks.render(source: Types.View, _wide: boolean): ()
 			end
 		end)
 	)
-	-- Щипок двумя пальцами над картой — масштаб на сенсорных экранах.
 	local pinchStart = zoom
 	table.insert(
 		connections,
@@ -396,10 +464,6 @@ function Perks.render(source: Types.View, _wide: boolean): ()
 			setZoom(pinchStart * scaleFactor)
 		end)
 	)
-
-	local first = selectedKey or Catalog.PerkNodes[1].Key
-	selectPerk(first)
-	Components.prefer(widgets[first].Button)
 end
 
 return Perks

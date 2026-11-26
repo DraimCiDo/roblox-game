@@ -119,15 +119,15 @@ function Guide.build(gui: GuiBase2d, onSkip: () -> (), onPulse: (string?) -> ())
 	pulse = onPulse
 	banner = Style.frame(gui, Style.Ink, 16)
 	banner.Name = "Обучение"
-	banner.AnchorPoint = Vector2.new(0.5, 0)
-	banner.Position = UDim2.new(0.5, 0, 0, 82)
+	banner.AnchorPoint = Vector2.new(0.5, 1)
+	banner.Position = UDim2.new(0.5, 0, 1, -26)
 	banner.AutomaticSize = Enum.AutomaticSize.Y
 	banner.Size = UDim2.new(1, -24, 0, 0)
 	banner.Visible = false
-	Style.outline(banner, Style.Cyan, 4)
-	Style.gloss(banner)
+	Style.outline(banner, Style.Amber, 4)
+	Style.soft(banner)
 	local bounds = Instance.new("UISizeConstraint")
-	bounds.MaxSize = Vector2.new(430, math.huge)
+	bounds.MaxSize = Vector2.new(520, math.huge)
 	bounds.Parent = banner
 	bannerScale = Instance.new("UIScale")
 	bannerScale.Parent = banner
@@ -145,7 +145,7 @@ function Guide.build(gui: GuiBase2d, onSkip: () -> (), onPulse: (string?) -> ())
 	local header = Style.frame(banner)
 	header.LayoutOrder = 1
 	header.Size = UDim2.new(1, 0, 0, 28)
-	local title = Components.text(header, Texts.tutorialTitle, 15, Style.Cyan, true)
+	local title = Components.text(header, Texts.tutorialTitle, 15, Style.Amber, true)
 	title.Size = UDim2.new(0.6, 0, 1, 0)
 	Style.textStroke(title, 2)
 	local skip = Style.button(header, Texts.tutorialSkip, onSkip, true, "neutral")

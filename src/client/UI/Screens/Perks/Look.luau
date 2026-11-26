@@ -1,25 +1,23 @@
 --!strict
 -- Colors and icons of the perk tree.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Theme = require(ReplicatedStorage.Shared.Config.UiTheme)
 local Icons = require(script.Parent.Parent.Parent.Icons)
-local Style = require(script.Parent.Parent.Parent.Style)
 
 local Look = {}
 
--- Карта навыков — «экран прибора»: почти чёрный графит, стальные рельсы связей.
-local BOARD = Color3.fromRGB(8, 12, 18)
-local PANEL = Color3.fromRGB(20, 28, 38)
-local RAIL = Color3.fromRGB(58, 74, 90)
-local BRANCH_COLORS: { [string]: Color3 } = {
-	logistics = Style.Violet,
-	storage = Style.Cyan,
-	trade = Style.Signal,
-	luck = Style.Amber,
-	mastery = Style.Warning,
-	collections = Color3.fromRGB(244, 140, 224),
-	lockpick = Color3.fromRGB(120, 214, 255),
-}
-local PERK_ICONS: { [string]: Icons.IconName } = {
+Look.BranchColors = {
+	logistics = Theme.Colors.Purple,
+	storage = Theme.Colors.Blue,
+	trade = Theme.Colors.Green,
+	luck = Theme.Colors.Orange,
+	mastery = Theme.Colors.Red,
+	collections = Theme.Colors.Pink,
+	lockpick = Theme.Colors.Yellow,
+} :: { [string]: Color3 }
+
+Look.Icons = {
 	orders = "box",
 	delivery = "arrow",
 	express = "bolt",
@@ -62,12 +60,6 @@ local PERK_ICONS: { [string]: Icons.IconName } = {
 	museum = "frame",
 	steady = "lock",
 	slow = "clock",
-}
-
-Look.BOARD = BOARD
-Look.PANEL = PANEL
-Look.RAIL = RAIL
-Look.BRANCH_COLORS = BRANCH_COLORS
-Look.PERK_ICONS = PERK_ICONS
+} :: { [string]: Icons.IconName }
 
 return Look

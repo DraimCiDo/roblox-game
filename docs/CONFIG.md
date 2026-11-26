@@ -17,7 +17,8 @@ diff of `tests/snapshot.txt`: it lists exactly what changed in prices, odds and 
 | Drop effects and their prices | `src/shared/Config/DropEffects.luau` |
 | Quality condition names and colors | `src/shared/Config/Conditions.luau` |
 | Sounds | `src/shared/Config/Sounds.luau` |
-| Fonts and main colors | `src/shared/Config/Theme.luau` |
+| Interface colors, fonts, corners, outlines | `src/shared/Config/UiTheme.luau` |
+| Fonts and colors of world signs | `src/shared/Config/Theme.luau` |
 | Interface texts | `src/shared/Config/Texts/UI.luau` |
 | Server notifications and kick reasons | `src/shared/Config/Texts/Notices.luau` |
 | Tutorial hints | `src/shared/Config/Texts/Tutorial.luau` |
@@ -25,8 +26,5 @@ diff of `tests/snapshot.txt`: it lists exactly what changed in prices, odds and 
 | Why a perk is locked | `src/shared/Config/Texts/Rules.luau` |
 
 Words in braces in texts, such as `{coins}`, are filled in by code: keep them.
-
-`warningHints` in `Texts/UI.luau` decides which notifications look like warnings: if you reword a
-warning in `Texts/Notices.luau`, make sure one of the fragments still matches it.
 
 Quality chances in `Balance.luau` must add up to 100.

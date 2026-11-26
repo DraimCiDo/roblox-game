@@ -3,10 +3,10 @@ local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-local Workspace = game:GetService("Workspace")
 
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Types = require(ReplicatedStorage.Shared.Types)
+local Theme = require(ReplicatedStorage.Shared.Config.UiTheme)
 local Components = require(script.Parent.Components)
 local Icons = require(script.Parent.Icons)
 local Sfx = require(script.Parent.Parent.Audio.Sfx)
@@ -18,7 +18,7 @@ export type Callbacks = { Perks: () -> (), Reward: () -> (), Settings: () -> () 
 
 local MAX_TOASTS = 3
 local TOAST_SECONDS = 3.4
-local BUTTON_SIZE = 84
+local BUTTON_SIZE = 72
 
 local Hud = {}
 
@@ -39,40 +39,11 @@ local lastCoins: number?
 local lastLevel: number?
 local cursorHint: TextLabel
 
--- Отступы справа снизу зависят от платформы: на телефоне выше кнопки прыжка, на консоли — за безопасной зоной.
-local function sideOffset(): Vector2
-	if GuiService:IsTenFootInterface() then
-		return Vector2.new(48, 48)
-	elseif UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
-		return Vector2.new(16, 200)
-	end
-	return Vector2.new(16, 16)
-end
-
--- Высота колонки «Перки + Награда»: две кнопки и промежуток между ними.
-local SIDE_HEIGHT = BUTTON_SIZE * 2 + 12
-
--- Масштаб слоя HUD (задаёт контроллер): высоту экрана переводим в единицы слоя.
-local hudScale = 1
-local sideColumn: Frame? = nil
-
--- Отступ колонки от низа: на низком экране (ландшафтный телефон) уменьшается, чтобы колонка не выходила за верхний край.
-local function sideBottom(): number
-	local wanted = sideOffset().Y
-	local camera = Workspace.CurrentCamera
-	if not camera then
-		return wanted
-	end
-	local top, bottom = GuiService:GetGuiInset()
-	local free = (camera.ViewportSize.Y - top.Y - bottom.Y) / hudScale - SIDE_HEIGHT - 8
-	return math.max(8, math.min(wanted, free))
-end
-
--- Объёмная плашка: толстая тёмная обводка, цветной градиент и мягкий блик, как у кнопок в симуляторах.
+-- Raised plate with a thick outline.
 local function plate(parent: Instance, color: Color3, radius: number): Frame
 	local frame = Style.frame(parent, color, radius)
 	Style.outline(frame, Style.Edge, 4)
-	Style.gloss(frame)
+	Style.soft(frame)
 	return frame
 end
 
@@ -101,48 +72,68 @@ local function keycap(parent: GuiObject, key: string): ()
 	text.ZIndex = cap.ZIndex + 1
 end
 
--- Квадратная кнопка с иконкой и подписью под ней.
+-- Square menu button with an icon and a caption, colored by section.
 local function iconButton(
 	parent: Instance,
 	icon: Icons.IconName,
 	caption: string,
 	hotkey: string?,
+	color: Color3,
 	callback: () -> ()
 ): TextButton
 	local control = Style.button(parent, "", callback, true, "neutral")
 	control.Name = caption
 	control.Size = UDim2.fromOffset(BUTTON_SIZE, BUTTON_SIZE)
-	Style.round(control, 20)
+	control.BackgroundColor3 = color
 	local holder = Style.frame(control)
 	holder.AnchorPoint = Vector2.new(0.5, 0)
-	holder.Position = UDim2.new(0.5, 0, 0, 8)
-	holder.Size = UDim2.fromOffset(46, 46)
-	Icons.draw(holder, icon, Style.Amber, Style.Text)
+	holder.Position = UDim2.new(0.5, 0, 0, 6)
+	holder.Size = UDim2.fromOffset(40, 40)
+	Icons.draw(holder, icon, Style.Text, Style.Ink)
 	local text = label(control, caption, 14)
 	text.AnchorPoint = Vector2.new(0.5, 1)
-	text.Position = UDim2.new(0.5, 0, 1, -5)
-	text.Size = UDim2.new(1, -8, 0, 18)
+	text.Position = UDim2.new(0.5, 0, 1, -4)
+	text.Size = UDim2.new(1, -4, 0, 18)
 	text.TextXAlignment = Enum.TextXAlignment.Center
+	text.TextScaled = true
+	local limit = Instance.new("UITextSizeConstraint")
+	limit.MaxTextSize = 14
+	limit.Parent = text
 	if hotkey then
 		keycap(control, hotkey)
 	end
 	return control
 end
 
-function Hud.build(gui: GuiBase2d, callbacks: Callbacks): ()
-	-- Монеты: крупная плашка сверху по центру.
-	local pill = plate(gui, Style.Ink, 32)
-	pill.Name = "Баланс"
+-- Dot on a button: something is waiting there.
+local function dot(button: TextButton, color: Color3): Frame
+	local mark = Style.frame(button, color, 20)
+	mark.AnchorPoint = Vector2.new(0.5, 0.5)
+	mark.Position = UDim2.new(1, -4, 0, 4)
+	mark.Size = UDim2.fromOffset(22, 22)
+	mark.Visible = false
+	Style.circle(mark)
+	Style.outline(mark, Style.Edge, 3)
+	return mark
+end
+
+-- overlay: the ScreenGui itself, so that notices stay above an open menu window.
+function Hud.build(gui: GuiBase2d, callbacks: Callbacks, overlay: ScreenGui): ()
+	-- Balance and laboratory level: one block at the top center.
+	local top = Style.frame(gui)
+	top.Name = "Top"
+	top.AnchorPoint = Vector2.new(0.5, 0)
+	top.Position = UDim2.new(0.5, 0, 0, 8)
+	top.Size = UDim2.fromOffset(280, 112)
+
+	local pill = plate(top, Style.Panel, 20)
+	pill.Name = "Balance"
 	pill.AnchorPoint = Vector2.new(0.5, 0)
-	pill.Position = UDim2.new(0.5, 0, 0, 8)
+	pill.Position = UDim2.fromScale(0.5, 0)
 	pill.AutomaticSize = Enum.AutomaticSize.X
-	pill.Size = UDim2.fromOffset(0, 64)
-	local outline = pill:FindFirstChildOfClass("UIStroke")
-	if outline then
-		outline.Color = Style.Amber
-	end
+	pill.Size = UDim2.fromOffset(0, 58)
 	local minimum = Instance.new("UISizeConstraint")
-	minimum.MinSize = Vector2.new(200, 64)
+	minimum.MinSize = Vector2.new(200, 58)
 	minimum.Parent = pill
 	popScale = Instance.new("UIScale")
 	popScale.Parent = pill
@@ -159,109 +150,74 @@ function Hud.build(gui: GuiBase2d, callbacks: Callbacks): ()
 	pillPadding.Parent = pill
 	local coin = Style.frame(pill)
 	coin.LayoutOrder = 1
-	coin.Size = UDim2.fromOffset(44, 44)
+	coin.Size = UDim2.fromOffset(40, 40)
 	Icons.draw(coin, "coin", Style.Amber)
-	balance = label(pill, "", 34, Style.Amber)
+	balance = label(pill, "", 30, Style.Amber)
+	balance.FontFace = Style.Mono
 	balance.LayoutOrder = 2
 	balance.AutomaticSize = Enum.AutomaticSize.X
-	balance.Size = UDim2.fromOffset(0, 64)
+	balance.Size = UDim2.fromOffset(0, 58)
 
-	-- Уровень и заказы: слева по центру экрана.
-	local card = plate(gui, Style.Ink, 18)
-	card.Name = "Уровень"
-	card.AnchorPoint = Vector2.new(0, 0.5)
-	card.Position = UDim2.new(0, 12, 0.5, 0)
-	card.Size = UDim2.fromOffset(176, 96)
-	Style.accent(card, Style.Cyan)
-	local caption = label(card, Texts.laboratory, 11, Style.Muted)
-	Components.place(caption, 14, 6, UDim.new(1, -24), 14)
-	levelLabel = label(card, Texts.levelInitial, 24, Style.Cyan)
-	Components.place(levelLabel, 14, 18, UDim.new(1, -24), 26)
-	local track, fill = Style.meter(card, 0, Style.Cyan)
-	Components.place(track, 14, 46, UDim.new(1, -26), 14)
+	local card = plate(top, Style.Panel, 14)
+	card.Name = "Level"
+	card.Position = UDim2.fromOffset(0, 64)
+	card.Size = UDim2.new(1, 0, 0, 48)
+	levelLabel = label(card, Texts.levelInitial, 18, Style.Cyan)
+	Components.place(levelLabel, 12, 3, UDim.new(0.4, 0), 22)
+	queueLabel = label(card, "", 14, Style.Text)
+	queueLabel.AnchorPoint = Vector2.new(1, 0)
+	queueLabel.Position = UDim2.new(1, -12, 0, 3)
+	queueLabel.Size = UDim2.new(0.6, 0, 0, 22)
+	queueLabel.TextXAlignment = Enum.TextXAlignment.Right
+	local track, fill = Style.meter(card, 0, Style.Signal)
+	Components.place(track, 12, 27, UDim.new(1, -24), 14)
 	levelFill = fill
 	levelCount = label(track, "", 12, Style.Text)
-	levelCount.AnchorPoint = Vector2.new(0.5, 0.5)
-	levelCount.Position = UDim2.fromScale(0.5, 0.5)
 	levelCount.Size = UDim2.fromScale(1, 1)
 	levelCount.TextXAlignment = Enum.TextXAlignment.Center
 	levelCount.ZIndex = 2
-	queueLabel = label(card, "", 14, Style.Text)
-	Components.place(queueLabel, 14, 66, UDim.new(1, -26), 22)
 
-	-- Настройки: шестерёнка слева сверху, под значками Roblox.
-	local settings = Style.button(gui, "", callbacks.Settings, true, "neutral")
-	settings.Name = "Настройки"
-	settings.AnchorPoint = Vector2.new(0, 0)
-	settings.Position = UDim2.fromOffset(12, 8)
-	settings.Size = UDim2.fromOffset(56, 56)
-	Style.round(settings, 18)
-	local gearHolder = Style.frame(settings)
-	gearHolder.AnchorPoint = Vector2.new(0.5, 0.5)
-	gearHolder.Position = UDim2.fromScale(0.5, 0.5)
-	gearHolder.Size = UDim2.fromOffset(34, 34)
-	Icons.draw(gearHolder, "gear", Style.Amber, Style.Text)
-	keycap(settings, "O")
+	-- Menu buttons: a column on the left, above the thumbstick area. Bottom right stays free for jumping.
+	local menu = Style.frame(gui)
+	menu.Name = "Menus"
+	menu.AnchorPoint = Vector2.new(0, 0.5)
+	menu.Position = UDim2.new(0, if GuiService:IsTenFootInterface() then 48 else 12, 0.42, 0)
+	menu.AutomaticSize = Enum.AutomaticSize.XY
+	menu.Size = UDim2.fromOffset(0, 0)
+	local menuLayout = Instance.new("UIListLayout")
+	menuLayout.Padding = UDim.new(0, 10)
+	menuLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	menuLayout.Parent = menu
 
-	-- Подсказка в режиме первого лица: курсор заперт в центре, кнопки HUD доступны с зажатым Alt.
+	perksButton = iconButton(menu, "star", Texts.perksButton, "P", Theme.Colors.Purple, callbacks.Perks)
+	perksButton.LayoutOrder = 1
+	perksBadge = dot(perksButton, Style.Signal)
+	rewardButton = iconButton(menu, "gift", Texts.rewardButton, "G", Theme.Colors.Orange, callbacks.Reward)
+	rewardButton.LayoutOrder = 2
+	rewardBadge = dot(rewardButton, Style.Warning)
+	local settings = iconButton(menu, "gear", Texts.settingsButton, "O", Theme.Colors.Blue, callbacks.Settings)
+	settings.LayoutOrder = 3
+
 	cursorHint = label(gui, Texts.cursorHint, 13, Style.Muted)
-	cursorHint.Name = "Подсказка курсора"
+	cursorHint.Name = "CursorHint"
 	cursorHint.AnchorPoint = Vector2.new(0.5, 1)
-	cursorHint.Position = UDim2.new(0.5, 0, 1, -8)
+	cursorHint.Position = UDim2.new(0.5, 0, 1, -4)
 	cursorHint.Size = UDim2.fromOffset(420, 18)
 	cursorHint.TextXAlignment = Enum.TextXAlignment.Center
 	cursorHint.Visible = false
 
-	-- Перки и награда: справа внизу крупными кнопками, у большого пальца.
-	local offset = sideOffset()
-	local side = Style.frame(gui)
-	side.Name = "Меню"
-	side.AnchorPoint = Vector2.new(1, 1)
-	side.Position = UDim2.new(1, -offset.X, 1, -sideBottom())
-	local camera = Workspace.CurrentCamera
-	if camera then
-		camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
-			side.Position = UDim2.new(1, -offset.X, 1, -sideBottom())
-		end)
-	end
-	sideColumn = side
-	side.AutomaticSize = Enum.AutomaticSize.XY
-	side.Size = UDim2.fromOffset(0, 0)
-	local sideLayout = Instance.new("UIListLayout")
-	sideLayout.Padding = UDim.new(0, 12)
-	sideLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	sideLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-	sideLayout.Parent = side
-	perksButton = iconButton(side, "star", Texts.perksButton, "P", callbacks.Perks)
-	perksButton.LayoutOrder = 1
-	perksBadge = Style.frame(perksButton, Style.Signal, 10)
-	perksBadge.AnchorPoint = Vector2.new(1, 0)
-	perksBadge.Position = UDim2.new(1, 2, 0, -2)
-	perksBadge.Size = UDim2.fromOffset(22, 22)
-	perksBadge.Visible = false
-	Style.outline(perksBadge, Style.Edge, 3)
-	rewardButton = iconButton(side, "gift", Texts.rewardButton, "G", callbacks.Reward)
-	rewardButton.LayoutOrder = 2
-	rewardBadge = Style.frame(rewardButton, Style.Warning, 10)
-	rewardBadge.AnchorPoint = Vector2.new(1, 0)
-	rewardBadge.Position = UDim2.new(1, 2, 0, -2)
-	rewardBadge.Size = UDim2.fromOffset(22, 22)
-	rewardBadge.Visible = false
-	Style.outline(rewardBadge, Style.Edge, 3)
-
-	toasts = Style.frame(gui)
-	toasts.Name = "Уведомления"
-	toasts.AnchorPoint = Vector2.new(0.5, 1)
-	toasts.Position = UDim2.new(0.5, 0, 1, -18)
+	toasts = Style.frame(overlay)
+	toasts.Name = "Notices"
+	toasts.AnchorPoint = Vector2.new(0.5, 0)
+	toasts.Position = UDim2.new(0.5, 0, 0, 128)
 	toasts.Size = UDim2.new(1, -38, 0, 170)
-	toasts.ZIndex = 6
+	toasts.ZIndex = 8
 	local toastBounds = Instance.new("UISizeConstraint")
 	toastBounds.MaxSize = Vector2.new(430, 170)
 	toastBounds.Parent = toasts
 	local layout = Instance.new("UIListLayout")
 	layout.Padding = UDim.new(0, 6)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
 	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	layout.Parent = toasts
 end
@@ -304,16 +260,10 @@ function Hud.update(data: Types.View, canClaim: boolean): ()
 end
 
 -- Всплывающее сообщение: до трёх одновременно, старые вытесняются.
-function Hud.notice(message: string): ()
+function Hud.notice(message: string, warning: boolean?): ()
 	toastSerial += 1
-	local tone = Style.Signal
-	for _, fragment in Texts.warningHints do
-		if string.find(message, fragment, 1, true) then
-			tone = Style.Warning
-			break
-		end
-	end
-	Sfx.play(if tone == Style.Warning then "error" else "notice")
+	local tone = if warning then Style.Warning else Style.Signal
+	Sfx.play(if warning then "error" else "notice")
 	local pending = {}
 	for _, child in toasts:GetChildren() do
 		if child:IsA("Frame") then
@@ -323,6 +273,9 @@ function Hud.notice(message: string): ()
 	if #pending >= MAX_TOASTS then
 		pending[1]:Destroy()
 	end
+
+	-- Below the balance; on a low screen over the window header, so it never hides the content.
+	toasts.Position = UDim2.new(0.5, 0, 0, if Components.compact() then 4 else 128)
 
 	local toast = plate(toasts, Style.Ink, 14)
 	toast.LayoutOrder = toastSerial
@@ -374,15 +327,6 @@ function Hud.pulse(key: string?): ()
 	pulseRing = ring
 end
 
--- Масштаб слоя HUD изменился (поворот экрана, смена окна): пересчитать отступ колонки кнопок.
-function Hud.setScale(scale: number): ()
-	hudScale = scale
-	local side = sideColumn
-	if side then
-		side.Position = UDim2.new(1, -sideOffset().X, 1, -sideBottom())
-	end
-end
-
 -- Показывает подсказку управления, пока камера в режиме первого лица (только на клавиатуре).
 function Hud.setFirstPerson(active: boolean): ()
 	cursorHint.Visible = active and UserInputService.KeyboardEnabled
@@ -390,7 +334,6 @@ end
 
 function Hud.setReward(canClaim: boolean): ()
 	rewardBadge.Visible = canClaim
-	Style.setButton(rewardButton, true, if canClaim then "primary" else "neutral")
 end
 
 return Hud

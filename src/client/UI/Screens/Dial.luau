@@ -47,6 +47,10 @@ local function bar(holder: Frame, color: Color3, width: number, length: number, 
 end
 
 function Dial.render(round: Round, stop: () -> ()): ()
+	-- On a low screen the dial shrinks to fit and the stop button moves beside it, so both stay visible.
+	local compact = Components.compact()
+	local side = if compact then Components.dock(80, true) else nil
+	local fit = if compact then math.min(1, (Components.fillHeight() - 48) / FACE) else 1
 	local group = Components.group()
 
 	local caption = Components.line(
@@ -58,6 +62,8 @@ function Dial.render(round: Round, stop: () -> ()): ()
 	)
 	caption.TextXAlignment = Enum.TextXAlignment.Center
 	caption.LayoutOrder = 1
+	-- The pins below already show the stage, and the dial needs the height.
+	caption.Visible = not compact
 
 	local pins = Style.frame(group)
 	pins.LayoutOrder = 2
@@ -79,16 +85,21 @@ function Dial.render(round: Round, stop: () -> ()): ()
 
 	local area = Style.frame(group)
 	area.LayoutOrder = 3
-	area.Size = UDim2.new(1, 0, 0, FACE + 14)
+	area.Size = UDim2.new(1, 0, 0, FACE * fit + 14)
 	local face = Style.frame(area, Style.Track, FACE / 2)
 	face.AnchorPoint = Vector2.new(0.5, 0.5)
 	face.Position = UDim2.fromScale(0.5, 0.5)
 	face.Size = UDim2.fromOffset(FACE, FACE)
+	Style.circle(face)
+	local scale = Instance.new("UIScale")
+	scale.Scale = fit
+	scale.Parent = face
 	local glow = Style.outline(face, Style.Edge, 5)
 	local plate = Style.frame(face, Style.Card, 80)
 	plate.AnchorPoint = Vector2.new(0.5, 0.5)
 	plate.Position = UDim2.fromScale(0.5, 0.5)
 	plate.Size = UDim2.fromOffset(160, 160)
+	Style.circle(plate)
 	Style.outline(plate, Style.Edge, 2)
 
 	for tick = 0, TICKS - 1 do
@@ -111,6 +122,7 @@ function Dial.render(round: Round, stop: () -> ()): ()
 	hub.AnchorPoint = Vector2.new(0.5, 0.5)
 	hub.Position = UDim2.fromScale(0.5, 0.5)
 	hub.Size = UDim2.fromOffset(40, 40)
+	Style.circle(hub)
 	Style.outline(hub, Style.Edge, 3)
 	local time = Components.text(face, "", 17, Style.Muted, true)
 	time.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -118,12 +130,21 @@ function Dial.render(round: Round, stop: () -> ()): ()
 	time.Size = UDim2.fromOffset(120, 24)
 	time.TextXAlignment = Enum.TextXAlignment.Center
 
-	local hint = Components.line(group, Texts.dialHelp, 14, Style.Muted)
-	hint.TextXAlignment = Enum.TextXAlignment.Center
-	hint.LayoutOrder = 4
-
 	Components.Live.Dial = { Needle = needle, Time = time, Glow = glow }
-	Components.command(Texts.dialStop, stop, true, "primary")
+	if side then
+		local button = Style.button(side, Texts.dialStop, stop, true, "primary")
+		button.AnchorPoint = Vector2.new(0.5, 0.5)
+		button.Position = UDim2.fromScale(0.5, 0.5)
+		button.Size = UDim2.new(1, -20, 1, -20)
+		button.TextSize = 26
+		button.ZIndex = 5
+		Components.prefer(button)
+	else
+		local hint = Components.line(group, Texts.dialHelp, 16, Style.Muted)
+		hint.TextXAlignment = Enum.TextXAlignment.Center
+		hint.LayoutOrder = 4
+		Components.command(Texts.dialStop, stop, true, "primary")
+	end
 end
 
 -- Двигает указатель и подсвечивает циферблат, когда указатель в зелёной зоне (подсказка; решает сервер).

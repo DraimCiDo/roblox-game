@@ -26,11 +26,12 @@ src/server/
   Config/      Loot, Balance, Rules (server only)
 src/client/
   Controllers/ loaded by Loader: DataController, LootController, SimulatorController
-  UI/          Components, Format, Style, Hud, Guide, Icons, Menus, Screens/
+  UI/          Style (cartoon kit), Window, Components, Format, Hud, Guide, Icons, Menus, Screens/
   Visuals/     3D previews in the interface
   Audio/       Sfx
 src/shared/
   Catalog.luau read API and rules over Config (perk availability, container odds)
+  PerkTree.luau which perk nodes are visible and where they stand
   Config/      editable content, see CONFIG.md; Texts/ holds every player-visible string
   Models/      procedural item models
   Network/     Remotes registry
@@ -59,6 +60,12 @@ identifiers, not texts: they must match the scene.
 All remotes are declared in `src/shared/Network/Remotes.luau`. The client sends actions through one
 `Action` event (`name, argument, extra`); the server checks types and lengths before dispatch.
 
+## Interface
+
+Look is set in `shared/Config/UiTheme.luau`. Screens render into the one window of `UI/Window`; below 420 px
+of height (landscape phones) the window, the dock and the dial switch to a compact layout. Notices carry
+their tone from the server (`State.tell` / `State.warn`).
+
 ## Player data
 
 `PlayerDataService` is the only owner of saves: retries on load (kick on failure so a save is not
@@ -70,6 +77,7 @@ saves: renaming one is a data change.
 
 - `scripts/check.ps1` / `check.sh`: StyLua, Selene, Rojo build.
 - `lune run tests/requires.luau`: every require resolves and every `Module.member` exists.
+- `lune run tests/perktree.luau`: visibility and layout of the perk tree.
 - `lune run tests/snapshot.luau`: content, prices, odds, perk rules and seeded loot did not change.
   After an intended balance or content change run it with `--update` and review the diff.
 - `lune run scripts/balance.luau`: progression pace.

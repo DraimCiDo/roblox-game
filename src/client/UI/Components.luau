@@ -9,6 +9,7 @@ local Preview = require(script.Parent.Parent.Visuals.ContainerPreview)
 local Sfx = require(script.Parent.Parent.Audio.Sfx)
 local ItemPreview = require(script.Parent.Parent.Visuals.ItemPreview)
 local Style = require(script.Parent.Style)
+local Icons = require(script.Parent.Icons)
 local Texts = require(ReplicatedStorage.Shared.Config.Texts.UI)
 local Format = require(ReplicatedStorage.Shared.Util.Format)
 local Formatting = require(script.Parent.Format)
@@ -38,6 +39,8 @@ export type TileOptions = {
 	FocusKey: string?,
 }
 export type RowOptions = {
+	-- Shown when the row has no item Kind.
+	Icon: Icons.IconName?,
 	Name: string,
 	Details: string,
 	Tint: Color3,
@@ -49,10 +52,10 @@ export type RowOptions = {
 	Tone: Style.ButtonTone?,
 }
 local CONTENT_INSET = 108
+local COMPACT_INSET = 76
 -- Ниже этой высоты панели (ландшафтный телефон) нижняя панель уходит вбок, иначе на содержимое не остаётся места.
 local COMPACT_BELOW = 420
 local SIDE_DOCK_WIDTH = 220
-local SIDE_DOCK_TOP = 96
 Components.Live = {} :: LiveWidgets
 
 local content: ScrollingFrame
@@ -79,13 +82,18 @@ function Components.redraw(): ()
 	redraw()
 end
 
+-- Height taken by the window header above the content.
+function Components.inset(): number
+	return if Components.compact() then COMPACT_INSET else CONTENT_INSET
+end
+
 -- Очищает область содержимого перед отрисовкой нового экрана.
 function Components.begin(): ()
 	order = 0
 	focus = nil
 	table.clear(Components.Live)
 	dockFrame.Visible = false
-	content.Size = UDim2.new(1, -26, 1, -CONTENT_INSET)
+	content.Size = UDim2.new(1, -26, 1, -Components.inset())
 	for _, object in content:GetChildren() do
 		if object:IsA("GuiObject") then
 			object:Destroy()
@@ -111,12 +119,12 @@ function Components.viewHeight(preferred: number): number
 	if not Components.compact() then
 		return preferred
 	end
-	return math.clamp(Components.panelHeight() - CONTENT_INSET - 12, 120, preferred)
+	return math.clamp(Components.panelHeight() - Components.inset() - 12, 120, preferred)
 end
 
 -- Высота области содержимого, когда окно растянуто на весь экран (карта перков).
 function Components.fillHeight(): number
-	return math.max(160, Components.panelHeight() - CONTENT_INSET - 12)
+	return math.max(100, Components.panelHeight() - Components.inset() - 12)
 end
 
 -- Нижняя панель вне прокрутки: остаётся на виду при выборе предмета в длинном списке.
@@ -132,14 +140,14 @@ function Components.dock(height: number, side: boolean?, sideWidth: number?): Fr
 	if side and (Components.compact() or sideWidth) then
 		local width = if Components.compact() then SIDE_DOCK_WIDTH else sideWidth or SIDE_DOCK_WIDTH
 		dockFrame.AnchorPoint = Vector2.new(1, 0)
-		dockFrame.Position = UDim2.new(1, -12, 0, SIDE_DOCK_TOP)
-		dockFrame.Size = UDim2.new(0, width, 1, -(SIDE_DOCK_TOP + 10))
-		content.Size = UDim2.new(1, -(26 + width + 8), 1, -CONTENT_INSET)
+		dockFrame.Position = UDim2.new(1, -12, 0, Components.inset() - 12)
+		dockFrame.Size = UDim2.new(0, width, 1, -(Components.inset() - 2))
+		content.Size = UDim2.new(1, -(26 + width + 8), 1, -Components.inset())
 	else
 		dockFrame.AnchorPoint = Vector2.new(0.5, 1)
 		dockFrame.Position = UDim2.new(0.5, 0, 1, -12)
 		dockFrame.Size = UDim2.new(1, -32, 0, height)
-		content.Size = UDim2.new(1, -26, 1, -(CONTENT_INSET + height + 10))
+		content.Size = UDim2.new(1, -26, 1, -(Components.inset() + height + 10))
 	end
 	return dockFrame
 end
@@ -173,13 +181,14 @@ function Components.text(parent: Instance, value: string, size: number, color: C
 end
 
 function Components.heading(value: string): ()
-	local field = Components.text(content, value, 21, Style.Text, true)
-	field.Size = UDim2.new(1, -9, 0, 32)
+	local field = Components.text(content, value, 22, Style.Text, true)
+	Style.textStroke(field, 2)
+	field.Size = UDim2.new(1, -9, 0, 34)
 	Components.append(field)
 end
 
 function Components.paragraph(value: string, color: Color3?): ()
-	local field = Components.text(content, value, 15, color or Style.Muted)
+	local field = Components.text(content, value, 17, color or Style.Muted)
 	field.AutomaticSize = Enum.AutomaticSize.Y
 	field.Size = UDim2.new(1, -9, 0, 0)
 	Components.append(field)
@@ -283,18 +292,18 @@ function Components.tile(parent: Instance, kind: string, item: Types.Item?, opti
 	icon.Position = UDim2.fromScale(0.08, 0.05)
 	icon.Size = UDim2.fromScale(0.84, 0.64)
 	if item then
-		local quality = Components.text(tile, tostring(item.Quality), 12, tint, true)
+		local quality = Components.text(tile, tostring(item.Quality), 15, tint, true)
 		Components.place(quality, 6, 3, UDim.new(0.5, 0), 16)
 	end
 	if options.Badge then
-		local badge = Components.text(tile, options.Badge, 12, Style.Amber, true)
+		local badge = Components.text(tile, options.Badge, 16, Style.Amber, true)
 		badge.AnchorPoint = Vector2.new(1, 0)
 		badge.Position = UDim2.new(1, -6, 0, 3)
 		badge.Size = UDim2.fromOffset(40, 16)
 		badge.TextXAlignment = Enum.TextXAlignment.Right
 	end
 	if options.Caption then
-		local caption = Components.text(tile, options.Caption, 12, options.CaptionColor or Style.Amber, true)
+		local caption = Components.text(tile, options.Caption, 14, options.CaptionColor or Style.Amber, true)
 		caption.AnchorPoint = Vector2.new(0, 1)
 		caption.Position = UDim2.new(0, 0, 1, -3)
 		caption.Size = UDim2.new(1, 0, 0, 16)
@@ -324,10 +333,10 @@ function Components.row(options: RowOptions): ()
 		local icon = ItemPreview.draw(badge, options.Kind)
 		icon.Size = UDim2.fromScale(1, 1)
 	else
-		local dot = Style.frame(badge, options.Tint, 8)
-		dot.AnchorPoint = Vector2.new(0.5, 0.5)
-		dot.Position = UDim2.fromScale(0.5, 0.5)
-		dot.Size = UDim2.fromOffset(20, 20)
+		local mark = Icons.draw(badge, options.Icon or "star", options.Tint, Style.Text)
+		mark.AnchorPoint = Vector2.new(0.5, 0.5)
+		mark.Position = UDim2.fromScale(0.5, 0.5)
+		mark.Size = UDim2.fromOffset(44, 44)
 	end
 	Style.outline(badge, options.Tint, 2)
 
@@ -335,7 +344,7 @@ function Components.row(options: RowOptions): ()
 	local headline = Components.text(entry, options.Name, 18, Style.Text, true)
 	Components.place(headline, 88, 9, UDim.new(1, reserved), 26)
 	headline.TextTruncate = Enum.TextTruncate.AtEnd
-	local sub = Components.text(entry, options.Details, 13, Style.Muted)
+	local sub = Components.text(entry, options.Details, 15, Style.Muted)
 	Components.place(sub, 88, 38, UDim.new(1, reserved), 40)
 	sub.TextYAlignment = Enum.TextYAlignment.Top
 
@@ -373,13 +382,13 @@ function Components.odds(values: { number }, following: { number }?, level: numb
 		local top = 8 + (index - 1) * 34
 		local locked = level < Catalog.TierUnlock[index]
 		local name =
-			Components.text(summary, Catalog.Containers[kind], 13, if locked then Style.Muted else Style.Text, true)
+			Components.text(summary, Catalog.Containers[kind], 15, if locked then Style.Muted else Style.Text, true)
 		Components.place(name, 12, top, UDim.new(1, -132), 19)
 		local chanceText = if locked
 			then Format(Texts.unlocksAtLevel, { level = Catalog.TierUnlock[index] })
 			elseif following then `{percent(chance)} → {percent(following[index])}`
 			else percent(chance)
-		local number = Components.text(summary, chanceText, 13, if locked then Style.Warning else Style.Muted, true)
+		local number = Components.text(summary, chanceText, 15, if locked then Style.Warning else Style.Muted, true)
 		number.TextXAlignment = Enum.TextXAlignment.Right
 		number.AnchorPoint = Vector2.new(1, 0)
 		number.Position = UDim2.new(1, -12, 0, top)

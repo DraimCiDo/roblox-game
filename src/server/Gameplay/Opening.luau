@@ -111,7 +111,7 @@ function Opening.open(
 			State.interface:FireClient(player, "dialEnd", hit)
 			if not hit then
 				World.RotateDial(plot, 0)
-				State.tell(player, Texts.dialSlipped)
+				State.warn(player, Texts.dialSlipped)
 			end
 		end
 	elseif not physical then
