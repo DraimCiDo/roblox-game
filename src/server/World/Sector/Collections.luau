@@ -40,12 +40,13 @@ local WOOD = rgb(150, 96, 58)
 local DARK_WOOD = rgb(104, 66, 44)
 local BRASS = rgb(255, 202, 84)
 
+-- Panes are SmoothPlastic: see-through finds are not drawn behind the Glass material.
 local function ghost(model: Model): ()
 	for _, object in model:GetDescendants() do
 		if object:IsA("BasePart") then
 			object.Color = rgb(130, 142, 205)
 			object.Material = Enum.Material.SmoothPlastic
-			object.Transparency = 0.45
+			object.Transparency = 0.25
 		elseif object:IsA("SurfaceGui") or object:IsA("Light") then
 			object:Destroy()
 		end
@@ -94,12 +95,20 @@ local function buildPanel(
 	local label = sign(title, Enum.NormalId.Front, collection.Name, WARM, 70, 40)
 	local lamp =
 		box("Полоса состояния", 0, 7.12, -0.75, Vector3.new(WIDTH - 0.8, 0.1, 0.2), color, metal)
-	local shelf =
-		box("Полка", 0, SHELVES[1] - 0.06, 0, Vector3.new(WIDTH - 0.5, 0.12, 1.5), GLASS, Enum.Material.Glass)
-	shelf.Transparency = 0.45
+	local shelf = box(
+		"Полка",
+		0,
+		SHELVES[1] - 0.06,
+		0,
+		Vector3.new(WIDTH - 0.5, 0.12, 1.5),
+		GLASS,
+		Enum.Material.SmoothPlastic
+	)
+	shelf.Transparency = 0.5
 	box("Кант полки", 0, SHELVES[1] - 0.06, -0.78, Vector3.new(WIDTH - 0.5, 0.14, 0.08), BRASS, metal)
-	local front = box("Стекло", 0, 4.25, -0.88, Vector3.new(WIDTH - 0.6, 5.8, 0.05), GLASS, Enum.Material.Glass)
-	front.Transparency = 0.93
+	local front =
+		box("Стекло", 0, 4.25, -0.88, Vector3.new(WIDTH - 0.6, 5.8, 0.05), GLASS, Enum.Material.SmoothPlastic)
+	front.Transparency = 0.95
 	local light = Instance.new("SurfaceLight")
 	light.Face = Enum.NormalId.Bottom
 	light.Range = 8

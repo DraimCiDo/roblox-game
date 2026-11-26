@@ -123,7 +123,7 @@ function Sector.build(
 	local root = Instance.new("Folder")
 	root.Name = "Декор сектора"
 	root.Parent = model
-	local info = sign(signs.OrderScreen, Enum.NormalId.Front, "", WARM, 92, 19)
+	local info = sign(signs.OrderScreen, Enum.NormalId.Front, "", WARM, 92, 55)
 	signs.OrderScreen.Material = Enum.Material.SmoothPlastic
 	signs.OrderScreen.Transparency = 0
 	signs.OrderScreen.Color = DEEP

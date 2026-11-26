@@ -277,9 +277,11 @@ local function buildSector(model, F, spawn)
 	local rooms = folder("Камера Backrooms")
 	local METAL = Color3.fromRGB(70, 66, 128)
 	for _, sx in { -1, 1 } do
-		part(rooms, "Фасад камеры", V(9, CEIL - PIPE_FLOOR + 0.4, 0.6), place(V(sx * 12.6, (PIPE_FLOOR - 0.4 + CEIL) / 2, DOOR_Z)), METAL, Enum.Material.DiamondPlate)
+		local width = 26.6 + WIDEN - 8.1
+		part(rooms, "Фасад камеры", V(width, CEIL - PIPE_FLOOR + 0.4, 0.6), place(V(sx * (8.1 + width / 2), (PIPE_FLOOR - 0.4 + CEIL) / 2, DOOR_Z)), WALL, Enum.Material.Plaster)
+		glow(rooms, "Кромка фасада", V(width, 0.35, 0.2), place(V(sx * (8.1 + width / 2), PIPE_FLOOR - 0.25, DOOR_Z - 0.36)), AMBER)
 	end
-	part(rooms, "Фасад камеры", V(16.2, CEIL - PIPE_TOP, 0.6), place(V(0, (PIPE_TOP + CEIL) / 2, DOOR_Z)), METAL, Enum.Material.DiamondPlate)
+	part(rooms, "Фасад камеры", V(16.2, CEIL - PIPE_TOP, 0.6), place(V(0, (PIPE_TOP + CEIL) / 2, DOOR_Z)), WALL, Enum.Material.Plaster)
 	-- The portal frame: chunky metal, a glowing contour and an energy orb in each corner.
 	local mid = (PIPE_FLOOR + PIPE_TOP) / 2
 	local height = PIPE_TOP - PIPE_FLOOR
@@ -313,9 +315,9 @@ local function buildSector(model, F, spawn)
 		local door = part(model, "Затвор Backrooms", V(8, height, 0.4), place(V(sx * 4, mid, DOOR_Z - 0.6), V(0, 0, -1)), Color3.fromRGB(92, 44, 160), Enum.Material.SmoothPlastic)
 		door.CanCollide = false
 		label(door, Enum.NormalId.Front, {
-			{ if sx < 0 then "◢◤◢◤◢◤" else "◥◣◥◣◥◣", Color3.fromRGB(214, 160, 255), 0.22 },
-			{ if sx < 0 then "НЕ ВХОДИТЬ" else "ОЖИДАНИЕ ГРУЗА", Color3.fromRGB(255, 226, 255), 0.2, BOLD },
-			{ if sx < 0 then "◥◣◥◣◥◣" else "◢◤◢◤◢◤", Color3.fromRGB(214, 160, 255), 0.22 },
+			{ if sx < 0 then "◢◤◢◤◢◤" else "◥◣◥◣◥◣", Color3.fromRGB(52, 20, 104), 0.22 },
+			{ if sx < 0 then "НЕ ВХОДИТЬ" else "ОЖИДАНИЕ ГРУЗА", Color3.fromRGB(40, 12, 86), 0.2, BOLD },
+			{ if sx < 0 then "◥◣◥◣◥◣" else "◢◤◢◤◢◤", Color3.fromRGB(52, 20, 104), 0.22 },
 		}, 30)
 	end
 	-- Корпус камеры: пол (ковролин сверху, тёмный потолок лаборатории снизу), стены, потолок.
@@ -467,9 +469,9 @@ local function buildSector(model, F, spawn)
 	-- Striped canvas, sloping down towards the customer.
 	for index = 0, 7 do
 		local z = -27.6 + 0.425 + index * 0.85
-		local tint = if index % 2 == 0 then AMBER else STEEL
-		part(desk, "Навес", V(4.6, 0.2, 0.85), place(V(wing(20.4), 6.35, z)) * CFrame.Angles(0, 0, math.rad(14)), tint, Enum.Material.Fabric, false)
-		part(desk, "Фестон", V(0.15, 0.55, 0.85), place(V(wing(18.18), 5.5, z)), tint, Enum.Material.Fabric, false)
+		local tint = if index % 2 == 0 then Color3.fromRGB(255, 120, 76) else STEEL
+		part(desk, "Навес", V(4.6, 0.2, 0.85), place(V(wing(20.4), 6.35, z)) * CFrame.Angles(0, 0, math.rad(14)), tint, Enum.Material.SmoothPlastic, false)
+		part(desk, "Фестон", V(0.15, 0.55, 0.85), place(V(wing(18.18), 5.5, z)), tint, Enum.Material.SmoothPlastic, false)
 	end
 	glow(desk, "Подсветка поста", V(0.1, 0.08, 6.8), place(V(wing(18.6), 0.15, -24.2)), CYAN)
 	local orderPanel = part(model, "Панель заказов", V(6.8, 1.4, 0.3), place(V(wing(21.4), 7.7, -24.2), V(-1, 0, 0)), DARK, Enum.Material.SmoothPlastic, false)
