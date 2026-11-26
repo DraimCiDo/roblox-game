@@ -18,7 +18,6 @@ return {
 		Texture = "rbxassetid://81507311520159",
 		Size = { 4.079, 7, 3.635 },
 	},
-	},
 	reactor = {
 		Mesh = "rbxassetid://92208032363128",
 		Texture = "rbxassetid://96121073071684",
