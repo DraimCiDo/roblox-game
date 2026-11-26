@@ -16,3 +16,6 @@ roblox.yml
 .claude/settings.local.json
 .DS_Store
 Thumbs.db
+
+# Python
+__pycache__/

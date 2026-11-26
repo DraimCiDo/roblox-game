@@ -61,14 +61,14 @@
 
 Что делают навыки: лучшая цена (торговля, торг, старьёвщик, джекпот, знатоки типов контейнеров, коллекции), удача (шансы типов, качество, редкая добыча, двойная находка, вариации), удобство (очередь, склад, быстрый сбор и продажа, утилизатор), экономия (скидка, кэшбэк, грант), пассивный доход (галерея, музейный фонд) и помощь в мини-игре сейфа. Точные эффекты — в `Catalog.Effects` и `Describe` каждого навыка.
 
-Структура и пороги описаны в `scripts/perks_spec.py`; блок `Catalog.Perks` создаёт `python3 scripts/gen_perks.py` (затем `stylua src`). Не правьте блок между маркерами `PERKS:BEGIN` и `PERKS:END` вручную.
+Perks, their prices, unlock thresholds and effect strength are edited directly in `src/shared/Config/Perks.luau`. Loot, prices and delivery times are in `src/server/Config/Loot.luau`, other economy numbers in `src/server/Config/Balance.luau`.
 
 ## Как настраивать баланс
 
-`python3 scripts/balance.py [секунд на контейнер]` моделирует игрока, который покупает самый дешёвый доступный перк, и печатает цены по уровням, стоимости перков, ход прогресса и время до полного дерева. Параметры скрипта повторяют `Economy.luau` и `Catalog.luau`: при изменении цен предметов, уровней или эффектов обновите оба места.
+`lune run scripts/balance.luau [seconds per container]` plays a greedy player through the real rules and configs and prints order prices per level, pace and time to the full tree.
 
 Стоимость уровня перка = прибыль с контейнера на уровне, где он открывается × множитель перка × 2^(номер уровня − 1).
 
 ## Что не проверялось
 
-Симуляция не учитывает коллекции, реальную скорость игрока и тупики из-за нехватки монет вне правила защиты. Темп стоит проверить игрой и поправить множители.
+The simulation ignores collections and real player speed. Темп стоит проверить игрой и поправить множители.
