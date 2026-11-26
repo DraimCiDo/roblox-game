@@ -293,14 +293,11 @@ local function details(panel: Frame, state: NodeState, branches: { [string]: str
 	title.TextWrapped = wide
 	title.TextTruncate = Enum.TextTruncate.AtEnd
 	local progress = if perk.Step
-		then Format(
-			Texts.perkStep,
-			{
-				step = perk.Step,
-				steps = perk.Steps,
-				state = if state.Level > 0 then Texts.perkLearned else Texts.perkNotLearned,
-			}
-		)
+		then Format(Texts.perkStep, {
+			step = perk.Step,
+			steps = perk.Steps,
+			state = if state.Level > 0 then Texts.perkLearned else Texts.perkNotLearned,
+		})
 		else Format(Texts.perkLevel, { level = state.Level, max = #perk.Costs })
 	local count = Components.text(panel, progress, 13, Style.Muted)
 	Components.place(count, inset, if wide then 82 else 25, width, 16)

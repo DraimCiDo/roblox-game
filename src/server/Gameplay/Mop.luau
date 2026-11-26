@@ -8,22 +8,16 @@ local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Types = require(ReplicatedStorage.Shared.Types)
-local Data = require(script.Parent.Parent.PlayerDataService)
-local Economy = require(script.Parent.Parent.Parent.Economy.Economy)
-local Hall = require(script.Parent.Parent.Parent.World.Hall)
+local Data = require(script.Parent.Parent.Services.PlayerDataService)
+local Economy = require(script.Parent.Parent.Economy.Economy)
+local Rules = require(script.Parent.Parent.Config.Rules)
+local Hall = require(script.Parent.Parent.World.Hall)
 local Texts = require(ReplicatedStorage.Shared.Config.Texts.Notices)
 local Format = require(ReplicatedStorage.Shared.Util.Format)
 
 local Mop = {}
 
 type Worker = { Spot: Part?, Count: number, LastAt: number }
-
-local SPOT_MIN_RADIUS = 7
-local SPOT_MAX_RADIUS = 20
-local SPOT_REACH = 14
-local MAX_DISTANCE = 70
-local MIN_INTERVAL = 0.6
-local CLEAN_TIME = 0.9
 
 local workers: { [Player]: Worker } = {}
 local station: Part
@@ -89,7 +83,7 @@ end
 local function pickSpotCenter(): Vector3
 	for _ = 1, 20 do
 		local angle = rng:NextNumber(0, math.pi * 2)
-		local distance = rng:NextNumber(SPOT_MIN_RADIUS, SPOT_MAX_RADIUS)
+		local distance = rng:NextNumber(Rules.Mop.SpotMinRadius, Rules.Mop.SpotMaxRadius)
 		local candidate = station.Position + Vector3.new(math.cos(angle) * distance, 0, math.sin(angle) * distance)
 		if Hall.isFree(candidate, floorY, 4.5) then
 			return candidate
@@ -134,7 +128,7 @@ local function spawnSpot(player: Player, worker: Worker): ()
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = Texts.mopWash
 	prompt.ObjectText = Format(Texts.mopSpotObject, { name = player.DisplayName })
-	prompt.HoldDuration = CLEAN_TIME
+	prompt.HoldDuration = Rules.Mop.CleanTime
 	prompt.MaxActivationDistance = 9
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = spot
@@ -144,11 +138,11 @@ local function spawnSpot(player: Player, worker: Worker): ()
 			return
 		end
 		local root = actor.Character and actor.Character:FindFirstChild("HumanoidRootPart")
-		if not root or not root:IsA("BasePart") or (root.Position - spot.Position).Magnitude > SPOT_REACH then
+		if not root or not root:IsA("BasePart") or (root.Position - spot.Position).Magnitude > Rules.Mop.SpotReach then
 			return
 		end
 		local now = os.clock()
-		if now - current.LastAt < MIN_INTERVAL then
+		if now - current.LastAt < Rules.Mop.MinInterval then
 			return
 		end
 		current.LastAt = now
@@ -237,7 +231,7 @@ function Mop.Start(center: Vector3, notice: (Player, string) -> (), update: (Pla
 				local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 				local far = true
 				if root and root:IsA("BasePart") then
-					far = (root.Position - station.Position).Magnitude > MAX_DISTANCE
+					far = (root.Position - station.Position).Magnitude > Rules.Mop.MaxDistance
 				end
 				if far then
 					stop(player)

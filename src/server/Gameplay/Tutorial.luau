@@ -3,9 +3,9 @@
 -- и корректно продолжается после повторного входа.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Texts = require(ReplicatedStorage.Shared.Config.Texts.Tutorial)
-local Economy = require(script.Parent.Parent.Parent.Economy.Economy)
+local Economy = require(script.Parent.Parent.Economy.Economy)
 local Types = require(game:GetService("ReplicatedStorage").Shared.Types)
-local World = require(script.Parent.Parent.Parent.World.World)
+local World = require(script.Parent.Parent.World.World)
 
 export type Step = {
 	Id: string,
