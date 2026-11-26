@@ -186,7 +186,7 @@ function Mop.Start(center: Vector3, notice: (Player, string) -> (), update: (Pla
 		Enum.PartType.Block,
 		Vector3.new(2.4, 0.4, 2.4),
 		CFrame.new(center.X, floorY + 0.2, center.Z),
-		Color3.fromRGB(52, 62, 76),
+		Color3.fromRGB(98, 106, 178),
 		folder
 	)
 	station.CanQuery = true
@@ -195,7 +195,7 @@ function Mop.Start(center: Vector3, notice: (Player, string) -> (), update: (Pla
 		Enum.PartType.Cylinder,
 		Vector3.new(1.8, 1.5, 1.5),
 		CFrame.new(center.X - 0.5, floorY + 1.15, center.Z) * CFrame.Angles(0, 0, math.rad(90)),
-		Color3.fromRGB(91, 232, 222),
+		Color3.fromRGB(70, 196, 255),
 		folder
 	)
 	part(

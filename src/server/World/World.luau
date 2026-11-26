@@ -12,6 +12,7 @@ local Sector = require(script.Parent.Sector)
 local Texts = require(ReplicatedStorage.Shared.Config.Texts.World)
 local Format = require(ReplicatedStorage.Shared.Util.Format)
 local Boards = require(script.Parent.Boards)
+local Decor = require(script.Parent.Decor)
 local Delivery = require(script.Parent.Delivery)
 local Items = require(script.Parent.Items)
 local Props = require(script.Parent.Props)
@@ -109,10 +110,11 @@ end
 function World.Build(useForPlot: (number, Player, string, string?) -> ()): { Plot }
 	local root = Workspace:WaitForChild("CORPA — испытательная лаборатория", 10)
 	assert(root, "[World] Lab model not found in the place")
+	task.spawn(Decor.build, root)
 	for _, name in { "Светильник перехода", "Светильник подхода" } do
 		local hall = name == "Светильник подхода"
 		for _, fixture in authoredParts(root, name) do
-			downlight(fixture, Color3.fromRGB(224, 236, 232), if hall then 0.7 else 0.55, if hall then 32 else 16, 120)
+			downlight(fixture, Color3.fromRGB(224, 236, 232), if hall then 0.7 else 0.55, if hall then 42 else 16, 120)
 		end
 	end
 	local leaderboardParts = authoredParts(root, "Терминал рейтинга")

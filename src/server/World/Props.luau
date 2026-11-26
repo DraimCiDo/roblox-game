@@ -6,7 +6,7 @@ local Theme = require(ReplicatedStorage.Shared.Config.Theme)
 
 local Props = {}
 
-local STEEL = Color3.fromRGB(45, 56, 68)
+local STEEL = Color3.fromRGB(98, 106, 178)
 local ICE = Theme.Colors.Cyan
 local AMBER = Theme.Colors.Amber
 local INK = Theme.Colors.Ink

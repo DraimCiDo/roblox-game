@@ -62,9 +62,9 @@ end
 
 -- Палитра «Лаборатория CORPA» (общая тема интерфейса и мира).
 local DEEP = Theme.Colors.Panel
-local STEEL = rgb(46, 54, 66)
-local CHROME = rgb(176, 188, 200)
-local MARBLE = rgb(214, 220, 228)
+local STEEL = rgb(120, 130, 204)
+local CHROME = rgb(236, 238, 252)
+local MARBLE = rgb(244, 244, 255)
 local CYAN = Theme.Colors.Cyan
 local AMBER = Theme.Colors.Amber
 local VIOLET = rgb(170, 132, 255)

@@ -37,7 +37,7 @@ local PANEL_GAP = 0.16
 local function ghost(model: Model): ()
 	for _, object in model:GetDescendants() do
 		if object:IsA("BasePart") then
-			object.Color = rgb(34, 42, 56)
+			object.Color = rgb(130, 142, 205)
 			object.Material = Enum.Material.SmoothPlastic
 			object.Transparency = 0.15
 		elseif object:IsA("SurfaceGui") or object:IsA("Light") then
