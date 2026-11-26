@@ -9,6 +9,7 @@ local Workspace = game:GetService("Workspace")
 local Config = require(ReplicatedStorage.Shared.Config.GameConfig)
 local TableUtil = require(ReplicatedStorage.Shared.Util.TableUtil)
 local Types = require(ReplicatedStorage.Shared.Types)
+local Texts = require(ReplicatedStorage.Shared.Config.Texts.Notices)
 
 local SESSION_SECONDS = 180
 type Profile = {
@@ -69,9 +70,7 @@ local function load(player: Player): ()
 	local memoryOnly = RunService:IsStudio() and (not useCloudInStudio() or player.UserId <= 0)
 	local currentStore = if memoryOnly then nil else store
 	if currentStore == nil and not memoryOnly then
-		player:Kick(
-			"Хранилище прогресса недоступно. Попробуйте ещё раз позже."
-		)
+		player:Kick(Texts.storageUnavailable)
 		return
 	end
 	local data = if memoryOnly then migrate(studioProgress[player.UserId]) else migrate(nil)
@@ -101,9 +100,7 @@ local function load(player: Player): ()
 				break
 			end
 			if not ok or os.clock() >= deadline or player.Parent ~= Players or shuttingDown then
-				player:Kick(
-					"Не удалось загрузить прогресс. Попробуйте ещё раз позже."
-				)
+				player:Kick(Texts.loadFailed)
 				return
 			end
 			task.wait(1)
@@ -157,9 +154,9 @@ local function save(player: Player, closing: boolean)
 			end)
 		end)
 		if not ok or not result then
-			warn(`[PlayerDataService] Не удалось сохранить {player.UserId}: {result}`)
+			warn(`[PlayerDataService] Failed to save {player.UserId}: {result}`)
 			if not closing and not result and ok then
-				player:Kick("Сессия сохранения завершилась. Войдите снова.")
+				player:Kick(Texts.sessionEnded)
 			end
 		elseif ordered and snapshot.Earned > profile.Ranked then
 			local leaderboard = ordered
@@ -171,7 +168,7 @@ local function save(player: Player, closing: boolean)
 			if ranked then
 				profile.Ranked = snapshot.Earned
 			else
-				warn(`[PlayerDataService] Не удалось обновить рейтинг: {err}`)
+				warn(`[PlayerDataService] Failed to update the ranking: {err}`)
 			end
 		end
 	elseif closing then
@@ -193,7 +190,7 @@ function PlayerDataService:Init(): ()
 	if ok then
 		store = result
 	else
-		warn(`[PlayerDataService] DataStore недоступен: {result}`)
+		warn(`[PlayerDataService] DataStore unavailable: {result}`)
 	end
 	local rankingOk, rankingStore = pcall(function()
 		return DataStoreService:GetOrderedDataStore("LifetimeCoinsEarned_v1")
@@ -201,7 +198,7 @@ function PlayerDataService:Init(): ()
 	if rankingOk then
 		ordered = rankingStore
 	else
-		warn(`[PlayerDataService] Хранилище рейтинга недоступно: {rankingStore}`)
+		warn(`[PlayerDataService] Ranking store unavailable: {rankingStore}`)
 	end
 end
 
@@ -215,10 +212,8 @@ local function loadProfile(player: Player): ()
 	pendingLoads -= 1
 	loading[player] = nil
 	if not ok and player.Parent == Players then
-		warn(`[PlayerDataService] Не удалось подготовить профиль {player.UserId}: {err}`)
-		player:Kick(
-			"Не удалось загрузить прогресс. Попробуйте ещё раз позже."
-		)
+		warn(`[PlayerDataService] Failed to prepare the profile of {player.UserId}: {err}`)
+		player:Kick(Texts.loadFailed)
 	end
 end
 
@@ -271,7 +266,7 @@ function PlayerDataService:GetRanking(): { { Key: string, Value: number } }?
 		return leaderboard:GetSortedAsync(false, 10):GetCurrentPage()
 	end)
 	if not ok then
-		warn(`[PlayerDataService] Не удалось прочитать рейтинг: {result}`)
+		warn(`[PlayerDataService] Failed to read the ranking: {result}`)
 		return nil
 	end
 	local entries = {}

@@ -6,7 +6,7 @@ description: Добавление сетевого взаимодействия 
 # Новый Remote
 
 ## Шаги
-1. Объявить имя в `src/shared/Remotes.luau` → `Remotes.Events` или `Remotes.Functions`, с комментарием направления (`Клиент -> сервер` / `Сервер -> клиент`).
+1. Объявить имя в `src/shared/Network/Remotes.luau` → `Remotes.Events` или `Remotes.Functions`, с комментарием направления (`Клиент -> сервер` / `Сервер -> клиент`).
 2. Сервер: `Remotes.event(Remotes.Events.X).OnServerEvent:Connect(handler)` в `Start()` соответствующего сервиса.
 3. Клиент: `Remotes.event(Remotes.Events.X):FireServer(...)` в контроллере.
 4. Никогда не создавать Remote вручную в Studio или через `Instance.new` в других местах.

@@ -1,0 +1,57 @@
+--!strict
+-- Server messages to a player: toasts, kick reasons, leaderstats and the mopping job.
+-- Edit the text after '='. Words in braces like {coins} are filled in by code: keep them.
+return {
+	-- PlayerDataService
+	storageUnavailable = "Хранилище прогресса недоступно. Попробуйте ещё раз позже.",
+	loadFailed = "Не удалось загрузить прогресс. Попробуйте ещё раз позже.",
+	sessionEnded = "Сессия сохранения завершилась. Войдите снова.",
+
+	-- init
+	statCoins = "Монеты",
+	statOpened = "Открыто",
+	tutorialDone = "Обучение пройдено! Собирайте коллекции и выставляйте находки на витрины.",
+	serverFull = "На этом сервере все шесть территорий заняты.",
+	turnDialAgain = "Подойдите к сейфу и поверните ручку снова.",
+	dialSlipped = "Штифт сорвался. Начните взлом заново.",
+	goToOwnStand = "Подойдите к своей витрине.",
+	storageFull = "Склад заполнен",
+	itemGone = "Этой находки больше нет на складе.",
+	goToStorageToSell = "Подойдите к складу, чтобы продать находку.",
+	sold = "Продано · +{total} монет",
+	goToCollections = "Подойдите к терминалу коллекций.",
+	collectionReplaced = "Экземпляр в коллекции заменён.",
+	collectionAdded = "Экземпляр внесён в коллекцию.",
+	itemDisplayed = "Находка выставлена.",
+	recycled = "Утилизатор · {name} +{value}",
+	stored = "На складе · {name}",
+	goToLootPanel = "Подойдите к пульту добычи.",
+	quickSold = "Быстрая продажа · +{total} монет",
+	recycledNote = " · утилизировано {sold} (+{earned})",
+	storageFullLeft = "Склад заполнен · осталось {left}{note}",
+	collected = "Собрано находок · {stored}{note}",
+	goToTerminal = "Подойдите к терминалу заказов.",
+	allSlotsBusy = "Все слоты заказов заняты.",
+	notEnoughCoins = "Недостаточно монет.",
+	orderAccepted = "Заказ принят.",
+	orderQueued = "Заказ принят · место в очереди {position}",
+	cashback = "{text} Кэшбэк +{refund}",
+	keepCoinsForOrder = "Оставьте монет на следующий заказ.",
+	notEnoughForEffect = "Не хватает монет на этот эффект",
+	effectBought = "Эффект «{name}» куплен и выбран",
+	dailyAlreadyClaimed = "Сегодня награда уже получена.",
+	dailyNotReady = "Награда откроется после 15 минут в игре.",
+	dailyReward = "Ежедневная награда · +{reward} монет",
+	rankingEmpty = "Пока нет результатов",
+	rankingUnavailable = "Общий рейтинг сейчас недоступен",
+	rankingWaiting = "Ожидание игроков",
+
+	-- Mop
+	mopStopped = "Работа закончена: вымыто пятен — {count}",
+	mopWash = "Вымыть",
+	mopSpotObject = "Пятно · {name}",
+	mopReward = "+{reward} монет за уборку",
+	mopStarted = "Вы взяли швабру. Мойте пятна на полу — {reward} монет за каждое",
+	mopStationObject = "Мытьё полов",
+	mopTake = "Взять швабру",
+}

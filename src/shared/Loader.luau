@@ -21,7 +21,7 @@ function Loader.load(container: Instance): { [string]: Module }
 			if ok then
 				modules[child.Name] = result :: any
 			else
-				warn(`[Loader] Не удалось загрузить {child:GetFullName()}: {result}`)
+				warn(`[Loader] Failed to load {child:GetFullName()}: {result}`)
 			end
 		end
 	end
@@ -31,7 +31,7 @@ function Loader.load(container: Instance): { [string]: Module }
 		if init then
 			local ok, err = pcall(init :: (any) -> any, module)
 			if not ok then
-				warn(`[Loader] {name}:Init() упал: {err}`)
+				warn(`[Loader] {name}:Init() failed: {err}`)
 			end
 		end
 	end
