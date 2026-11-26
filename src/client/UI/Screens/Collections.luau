@@ -1,7 +1,7 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
+local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Components = require(script.Parent.Parent.Components)
 local Style = require(script.Parent.Parent.Style)

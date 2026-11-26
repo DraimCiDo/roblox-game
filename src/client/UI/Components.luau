@@ -3,7 +3,7 @@ local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
+local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Preview = require(script.Parent.Parent.Visuals.ContainerPreview)
 local Sfx = require(script.Parent.Parent.Audio.Sfx)

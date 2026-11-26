@@ -3,7 +3,7 @@
 -- Панели, экспонаты и ячейки привязаны к деталям сцены Roblox Studio.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
+local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local ItemModels = require(ReplicatedStorage.Shared.Models.ItemModels)
 local Theme = require(ReplicatedStorage.Shared.Config.Theme)
 local Types = require(ReplicatedStorage.Shared.Types)

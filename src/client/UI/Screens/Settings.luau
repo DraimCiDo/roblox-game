@@ -2,7 +2,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
-local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
+local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Components = require(script.Parent.Parent.Components)
 local Sfx = require(script.Parent.Parent.Parent.Audio.Sfx)
 local Style = require(script.Parent.Parent.Style)

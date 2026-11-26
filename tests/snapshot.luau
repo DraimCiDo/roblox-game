@@ -10,7 +10,7 @@ local Harness = require("./harness")
 local FILE = "tests/snapshot.txt"
 
 -- Adapter: the only part that follows module moves.
-local Catalog = Harness.require("ReplicatedStorage.Shared.Config.Catalog")
+local Catalog = Harness.require("ReplicatedStorage.Shared.Catalog")
 local GameConfig = Harness.require("ReplicatedStorage.Shared.Config.GameConfig")
 local Sounds = Harness.require("ReplicatedStorage.Shared.Config.Sounds")
 local Theme = Harness.require("ReplicatedStorage.Shared.Config.Theme")

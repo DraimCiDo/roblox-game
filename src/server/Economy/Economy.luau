@@ -2,121 +2,17 @@
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
+local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Config = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Types = require(ReplicatedStorage.Shared.Types)
-
-type Drop = { Kind: string, Price: number, Weight: number }
-type Container = { Min: number, Max: number, Deliver: number, OpenSteps: number, Drops: { Drop }, Extra: Drop }
-
-local function drop(kind: string, price: number, weight: number): Drop
-	return { Kind = kind, Price = price, Weight = weight }
-end
-
-local Containers: { [string]: Container } = {
-	box = {
-		Min = 1,
-		Max = 2,
-		Deliver = 2,
-		OpenSteps = 4,
-		Drops = {
-			drop("ball", 2600, 13),
-			drop("trash", 2300, 16),
-			drop("bell", 3100, 10),
-			drop("bowl", 2500, 13),
-			drop("painting", 4200, 5),
-			drop("fish", 3200, 8),
-			drop("dumbbell", 2900, 11),
-			drop("brush", 2400, 14),
-			drop("parcel", 2500, 15),
-			drop("elfhat", 4800, 4),
-		},
-		Extra = drop("prism", 6000, 8),
-	},
-	crate = {
-		Min = 2,
-		Max = 4,
-		Deliver = 2.5,
-		OpenSteps = 4,
-		Drops = {
-			drop("flower", 4000, 15),
-			drop("meteor", 10000, 4),
-			drop("bin", 3900, 15),
-			drop("computer", 6500, 9),
-			drop("tv", 7100, 8),
-			drop("fan", 4500, 13),
-			drop("trophy", 8300, 6),
-			drop("rockart", 6000, 10),
-			drop("radio", 5000, 12),
-			drop("camera", 6200, 10),
-		},
-		Extra = drop("crateGem", 10000, 8),
-	},
-	safe = {
-		Min = 3,
-		Max = 4,
-		Deliver = 3,
-		OpenSteps = 1,
-		Drops = {
-			drop("gold", 21000, 10),
-			drop("dollars", 15000, 15),
-			drop("gpu", 23000, 7),
-			drop("glasses", 20000, 10),
-			drop("boombox", 31000, 4),
-			drop("button", 22000, 9),
-			drop("console", 17000, 13),
-			drop("phone", 17000, 14),
-			drop("davinci", 32000, 4),
-			drop("bomb", 14000, 15),
-		},
-		Extra = drop("diamond", 55000, 8),
-	},
-	cargo = {
-		Min = 2,
-		Max = 3,
-		Deliver = 4,
-		OpenSteps = 3,
-		Drops = {
-			drop("rover", 150000, 12),
-			drop("coupe", 230000, 6),
-			drop("robot", 110000, 14),
-			drop("crateGem", 10000, 14),
-		},
-		Extra = drop("concept", 550000, 8),
-	},
-	secret = {
-		Min = 3,
-		Max = 4,
-		Deliver = 3.5,
-		OpenSteps = 5,
-		Drops = {
-			drop("diamond", 55000, 10),
-			drop("core", 390000, 10),
-			drop("concept", 550000, 6),
-			drop("anomaly", 300000, 14),
-		},
-		Extra = drop("prism", 6000, 8),
-	},
-}
+local Balance = require(script.Parent.Parent.Config.Balance)
+local Containers = require(script.Parent.Parent.Config.Loot)
 
 local Economy = {}
--- Взлом сейфа идёт в три этапа: с каждым этапом указатель быстрее, а сектор уже.
-Economy.DialStages = 3
-Economy.DialTimeLimit = 20
-local DIAL_PERIODS = { 3, 2.4, 1.9 }
-local DIAL_TOLERANCES = { 0.12, 0.1, 0.08 }
+Economy.DialStages = #Balance.Dial.Periods
+Economy.DialTimeLimit = Balance.Dial.TimeLimit
 
 local E = Catalog.Effects
--- Цена заказа составляет эту долю от ожидаемой выручки с контейнера на текущем уровне лаборатории.
-local PRICE_SHARE = 0.6
-local PRICE_STEP = 50
-local QUALITY_MEAN = 0.9626
-
--- Навыки «Знаток …»: бонус к цене находок из контейнеров своего типа (индекс = тип контейнера).
-local MASTERY_PERKS = { "boxMaster", "crateMaster", "safeMaster", "cargoMaster", "secretMaster" }
--- Редкими считаются предметы с весом выпадения не выше этого значения.
-local RARE_WEIGHT = 9
-
 local random = Random.new()
 local prices: { [string]: number } = {}
 local tierOf: { [string]: number } = {}
@@ -147,7 +43,7 @@ for index, kind in Catalog.Kinds do
 		sum += entry.Price * entry.Weight
 		weight += entry.Weight
 	end
-	tierValue[index] = (container.Min + container.Max) / 2 * sum / weight * QUALITY_MEAN
+	tierValue[index] = (container.Min + container.Max) / 2 * sum / weight * Balance.QualityMean
 end
 
 -- Параметры этапа взлома: цель (0..1), период оборота указателя и допуск попадания.
@@ -157,13 +53,14 @@ function Economy.dial(order: Types.Order, stage: number, perks: { [string]: numb
 	if stage > 1 then
 		target = 0.12 + ((order.Target + (stage - 1) * 0.3819) % 1) * 0.76
 	end
-	local tolerance = math.min(DIAL_TOLERANCES[stage] * (1 + E.SteadyStep * (perks.steady or 0)), 0.3)
-	local period = DIAL_PERIODS[stage] * (1 + E.SlowStep * (perks.slow or 0))
+	local tolerance =
+		math.min(Balance.Dial.Tolerances[stage] * (1 + E.SteadyStep * (perks.steady or 0)), Balance.Dial.MaxTolerance)
+	local period = Balance.Dial.Periods[stage] * (1 + E.SlowStep * (perks.slow or 0))
 	return target, period, tolerance
 end
 
 function Economy.capacity(data: Types.PlayerData): number
-	return 15 + 5 * (data.Perks.storage or 0)
+	return Catalog.Storage.Base + Catalog.Storage.Step * (data.Perks.storage or 0)
 end
 
 function Economy.collectionBonus(data: Types.PlayerData, kind: string): number
@@ -181,7 +78,7 @@ function Economy.collectionBonus(data: Types.PlayerData, kind: string): number
 	end
 	local specific = data.Perks[collectionPerk[kind]] or 0
 	local power = 1 + E.CollectionStep * (data.Perks.collection or 0) + E.SpecialtyStep * specific
-	return total / #collection / 1000 * power
+	return total / #collection / Balance.CollectionDivisor * power
 end
 
 -- Сколько коллекций заполнено полностью.
@@ -209,15 +106,18 @@ end
 -- Цена предмета: аддитивно складываются качество, коллекция и навыки торговли. extra — разовая надбавка (оптовик).
 function Economy.price(data: Types.PlayerData, item: Types.Item, extra: number?): number
 	local quality = item.Quality
-	local multiplier = if quality <= 50 then 0.5 + quality * 0.01 else 1 + (quality - 50) * 0.015
+	local curve = Balance.Price
+	local multiplier = if quality <= curve.Middle
+		then curve.Base + quality * curve.PerPoint
+		else curve.UpperBase + (quality - curve.Middle) * curve.UpperPerPoint
 	local perks = data.Perks
 	local bonus = Economy.collectionBonus(data, item.Kind) + (perks.sale or 0) * E.SaleStep + (extra or 0)
-	if quality >= 71 then
+	if quality >= Balance.HaggleFrom then
 		bonus += (perks.haggle or 0) * E.HaggleStep
-	elseif quality <= 49 then
+	elseif quality <= Balance.JunkUpTo then
 		bonus += (perks.junk or 0) * E.JunkStep
 	end
-	local mastery = MASTERY_PERKS[tierOf[item.Kind]]
+	local mastery = Balance.MasteryPerks[tierOf[item.Kind]]
 	if mastery then
 		bonus += (perks[mastery] or 0) * E.MasteryStep
 	end
@@ -273,12 +173,18 @@ function Economy.orderPrice(data: Types.PlayerData): number
 	for tier, chance in Catalog.odds(data.Opened, {}) do
 		expected += chance / 100 * tierValue[tier]
 	end
-	local base = math.max(Config.OrderPrice, math.round(expected * PRICE_SHARE / PRICE_STEP) * PRICE_STEP)
-	return math.max(10, math.round(base * (1 - E.DiscountStep * (data.Perks.discount or 0)) / 10) * 10)
+	local base =
+		math.max(Config.OrderPrice, math.round(expected * Balance.PriceShare / Balance.PriceStep) * Balance.PriceStep)
+	return math.max(
+		Balance.MinOrderPrice,
+		math.round(base * (1 - E.DiscountStep * (data.Perks.discount or 0)) / 10) * 10
+	)
 end
 
 function Economy.dailyReward(data: Types.PlayerData): number
-	return math.round(Economy.orderPrice(data) * 2 * (1 + E.DailyStep * (data.Perks.daily or 0)))
+	return math.round(
+		Economy.orderPrice(data) * Balance.DailyRewardOrders * (1 + E.DailyStep * (data.Perks.daily or 0))
+	)
 end
 
 function Economy.newOrder(data: Types.PlayerData, starter: boolean): Types.Order
@@ -310,7 +216,7 @@ end
 -- Время доставки: «Быстрая доставка» сокращает его, «Срочная доставка» с шансом делает почти мгновенным.
 function Economy.deliveryTime(order: Types.Order, data: Types.PlayerData): number
 	if random:NextNumber() < E.ExpressStep * (data.Perks.express or 0) then
-		return 0.6
+		return Balance.ExpressDelivery
 	end
 	return Containers[order.Kind].Deliver * (1 - E.DeliveryStep * (data.Perks.delivery or 0))
 end
@@ -334,14 +240,12 @@ end
 
 local function rollQuality(): number
 	local roll = random:NextInteger(1, 100)
-	if roll <= 20 then
-		return random:NextInteger(1, 20)
-	elseif roll <= 60 then
-		return random:NextInteger(21, 49)
-	elseif roll <= 90 then
-		return random:NextInteger(50, 70)
-	elseif roll <= 98 then
-		return random:NextInteger(71, 99)
+	for _, band in Balance.Quality do
+		roll -= band.Chance
+		if roll <= 0 then
+			-- A single value band does not consume a second random number.
+			return if band.Min == band.Max then band.Min else random:NextInteger(band.Min, band.Max)
+		end
 	end
 	return 100
 end
@@ -359,7 +263,7 @@ local function quality(perks: { [string]: number }): number
 	return math.max(value, math.min(E.FloorStep * (perks.floor or 0), 100))
 end
 
-local function pick(container: Container, variant: boolean, rarity: number): string
+local function pick(container: Containers.Container, variant: boolean, rarity: number): string
 	local pool = table.clone(container.Drops)
 	if variant then
 		table.insert(pool, container.Extra)
@@ -367,8 +271,9 @@ local function pick(container: Container, variant: boolean, rarity: number): str
 	local weights = {}
 	local total = 0
 	for i, entry in pool do
-		local emphasis = if variant and i <= #container.Drops and entry.Weight <= RARE_WEIGHT then 2 else 1
-		local boost = if entry.Weight <= RARE_WEIGHT then 1 + E.RarityStep * rarity else 1
+		local rare = entry.Weight <= Balance.RareWeight
+		local emphasis = if variant and i <= #container.Drops and rare then Balance.VariantRareEmphasis else 1
+		local boost = if rare then 1 + E.RarityStep * rarity else 1
 		local weight = entry.Weight * emphasis * boost
 		weights[i] = weight
 		total += weight

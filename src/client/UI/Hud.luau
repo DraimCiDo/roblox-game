@@ -5,7 +5,7 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
+local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Components = require(script.Parent.Components)
 local Icons = require(script.Parent.Icons)

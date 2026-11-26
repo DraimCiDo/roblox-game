@@ -4,7 +4,7 @@ local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
-local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
+local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Audio = require(script.Parent.Parent.Network.Audio)
 local Types = require(ReplicatedStorage.Shared.Types)
 

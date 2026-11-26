@@ -6,7 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local Workspace = game:GetService("Workspace")
 
-local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
+local Catalog = require(ReplicatedStorage.Shared.Catalog)
 
 -- Самая длинная сторона предмета в студах после масштабирования.
 local LONGEST: { [string]: number } = { small = 1.7, large = 3.4, car = 5.5 }

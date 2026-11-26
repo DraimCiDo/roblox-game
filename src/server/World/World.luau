@@ -4,7 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
-local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
+local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Config = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Containers = require(script.Parent.Parent.Visuals.Containers)
