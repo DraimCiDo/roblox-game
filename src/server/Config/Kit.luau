@@ -53,4 +53,15 @@ return {
 		Texture = "rbxassetid://131949955634027",
 		Size = { 3.434, 3, 2.394 },
 	},
+	-- Dirt of the mopping job. Size sets the proportions the mesh is stretched to: flat and wide.
+	mud = {
+		Mesh = "rbxassetid://100360730243009",
+		Texture = "rbxassetid://138113193707596",
+		Size = { 5, 0.4, 5 },
+	},
+	clump = {
+		Mesh = "rbxassetid://82030224166452",
+		Texture = "rbxassetid://72003236256662",
+		Size = { 1.6, 0.6, 1.5 },
+	},
 }
