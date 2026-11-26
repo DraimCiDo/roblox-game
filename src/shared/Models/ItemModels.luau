@@ -1,7 +1,7 @@
 --!strict
 -- Детализированные 3D-модели предметов из деталей Roblox. Начало координат — центр основания,
 -- лицевая сторона смотрит в -Z. Используется и миром (сервер), и иконками интерфейса (клиент).
-local Catalog = require(script.Parent.Parent.Config.Catalog)
+local Catalog = require(script.Parent.Parent.Catalog)
 
 type Axis = "x" | "y" | "z"
 
