@@ -104,40 +104,93 @@ local function prop(parent: Instance, name: string, piece: string, foot: CFrame,
 	end)
 end
 
-local PROPS = {
-	{ Name = "Кадка", Piece = "plant", Height = 5, Box = Vector3.new(3, 2, 3) },
-	{ Name = "Скамья", Piece = "bench", Height = 3.4, Box = Vector3.new(3.6, 1.8, 2.4) },
-	{ Name = "Штабель ящиков", Piece = "crates", Height = 5.5, Box = Vector3.new(3.4, 5.5, 3.2) },
-	{
-		Name = "Информационная стела",
-		Piece = "terminal",
-		Height = 6.5,
-		Box = Vector3.new(3.4, 6.5, 3),
-	},
+type Piece = { Piece: string, Height: number, Box: Vector3 }
+
+local PIECES: { [string]: Piece } = {
+	plant = { Piece = "plant", Height = 5, Box = Vector3.new(3, 2, 3) },
+	bench = { Piece = "bench", Height = 3.4, Box = Vector3.new(3.6, 1.8, 2.4) },
+	crates = { Piece = "crates", Height = 5.5, Box = Vector3.new(3.4, 5.5, 3.2) },
+	terminal = { Piece = "terminal", Height = 6.5, Box = Vector3.new(3.4, 6.5, 3) },
+	arm = { Piece = "arm", Height = 7, Box = Vector3.new(4, 7, 4) },
 }
 
--- Расставляет декор кольцами вокруг центра зала; всё, что не проходит проверку места, пропускается.
+-- Offsets of a zone: X to the side, Z towards the centre of the hall. Each prop looks at the zone middle.
+local LOUNGE = {
+	{ "bench", -6, 0 },
+	{ "bench", 6, 0 },
+	{ "bench", 0, -6 },
+	{ "plant", -5.5, -5.5 },
+	{ "plant", 5.5, -5.5 },
+	{ "plant", 0, 0 },
+}
+local CARGO = {
+	{ "crates", -5.5, -3 },
+	{ "crates", -2, -6.5 },
+	{ "crates", 5.5, -3 },
+	{ "arm", 1.5, 0 },
+	{ "terminal", -5.5, 4 },
+}
+
+-- Angle in degrees from +X towards +Z, between the paths to the sectors.
+local ZONES = {
+	{ Name = "Зона отдыха", Angle = 67.5, Color = Color3.fromRGB(120, 196, 150), Props = LOUNGE },
+	{ Name = "Зона отдыха", Angle = 112.5, Color = Color3.fromRGB(120, 196, 150), Props = LOUNGE },
+	{ Name = "Грузовая зона", Angle = 247.5, Color = Color3.fromRGB(232, 170, 92), Props = CARGO },
+	{ Name = "Грузовая зона", Angle = 292.5, Color = Color3.fromRGB(232, 170, 92), Props = CARGO },
+}
+local ZONE_RADIUS = 56
+local ZONE_SIZE = 19
+
+local function disc(parent: Instance, at: Vector3, diameter: number, lift: number, color: Color3): ()
+	local frame = CFrame.new(at + Vector3.new(0, lift, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	local result =
+		part(parent, "Площадка", Enum.PartType.Cylinder, Vector3.new(0.04, diameter, diameter), frame, color)
+	result.CanCollide = false
+	result.CastShadow = false
+end
+
+-- Builds the composed zones of the hall; a prop whose place is taken is left out.
 function Hall.Decorate(center: Vector3, floorY: number): number
 	local folder = Instance.new("Folder")
 	folder.Name = "Декор зала"
 	folder.Parent = Workspace
 	local count = 0
-	local index = 0
-	-- Кольца декора начинаются за подиумом ядра CORPA (радиус 12) и кольцом разметки.
-	for _, radius in { 21, 29, 44, 62 } do
-		local around = if radius > 50 then 12 else 8
-		for slot = 0, around - 1 do
-			index += 1
-			local angle = (slot + (radius % 2) * 0.5) / around * math.pi * 2 + radius * 0.13
-			local at = Vector3.new(center.X + math.cos(angle) * radius, floorY, center.Z + math.sin(angle) * radius)
-			local kind = PROPS[(index % #PROPS) + 1]
-			if Hall.isFree(at, floorY, 4.5) then
-				table.insert(placed, at)
-				count += 1
-				local foot = CFrame.lookAt(at, Vector3.new(center.X, at.Y, center.Z))
-				prop(folder, kind.Name, kind.Piece, foot, kind.Height, kind.Box)
-			end
+	local function put(parent: Instance, kind: string, at: Vector3, facing: Vector3): ()
+		local entry = PIECES[kind]
+		if Hall.isFree(at, floorY, 3) then
+			table.insert(placed, at)
+			count += 1
+			local foot = CFrame.lookAt(at, Vector3.new(facing.X, at.Y, facing.Z))
+			prop(parent, kind, entry.Piece, foot, entry.Height, entry.Box)
 		end
+	end
+	local middle = Vector3.new(center.X, floorY, center.Z)
+	for _, zone in ZONES do
+		local angle = math.rad(zone.Angle)
+		local inward = -Vector3.new(math.cos(angle), 0, math.sin(angle))
+		local side = inward:Cross(Vector3.yAxis)
+		local at = middle - inward * ZONE_RADIUS
+		local model = group(folder, zone.Name)
+		for _, entry in zone.Props do
+			local spot = at + side * entry[2] + inward * entry[3]
+			local facing = if (spot - at).Magnitude > 0.1 then at else middle
+			put(model, entry[1], spot, facing)
+		end
+		-- After the props, so that the floor check does not see the disc.
+		disc(model, at, ZONE_SIZE + 1.4, 0.02, CHROME)
+		disc(model, at, ZONE_SIZE, 0.04, zone.Color)
+	end
+	-- Planters around the plaza and beside the logo and the vault door.
+	for _, degrees in { 20, 160, 200, 340 } do
+		local angle = math.rad(degrees)
+		put(folder, "plant", middle + Vector3.new(math.cos(angle), 0, math.sin(angle)) * 19, middle)
+	end
+	for _, x in { -1, 1 } do
+		for _, z in { -27, 27 } do
+			put(folder, "plant", middle + Vector3.new(x * 72, 0, z), middle)
+		end
+		put(folder, "terminal", middle + Vector3.new(x * 46, 0, 7), middle)
+		put(folder, "terminal", middle + Vector3.new(x * 46, 0, -7), middle)
 	end
 	return count
 end

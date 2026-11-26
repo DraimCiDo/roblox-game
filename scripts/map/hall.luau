@@ -139,6 +139,13 @@ for _, piece in LAB:GetChildren() do
 	end
 end
 
+-- Short dashes of the old route marking: they only add noise to the floor.
+for _, piece in LAB:GetChildren() do
+	if piece.Name == "Посадочная полоска маршрута" then
+		piece:Destroy()
+	end
+end
+
 -- 1. Пол и стены зала: тёмный графит вместо светлого бетона и известняка.
 for _, piece in LAB:GetChildren() do
 	if piece:IsA("BasePart") then
@@ -282,7 +289,7 @@ for i = -8, 7 do
 	end
 end
 ring(floor, "Кольцо ядра", center + Vector3.new(0, 0.03, 0), 15, 0.35, 0.06, 64, CYAN, Enum.Material.SmoothPlastic)
-ring(floor, "Внешнее кольцо", center + Vector3.new(0, 0.03, 0), 34, 0.18, 0.06, 96, STEEL, Enum.Material.SmoothPlastic)
+ring(floor, "Кольцо площади", center + Vector3.new(0, 0.03, 0), 22, 0.6, 0.06, 80, STEEL, Enum.Material.SmoothPlastic)
 
 local portals = {
 	{ Key = "01", At = Vector3.new(-57, 0, 57) },
@@ -294,26 +301,12 @@ local portals = {
 }
 for _, portal in portals do
 	local dir = (portal.At * Vector3.new(1, 0, 1)).Unit
-	local from, to = 16, portal.At.Magnitude - 3
+	local from, to = 22, portal.At.Magnitude - 3
 	local mid = dir * (from + to) / 2
-	local frame = CFrame.lookAt(Vector3.new(mid.X, FLOOR_Y + 0.03, mid.Z), Vector3.new(dir.X * to, FLOOR_Y + 0.03, dir.Z * to))
-	trim(part(floor, "Дорожка к сектору " .. portal.Key, Vector3.new(0.35, 0.06, to - from), frame, CYAN, Enum.Material.SmoothPlastic))
-	-- Шевроны вдоль дорожки: направление к сектору.
-	for distance = 24, to - 6, 9 do
-		local at = dir * distance
-		local base = CFrame.lookAt(Vector3.new(at.X, FLOOR_Y + 0.03, at.Z), Vector3.new(at.X + dir.X, FLOOR_Y + 0.03, at.Z + dir.Z))
-		for side = -1, 1, 2 do
-			trim(
-				part(
-					floor,
-					"Шеврон",
-					Vector3.new(0.25, 0.05, 1.8),
-					base * CFrame.new(side * 0.65, 0, 0.35) * CFrame.Angles(0, math.rad(side * 40), 0),
-					CYAN:Lerp(DARK, 0.45),
-					Enum.Material.SmoothPlastic
-				)
-			)
-		end
+	local frame = CFrame.lookAt(Vector3.new(mid.X, FLOOR_Y + 0.02, mid.Z), Vector3.new(dir.X * to, FLOOR_Y + 0.02, dir.Z * to))
+	trim(part(floor, "Дорожка к сектору " .. portal.Key, Vector3.new(7, 0.03, to - from), frame, Color3.fromRGB(190, 205, 255)))
+	for _, side in { -1, 1 } do
+		trim(part(floor, "Кант дорожки", Vector3.new(0.4, 0.06, to - from), frame * CFrame.new(side * 3.7, 0.01, 0), CYAN))
 	end
 end
 -- Дорожка к закрытым воротам (запад) — янтарная, «служебная».
