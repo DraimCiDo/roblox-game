@@ -59,6 +59,13 @@ function Style.round(parent: GuiObject, size: number): ()
 	corner.Parent = parent
 end
 
+-- A full circle, whatever the size.
+function Style.circle(parent: GuiObject): ()
+	local corner = parent:FindFirstChildOfClass("UICorner") or Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.5, 0)
+	corner.Parent = parent
+end
+
 function Style.outline(parent: GuiObject, color: Color3?, thickness: number?): UIStroke
 	local line = Instance.new("UIStroke")
 	line.Name = OUTLINE

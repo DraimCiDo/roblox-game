@@ -9,6 +9,7 @@ local Preview = require(script.Parent.Parent.Visuals.ContainerPreview)
 local Sfx = require(script.Parent.Parent.Audio.Sfx)
 local ItemPreview = require(script.Parent.Parent.Visuals.ItemPreview)
 local Style = require(script.Parent.Style)
+local Icons = require(script.Parent.Icons)
 local Texts = require(ReplicatedStorage.Shared.Config.Texts.UI)
 local Format = require(ReplicatedStorage.Shared.Util.Format)
 local Formatting = require(script.Parent.Format)
@@ -38,6 +39,8 @@ export type TileOptions = {
 	FocusKey: string?,
 }
 export type RowOptions = {
+	-- Shown when the row has no item Kind.
+	Icon: Icons.IconName?,
 	Name: string,
 	Details: string,
 	Tint: Color3,
@@ -173,13 +176,14 @@ function Components.text(parent: Instance, value: string, size: number, color: C
 end
 
 function Components.heading(value: string): ()
-	local field = Components.text(content, value, 21, Style.Text, true)
-	field.Size = UDim2.new(1, -9, 0, 32)
+	local field = Components.text(content, value, 22, Style.Text, true)
+	Style.textStroke(field, 2)
+	field.Size = UDim2.new(1, -9, 0, 34)
 	Components.append(field)
 end
 
 function Components.paragraph(value: string, color: Color3?): ()
-	local field = Components.text(content, value, 15, color or Style.Muted)
+	local field = Components.text(content, value, 17, color or Style.Muted)
 	field.AutomaticSize = Enum.AutomaticSize.Y
 	field.Size = UDim2.new(1, -9, 0, 0)
 	Components.append(field)
@@ -283,18 +287,18 @@ function Components.tile(parent: Instance, kind: string, item: Types.Item?, opti
 	icon.Position = UDim2.fromScale(0.08, 0.05)
 	icon.Size = UDim2.fromScale(0.84, 0.64)
 	if item then
-		local quality = Components.text(tile, tostring(item.Quality), 12, tint, true)
+		local quality = Components.text(tile, tostring(item.Quality), 15, tint, true)
 		Components.place(quality, 6, 3, UDim.new(0.5, 0), 16)
 	end
 	if options.Badge then
-		local badge = Components.text(tile, options.Badge, 12, Style.Amber, true)
+		local badge = Components.text(tile, options.Badge, 16, Style.Amber, true)
 		badge.AnchorPoint = Vector2.new(1, 0)
 		badge.Position = UDim2.new(1, -6, 0, 3)
 		badge.Size = UDim2.fromOffset(40, 16)
 		badge.TextXAlignment = Enum.TextXAlignment.Right
 	end
 	if options.Caption then
-		local caption = Components.text(tile, options.Caption, 12, options.CaptionColor or Style.Amber, true)
+		local caption = Components.text(tile, options.Caption, 14, options.CaptionColor or Style.Amber, true)
 		caption.AnchorPoint = Vector2.new(0, 1)
 		caption.Position = UDim2.new(0, 0, 1, -3)
 		caption.Size = UDim2.new(1, 0, 0, 16)
@@ -324,10 +328,10 @@ function Components.row(options: RowOptions): ()
 		local icon = ItemPreview.draw(badge, options.Kind)
 		icon.Size = UDim2.fromScale(1, 1)
 	else
-		local dot = Style.frame(badge, options.Tint, 8)
-		dot.AnchorPoint = Vector2.new(0.5, 0.5)
-		dot.Position = UDim2.fromScale(0.5, 0.5)
-		dot.Size = UDim2.fromOffset(20, 20)
+		local mark = Icons.draw(badge, options.Icon or "star", options.Tint, Style.Text)
+		mark.AnchorPoint = Vector2.new(0.5, 0.5)
+		mark.Position = UDim2.fromScale(0.5, 0.5)
+		mark.Size = UDim2.fromOffset(44, 44)
 	end
 	Style.outline(badge, options.Tint, 2)
 
@@ -335,7 +339,7 @@ function Components.row(options: RowOptions): ()
 	local headline = Components.text(entry, options.Name, 18, Style.Text, true)
 	Components.place(headline, 88, 9, UDim.new(1, reserved), 26)
 	headline.TextTruncate = Enum.TextTruncate.AtEnd
-	local sub = Components.text(entry, options.Details, 13, Style.Muted)
+	local sub = Components.text(entry, options.Details, 15, Style.Muted)
 	Components.place(sub, 88, 38, UDim.new(1, reserved), 40)
 	sub.TextYAlignment = Enum.TextYAlignment.Top
 
@@ -373,13 +377,13 @@ function Components.odds(values: { number }, following: { number }?, level: numb
 		local top = 8 + (index - 1) * 34
 		local locked = level < Catalog.TierUnlock[index]
 		local name =
-			Components.text(summary, Catalog.Containers[kind], 13, if locked then Style.Muted else Style.Text, true)
+			Components.text(summary, Catalog.Containers[kind], 15, if locked then Style.Muted else Style.Text, true)
 		Components.place(name, 12, top, UDim.new(1, -132), 19)
 		local chanceText = if locked
 			then Format(Texts.unlocksAtLevel, { level = Catalog.TierUnlock[index] })
 			elseif following then `{percent(chance)} → {percent(following[index])}`
 			else percent(chance)
-		local number = Components.text(summary, chanceText, 13, if locked then Style.Warning else Style.Muted, true)
+		local number = Components.text(summary, chanceText, 15, if locked then Style.Warning else Style.Muted, true)
 		number.TextXAlignment = Enum.TextXAlignment.Right
 		number.AnchorPoint = Vector2.new(1, 0)
 		number.Position = UDim2.new(1, -12, 0, top)

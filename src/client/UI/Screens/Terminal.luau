@@ -24,11 +24,11 @@ function Terminal.render(data: Types.View): ()
 	preview.Size = UDim2.new(0.36, 0, 0, 104)
 	local progress = Components.progressText(data)
 	local queueText = progress or Format(Texts.ordersSlots, { orders = data.Orders, maximum = maximum })
-	local queue = Components.text(hero, queueText, 13, tint, true)
+	local queue = Components.text(hero, queueText, 15, tint, true)
 	Components.place(queue, 14, 10, UDim.new(0.64, -14), 18)
 	local title = Components.text(hero, name, 22, Style.Text, true)
 	Components.place(title, 14, 30, UDim.new(0.64, -14), 54)
-	local tip = Components.text(hero, hint, 13, Style.Muted)
+	local tip = Components.text(hero, hint, 15, Style.Muted)
 	Components.place(tip, 14, 88, UDim.new(1, -28), 32)
 	if data.OrderStage == "delivery" then
 		Components.Live.Delivery = tip
@@ -49,9 +49,11 @@ function Terminal.render(data: Types.View): ()
 			{ coins = Components.coin(data.OrderPrice - data.Coins) }
 		)
 		else Format(Texts.orderFor, { price = Components.coin(data.OrderPrice) })
-	Components.command(caption, function()
+	local order = Components.command(caption, function()
 		Components.send("buy")
 	end, available and canPay, "primary")
+	order.Size = UDim2.new(1, -9, 0, 72)
+	order.TextSize = 26
 
 	-- Уровень лаборатории: растёт с числом открытых контейнеров, повышает цену заказа и открывает редкие типы.
 	local level, floor, ceiling = Catalog.levelRange(data.Opened)

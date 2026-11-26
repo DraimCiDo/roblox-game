@@ -14,12 +14,13 @@ function Loot.render(data: Types.View): ()
 	local summary = Components.card(104)
 	local current = Components.text(summary, name, 21, tint, true)
 	Components.place(current, 14, 10, UDim.new(1, -28), 50)
-	local caption = Components.text(summary, hint, 13, Style.Muted)
+	local caption = Components.text(summary, hint, 16, Style.Muted)
 	Components.place(caption, 14, 62, UDim.new(1, -28), 34)
 
 	local collect = (data.Perks.quickCollect or 0) > 0
 	Components.row({
 		Name = Texts.quickCollect,
+		Icon = "magnet",
 		Details = if collect then Texts.quickCollectDetails else Texts.quickCollectLocked,
 		Tint = Style.Cyan,
 		Caption = Texts.collect,
@@ -31,6 +32,7 @@ function Loot.render(data: Types.View): ()
 	local sell = (data.Perks.quickSell or 0) > 0
 	Components.row({
 		Name = Texts.quickSell,
+		Icon = "coin",
 		Details = if sell then Texts.quickSellDetails else Texts.quickSellLocked,
 		Tint = Style.Amber,
 		Caption = Texts.sell,

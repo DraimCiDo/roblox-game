@@ -332,7 +332,7 @@ local function build(): ()
 		Settings = function()
 			toggle("settings")
 		end,
-	})
+	}, gui)
 
 	Guide.build(hudLayer, function()
 		send("skipTutorial")

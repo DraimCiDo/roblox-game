@@ -168,6 +168,7 @@ local function drawTabs(parent: Frame, data: Types.View, current: string): TextB
 			mark.AnchorPoint = Vector2.new(1, 0)
 			mark.Position = UDim2.new(1, -4, 0, 4)
 			mark.Size = UDim2.fromOffset(14, 14)
+			Style.circle(mark)
 			Style.outline(mark, Style.Edge, 2)
 		end
 	end
@@ -247,16 +248,15 @@ function Perks.render(data: Types.View, _wide: boolean): ()
 	summary.ZIndex = 10
 	Style.textStroke(summary, 2)
 
-	local dock = Components.dock(MOBILE_DOCK, true, SIDE_PANEL)
-
 	if next(infos) == nil then
 		lockedMessage(view, branch)
-		dock.Visible = false
 		if activeTab then
 			Components.prefer(activeTab)
 		end
 		return
 	end
+
+	local dock = Components.dock(MOBILE_DOCK, true, SIDE_PANEL)
 
 	local host = Instance.new("ScrollingFrame")
 	host.Name = "Tree"

@@ -112,11 +112,13 @@ local function dot(button: TextButton, color: Color3): Frame
 	mark.Position = UDim2.new(1, -4, 0, 4)
 	mark.Size = UDim2.fromOffset(22, 22)
 	mark.Visible = false
+	Style.circle(mark)
 	Style.outline(mark, Style.Edge, 3)
 	return mark
 end
 
-function Hud.build(gui: GuiBase2d, callbacks: Callbacks): ()
+-- overlay: the ScreenGui itself, so that notices stay above an open menu window.
+function Hud.build(gui: GuiBase2d, callbacks: Callbacks, overlay: ScreenGui): ()
 	-- Balance and laboratory level: one block at the top center.
 	local top = Style.frame(gui)
 	top.Name = "Top"
@@ -204,12 +206,12 @@ function Hud.build(gui: GuiBase2d, callbacks: Callbacks): ()
 	cursorHint.TextXAlignment = Enum.TextXAlignment.Center
 	cursorHint.Visible = false
 
-	toasts = Style.frame(gui)
+	toasts = Style.frame(overlay)
 	toasts.Name = "Notices"
 	toasts.AnchorPoint = Vector2.new(0.5, 0)
 	toasts.Position = UDim2.new(0.5, 0, 0, 128)
 	toasts.Size = UDim2.new(1, -38, 0, 170)
-	toasts.ZIndex = 6
+	toasts.ZIndex = 8
 	local toastBounds = Instance.new("UISizeConstraint")
 	toastBounds.MaxSize = Vector2.new(430, 170)
 	toastBounds.Parent = toasts
