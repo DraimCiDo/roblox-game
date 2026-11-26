@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Types = require(ReplicatedStorage.Shared.Types)
 local Components = require(script.Parent.Parent.Components)
 local Style = require(script.Parent.Parent.Style)
+local Texts = require(ReplicatedStorage.Shared.Config.Texts.UI)
 
 local Loot = {}
 
@@ -18,12 +19,10 @@ function Loot.render(data: Types.View): ()
 
 	local collect = (data.Perks.quickCollect or 0) > 0
 	Components.row({
-		Name = "Быстрый сбор",
-		Details = if collect
-			then "Переместить всю добычу на склад"
-			else "Откройте перк «Быстрый сбор»",
+		Name = Texts.quickCollect,
+		Details = if collect then Texts.quickCollectDetails else Texts.quickCollectLocked,
 		Tint = Style.Cyan,
-		Caption = "Собрать",
+		Caption = Texts.collect,
 		Enabled = open and collect,
 		Callback = function()
 			Components.send("quickCollect")
@@ -31,12 +30,10 @@ function Loot.render(data: Types.View): ()
 	})
 	local sell = (data.Perks.quickSell or 0) > 0
 	Components.row({
-		Name = "Быстрая продажа",
-		Details = if sell
-			then "Продать всю добычу на площадке"
-			else "Откройте перк «Быстрая продажа»",
+		Name = Texts.quickSell,
+		Details = if sell then Texts.quickSellDetails else Texts.quickSellLocked,
 		Tint = Style.Amber,
-		Caption = "Продать",
+		Caption = Texts.sell,
 		Tone = "reward",
 		Enabled = open and sell,
 		Callback = function()

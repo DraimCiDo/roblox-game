@@ -10,6 +10,8 @@ local Components = require(script.Parent.Parent.Components)
 local Icons = require(script.Parent.Parent.Icons)
 local Sfx = require(script.Parent.Parent.Parent.Audio.Sfx)
 local Style = require(script.Parent.Parent.Style)
+local Texts = require(ReplicatedStorage.Shared.Config.Texts.UI)
+local Format = require(ReplicatedStorage.Shared.Util.Format)
 
 -- Карта навыков — «экран прибора»: почти чёрный графит, стальные рельсы связей.
 local BOARD = Color3.fromRGB(8, 12, 18)
@@ -128,9 +130,9 @@ local function stateFor(perk: Catalog.Perk, data: Types.View): NodeState
 	local reason: string? = lock
 	if cost and not lock then
 		if data.Coins < cost then
-			reason = `Не хватает {Components.coin(cost - data.Coins)} монет`
+			reason = Format(Texts.perkMissingCoins, { coins = Components.coin(cost - data.Coins) })
 		elseif data.Coins - cost < data.OrderPrice then
-			reason = `Оставьте {Components.coin(data.OrderPrice)} монет на заказ`
+			reason = Format(Texts.perkKeepCoins, { coins = Components.coin(data.OrderPrice) })
 		end
 	end
 	return {
@@ -291,10 +293,15 @@ local function details(panel: Frame, state: NodeState, branches: { [string]: str
 	title.TextWrapped = wide
 	title.TextTruncate = Enum.TextTruncate.AtEnd
 	local progress = if perk.Step
-		then `Ступень {perk.Step} из {perk.Steps} · {if state.Level > 0
-			then "изучена"
-			else "не изучена"}`
-		else `Уровень {state.Level} / {#perk.Costs}`
+		then Format(
+			Texts.perkStep,
+			{
+				step = perk.Step,
+				steps = perk.Steps,
+				state = if state.Level > 0 then Texts.perkLearned else Texts.perkNotLearned,
+			}
+		)
+		else Format(Texts.perkLevel, { level = state.Level, max = #perk.Costs })
 	local count = Components.text(panel, progress, 13, Style.Muted)
 	Components.place(count, inset, if wide then 82 else 25, width, 16)
 	if not wide then
@@ -308,12 +315,13 @@ local function details(panel: Frame, state: NodeState, branches: { [string]: str
 		pips.Size = UDim2.new(width, UDim.new(0, 7))
 	end
 
-	local currentText = if state.Level > 0 then perk.Describe(state.Level) else "Не изучено"
-	local current = Components.text(panel, `Сейчас · {currentText}`, if wide then 14 else 12, Style.Muted)
+	local currentText = if state.Level > 0 then perk.Describe(state.Level) else Texts.perkNothing
+	local current =
+		Components.text(panel, Format(Texts.perkNow, { text = currentText }), if wide then 14 else 12, Style.Muted)
 	Components.place(current, inset, if wide then 126 else 57, width, if wide then 40 else 26)
 	local nextText = if state.Cost
-		then `Далее · {perk.Describe(state.Level + 1)}`
-		else "Эта ступень уже изучена"
+		then Format(Texts.perkNext, { text = perk.Describe(state.Level + 1) })
+		else Texts.perkStepDone
 	local nextEffect = Components.text(panel, nextText, if wide then 16 else 13, Style.Text)
 	Components.place(nextEffect, inset, if wide then 170 else 83, width, if wide then 60 else 35)
 
@@ -323,7 +331,9 @@ local function details(panel: Frame, state: NodeState, branches: { [string]: str
 		Components.place(reason, inset, if wide then 237 else 117, width, if wide then 44 else 28)
 	end
 	local affordable = state.Cost ~= nil and state.Reason == nil
-	local caption = if state.Cost then `Изучить · {Components.coin(state.Cost)}` else "Изучено"
+	local caption = if state.Cost
+		then Format(Texts.perkBuy, { cost = Components.coin(state.Cost) })
+		else Texts.perkBought
 	local buy = Style.button(panel, caption, function()
 		Components.send("perk", perk.Key)
 	end, affordable, if affordable then "primary" else "neutral")
@@ -637,12 +647,13 @@ function Perks.render(source: Types.View, _wide: boolean): ()
 	core.Size = UDim2.fromOffset(104, 104)
 	core.ZIndex = 4
 	Style.outline(core, Style.Text, 4)
-	local coreLevel = centerText(core, `Ур. {Catalog.level(data.Opened)}`, 24, Style.Text, true)
+	local coreLevel =
+		centerText(core, Format(Texts.perkLabLevel, { level = Catalog.level(data.Opened) }), 24, Style.Text, true)
 	coreLevel.Position = UDim2.fromOffset(0, 24)
 	coreLevel.Size = UDim2.new(1, 0, 0, 30)
 	coreLevel.ZIndex = 5
 	Style.textStroke(coreLevel, 2)
-	local coreNote = centerText(core, `{data.Opened} откр.`, 12, Style.Muted)
+	local coreNote = centerText(core, Format(Texts.perkOpened, { opened = data.Opened }), 12, Style.Muted)
 	coreNote.Position = UDim2.fromOffset(0, 58)
 	coreNote.Size = UDim2.new(1, 0, 0, 18)
 	coreNote.ZIndex = 5
@@ -728,8 +739,8 @@ function Perks.render(source: Types.View, _wide: boolean): ()
 	local summary = Components.text(
 		view,
 		if ready > 0
-			then `Изучено {owned} из {total} · можно улучшить: {ready}`
-			else `Изучено {owned} из {total}`,
+			then Format(Texts.perkTotalReady, { owned = owned, total = total, ready = ready })
+			else Format(Texts.perkTotal, { owned = owned, total = total }),
 		13,
 		Style.Muted,
 		true

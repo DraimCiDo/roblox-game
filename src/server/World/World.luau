@@ -14,6 +14,8 @@ local Audio = require(script.Parent.Parent.Network.Audio)
 local Sector = require(script.Parent.Sector)
 local ItemAssets = require(script.Parent.ItemAssets)
 local Theme = require(ReplicatedStorage.Shared.Config.Theme)
+local Texts = require(ReplicatedStorage.Shared.Config.Texts.World)
+local Format = require(ReplicatedStorage.Shared.Util.Format)
 
 local STEEL = Color3.fromRGB(45, 56, 68)
 local ICE = Theme.Colors.Cyan
@@ -156,14 +158,14 @@ local function rankingBoard(
 		stripe.Parent = panel
 		boardLabel(panel, title, 24, 15, 592, 43, 36, true)
 		boardLabel(panel, subtitle, 24, 59, 592, 26, 19, false).TextColor3 = MUTED
-		boardLabel(panel, "Место", 24, 91, 68, 26, 17, true).TextColor3 = accent
+		boardLabel(panel, Texts.rankPlace, 24, 91, 68, 26, 17, true).TextColor3 = accent
 		local coinEdge = if showOpened then 490 else 616
-		boardLabel(panel, "Игрок", 108, 91, 230, 26, 17, true).TextColor3 = accent
-		local coinHeading = boardLabel(panel, "Монеты", 350, 91, coinEdge - 350, 26, 17, true)
+		boardLabel(panel, Texts.rankPlayer, 108, 91, 230, 26, 17, true).TextColor3 = accent
+		local coinHeading = boardLabel(panel, Texts.rankCoins, 350, 91, coinEdge - 350, 26, 17, true)
 		coinHeading.TextColor3 = accent
 		coinHeading.TextXAlignment = Enum.TextXAlignment.Right
 		if showOpened then
-			local opened = boardLabel(panel, "Открыто", 505, 91, 111, 26, 17, true)
+			local opened = boardLabel(panel, Texts.rankOpened, 505, 91, 111, 26, 17, true)
 			opened.TextColor3 = accent
 			opened.TextXAlignment = Enum.TextXAlignment.Right
 		end
@@ -192,7 +194,7 @@ local function rankingBoard(
 			end
 			table.insert(rows, { Frame = row, Name = name, Score = score, Opened = opened })
 		end
-		local status = boardLabel(panel, "Загрузка рейтинга…", 24, 154, 592, 96, 26, false)
+		local status = boardLabel(panel, Texts.rankLoading, 24, 154, 592, 96, 26, false)
 		status.TextColor3 = MUTED
 		status.TextWrapped = true
 		status.TextXAlignment = Enum.TextXAlignment.Center
@@ -277,7 +279,7 @@ end
 
 local function requirePart(parent: Instance, name: string): Part
 	local child = parent:FindFirstChild(name)
-	assert(child and child:IsA("Part"), `[World] В {parent.Name} отсутствует деталь «{name}»`)
+	assert(child and child:IsA("Part"), `[World] {parent.Name} is missing the part «{name}»`)
 	return child
 end
 
@@ -315,9 +317,9 @@ end
 local function dressSector(model: Model): ()
 	for name, text in
 		{
-			["Панель экспозиции"] = "ВИТРИНЫ",
-			["Панель заказов"] = "ЗАКАЗЫ",
-			["Панель склада"] = "СКЛАД",
+			["Панель экспозиции"] = Texts.panelDisplays,
+			["Панель заказов"] = Texts.panelOrders,
+			["Панель склада"] = Texts.panelStorage,
 		}
 	do
 		local panel = model:FindFirstChild(name)
@@ -339,7 +341,7 @@ end
 
 local function findGates(model: Model): (CFrame, { Part }, { Part }, { [Part]: CFrame })
 	local shutters = authoredParts(model, "Створка шлюза")
-	assert(#shutters == 4, `[World] В {model.Name} требуется четыре створки`)
+	assert(#shutters == 4, `[World] {model.Name} needs four shutters`)
 	table.sort(shutters, function(first, second)
 		return first.Position.Y < second.Position.Y
 	end)
@@ -363,7 +365,7 @@ end
 
 function World.Build(useForPlot: (number, Player, string, string?) -> ()): { Plot }
 	local root = Workspace:WaitForChild("CORPA — испытательная лаборатория", 10)
-	assert(root, "[World] Не найдена модель лаборатории Roblox Studio")
+	assert(root, "[World] Lab model not found in the place")
 	for _, name in { "Светильник перехода", "Светильник подхода" } do
 		local hall = name == "Светильник подхода"
 		for _, fixture in authoredParts(root, name) do
@@ -371,48 +373,36 @@ function World.Build(useForPlot: (number, Player, string, string?) -> ()): { Plo
 		end
 	end
 	local leaderboardParts = authoredParts(root, "Терминал рейтинга")
-	assert(#leaderboardParts == 2, "[World] Требуются два терминала рейтинга")
+	assert(#leaderboardParts == 2, "[World] Two ranking terminals are required")
 	table.sort(leaderboardParts, function(first, second)
 		return first.Position.X < second.Position.X
 	end)
-	boards.localLobby = rankingBoard(
-		leaderboardParts[1],
-		"Рейтинг лобби",
-		"Игроки на этом сервере · заработано за всё время",
-		Config.MaxPlayers,
-		ICE,
-		true
-	)
-	boards.global = rankingBoard(
-		leaderboardParts[2],
-		"Общий рейтинг",
-		"Топ-10 · заработано за всё время",
-		10,
-		AMBER
-	)
+	boards.localLobby =
+		rankingBoard(leaderboardParts[1], Texts.lobbyRanking, Texts.lobbyRankingNote, Config.MaxPlayers, ICE, true)
+	boards.global = rankingBoard(leaderboardParts[2], Texts.globalRanking, Texts.globalRankingNote, 10, AMBER)
 
 	local plots = {}
 	for index = 1, Config.MaxPlayers do
 		local model = root:FindFirstChild(`Сектор 0{index}`)
-		assert(model and model:IsA("Model"), `[World] Не найден сектор 0{index}`)
+		assert(model and model:IsA("Model"), `[World] Sector 0{index} not found`)
 		dressSector(model)
 		local function use(player: Player, action: string, key: string?)
 			useForPlot(index, player, action, key)
 		end
-		local sign = `СЕКТОР 0{index}`
+		local sign = Format(Texts.sectorName, { index = index })
 		local ownerBoard = requirePart(model, "Табло сектора")
 		local owner = {
-			surfaceLabel(ownerBoard, `{sign}\nСВОБОДЕН`, 42),
-			surfaceLabel(ownerBoard, `{sign}\nСВОБОДЕН`, 42, Enum.NormalId.Back),
+			surfaceLabel(ownerBoard, Format(Texts.sectorFree, { sector = sign }), 42),
+			surfaceLabel(ownerBoard, Format(Texts.sectorFree, { sector = sign }), 42, Enum.NormalId.Back),
 			-- Указатель перед входом в сектор тоже показывает ник владельца, чтобы игроки не путали сектора.
 			surfaceLabel(
 				requirePart(root, `Указатель сектора 0{index}`),
-				`{sign}\nСВОБОДЕН`,
+				Format(Texts.sectorFree, { sector = sign }),
 				52
 			),
 		}
 		local spawn = model:FindFirstChildWhichIsA("SpawnLocation")
-		assert(spawn, `[World] В {model.Name} отсутствует вход`)
+		assert(spawn, `[World] {model.Name} has no entrance`)
 		local stations: { [string]: Part } = {
 			terminal = requirePart(model, "Заказы"),
 			inventory = requirePart(model, "Склад"),
@@ -430,10 +420,10 @@ function World.Build(useForPlot: (number, Player, string, string?) -> ()): { Plo
 			if authored then
 				authored.Parent = face
 			end
-			prompt(face, "Открыть", terminal.Name, use, "menu", key, 5.5)
+			prompt(face, Texts.open, terminal.Name, use, "menu", key, 5.5)
 		end
 		local storage = authoredParts(model, "Складской модуль")
-		assert(#storage == 10, `[World] В {model.Name} требуется 10 складских модулей`)
+		assert(#storage == 10, `[World] {model.Name} needs 10 storage modules`)
 		table.sort(storage, function(first, second)
 			if first.Position.Y ~= second.Position.Y then
 				return first.Position.Y < second.Position.Y
@@ -445,7 +435,7 @@ function World.Build(useForPlot: (number, Player, string, string?) -> ()): { Plo
 		local standSigns = {}
 		for slot in Catalog.DisplaySizes do
 			local stand = requirePart(model, `Витрина {slot}`)
-			prompt(stand, "Управлять", stand.Name, use, "menu", tostring(slot), 7)
+			prompt(stand, Texts.manage, stand.Name, use, "menu", tostring(slot), 7)
 			stands[slot] = stand
 			local placard = part(
 				stand,
@@ -460,7 +450,7 @@ function World.Build(useForPlot: (number, Player, string, string?) -> ()): { Plo
 			standSigns[slot] = surfaceLabel(placard, "", 18)
 		end
 		local button = requirePart(model, "Пульт добычи")
-		prompt(button, "Добыча", "Управление добычей", use, "menu", "loot")
+		prompt(button, Texts.loot, Texts.lootControl, use, "menu", "loot")
 		local pad, upper, lower, gateFrames = findGates(model)
 		local pipeEntry = requirePart(model, "Точка входа в трубу")
 		local deliveryPoint = requirePart(model, "Верхняя точка подачи")
@@ -522,9 +512,9 @@ function World.Build(useForPlot: (number, Player, string, string?) -> ()): { Plo
 end
 
 function World.Owner(plot: Plot, player: Player?): ()
-	local title = if player then player.DisplayName else "СВОБОДЕН"
+	local title = if player then player.DisplayName else Texts.free
 	for _, face in plot.Owner do
-		face.Text = `СЕКТОР 0{plot.Rank}\n{title}`
+		face.Text = Format(Texts.sectorOwner, { index = plot.Rank, title = title })
 		face.TextColor3 = if player then PAPER else MUTED
 	end
 	if player then
@@ -1042,7 +1032,7 @@ function World.Sync(plot: Plot, order: Types.Order?, use: Use, scatter: boolean,
 			if primary then
 				prompt(
 					primary,
-					"На склад",
+					Texts.toStorage,
 					`{Catalog.Items[item.Kind].Name} · {item.Quality}/100`,
 					use,
 					"pickup",

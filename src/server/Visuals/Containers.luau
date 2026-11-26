@@ -7,6 +7,7 @@ local TweenService = game:GetService("TweenService")
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Audio = require(script.Parent.Parent.Network.Audio)
 local Types = require(ReplicatedStorage.Shared.Types)
+local Texts = require(ReplicatedStorage.Shared.Config.Texts.World)
 
 type Use = (Player, string, string?) -> ()
 type Axis = "x" | "y" | "z"
@@ -300,9 +301,9 @@ local BOX_WIDTH = 4.6
 local BOX_HEIGHT = 2.7
 local BOX_FLOOR = 0.14
 local BOX_PROMPTS = {
-	"Открыть левую створку",
-	"Открыть правую створку",
-	"Раскрыть коробку",
+	Texts.boxOpenLeft,
+	Texts.boxOpenRight,
+	Texts.boxUnfold,
 }
 
 local function buildBox(b: Build): ()
@@ -344,7 +345,7 @@ local function buildBox(b: Build): ()
 	)
 	hinge(b, label, Vector3.new(0, f, -w / 2), Vector3.xAxis, -math.pi / 2)
 	join(b, "Walls", label)
-	sign(label, Enum.NormalId.Front, "ХРУПКО\n↑ ВЕРХ", INK)
+	sign(label, Enum.NormalId.Front, Texts.boxLabel, INK)
 	b.Layout.Named.Front = front
 
 	for _, side in { -1, 1 } do
@@ -384,7 +385,7 @@ local function buildBox(b: Build): ()
 		)
 		join(b, "Tape", piece)
 	end
-	b.Kit.Prompt(body, "Сорвать ленту", b.Model.Name, b.Use, "open", nil, 10)
+	b.Kit.Prompt(body, Texts.boxTape, b.Model.Name, b.Use, "open", nil, 10)
 end
 
 local function boxStep(ctx: Ctx, step: number, instant: boolean): ()
@@ -545,8 +546,7 @@ local function buildCrate(b: Build, openParts: { Part }): ()
 			Enum.Material.Metal
 		)
 		join(b, `Lock{index}`, plate)
-		local interaction =
-			b.Kit.Prompt(band, "Сломать скобу", b.Model.Name, b.Use, "open", tostring(index), 7)
+		local interaction = b.Kit.Prompt(band, Texts.crateBreak, b.Model.Name, b.Use, "open", tostring(index), 7)
 		interaction.KeyboardKeyCode = if index % 2 == 1 then Enum.KeyCode.E else Enum.KeyCode.F
 		interaction.GamepadKeyCode = if index % 2 == 1 then Enum.KeyCode.ButtonX else Enum.KeyCode.ButtonY
 	end
@@ -726,7 +726,7 @@ local function buildSafe(b: Build, openParts: { Part }): ()
 	for _, piece in b.Layout.Groups.Door do
 		hinge(b, piece, SAFE_DOOR_PIVOT, Vector3.yAxis, 1.85)
 	end
-	b.Kit.Prompt(dial, "Вращать ручку", b.Model.Name, b.Use, "open", nil, 9)
+	b.Kit.Prompt(dial, Texts.safeTurn, b.Model.Name, b.Use, "open", nil, 9)
 end
 
 local function safeOpen(ctx: Ctx, instant: boolean): ()
@@ -861,15 +861,7 @@ local function buildCargo(b: Build, openParts: { Part }): ()
 			Enum.Material.Metal
 		)
 		table.insert(openParts, lock)
-		b.Kit.Prompt(
-			lock,
-			"Разблокировать",
-			b.Model.Name,
-			b.Use,
-			"open",
-			tostring(if side == -1 then 1 else 2),
-			nil
-		)
+		b.Kit.Prompt(lock, Texts.cargoUnlock, b.Model.Name, b.Use, "open", tostring(if side == -1 then 1 else 2), nil)
 	end
 	local handle = add(
 		b,
@@ -880,7 +872,7 @@ local function buildCargo(b: Build, openParts: { Part }): ()
 		Enum.Material.Neon
 	)
 	table.insert(openParts, handle)
-	b.Kit.Prompt(handle, "Открыть створки", b.Model.Name, b.Use, "open", "doors", nil)
+	b.Kit.Prompt(handle, Texts.cargoOpen, b.Model.Name, b.Use, "open", "doors", nil)
 end
 
 local function cargoUnlock(ctx: Ctx, lock: Part, side: number, instant: boolean): ()
@@ -947,10 +939,10 @@ local SECRET_WIDTH = 6
 local SECRET_HEIGHT = 4.2
 local SECRET_FLOOR = 0.14
 local SECRET_PROMPTS = {
-	"Зарядить ядро",
-	"Усилить свечение",
-	"Ещё сильнее",
-	"Почти готово!",
+	Texts.secretCharge1,
+	Texts.secretCharge2,
+	Texts.secretCharge3,
+	Texts.secretCharge4,
 }
 
 local function buildSecret(b: Build, openParts: { Part }): ()

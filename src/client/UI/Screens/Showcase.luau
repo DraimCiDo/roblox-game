@@ -4,9 +4,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Components = require(script.Parent.Parent.Components)
+local Texts = require(ReplicatedStorage.Shared.Config.Texts.UI)
+local Format = require(ReplicatedStorage.Shared.Util.Format)
 
-local DISPLAY_TYPES: { [string]: string } =
-	{ small = "Малые предметы", large = "Крупные предметы", car = "Автомобили" }
+local DISPLAY_TYPES: { [string]: string } = { small = Texts.sizeSmall, large = Texts.sizeLarge, car = Texts.sizeCar }
 
 local Showcase = {}
 
@@ -21,10 +22,10 @@ function Showcase.render(data: Types.View, key: string): ()
 		local definition = Catalog.Items[item.Kind]
 		Components.row({
 			Name = definition.Name,
-			Details = `{Components.itemDetails(item)} · выставлено`,
+			Details = Format(Texts.displayedDetails, { details = Components.itemDetails(item) }),
 			Tint = Components.qualityColor(item.Quality),
 			Kind = item.Kind,
-			Caption = "На склад",
+			Caption = Texts.toStorage,
 			Tone = "neutral",
 			Callback = function()
 				Components.send("removeDisplay", nil, key)
@@ -32,9 +33,7 @@ function Showcase.render(data: Types.View, key: string): ()
 		})
 		return
 	end
-	Components.paragraph(
-		"Выставленный предмет нельзя продать или внести в коллекцию, пока он на витрине."
-	)
+	Components.paragraph(Texts.showcaseHelp)
 	local found = false
 	for _, candidate in data.Inventory do
 		local definition = Catalog.Items[candidate.Kind]
@@ -45,7 +44,7 @@ function Showcase.render(data: Types.View, key: string): ()
 				Details = Components.itemDetails(candidate),
 				Tint = Components.qualityColor(candidate.Quality),
 				Kind = candidate.Kind,
-				Caption = "Выставить",
+				Caption = Texts.showcasePlace,
 				FocusKey = candidate.Id,
 				Callback = function()
 					Components.send("display", candidate.Id, key)
@@ -54,9 +53,7 @@ function Showcase.render(data: Types.View, key: string): ()
 		end
 	end
 	if not found then
-		Components.paragraph(
-			"На складе пока нет предметов подходящего размера."
-		)
+		Components.paragraph(Texts.showcaseEmpty)
 	end
 end
 

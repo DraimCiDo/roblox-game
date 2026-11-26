@@ -138,9 +138,7 @@ local function load(kind: string, assetId: number): ()
 		end
 		task.wait(2 ^ attempt)
 	end
-	warn(
-		`[ItemAssets] Не удалось загрузить модель «{definition.Name}» ({assetId}), используется встроенная`
-	)
+	warn(`[ItemAssets] Failed to load the model «{definition.Name}» ({assetId}), using the built-in one`)
 end
 
 -- Запускает фоновую загрузку моделей из Creator Store. Выключено по умолчанию: игра использует встроенные

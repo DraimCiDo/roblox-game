@@ -11,6 +11,8 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Data = require(script.Parent.Parent.PlayerDataService)
 local Economy = require(script.Parent.Parent.Parent.Economy.Economy)
 local Hall = require(script.Parent.Parent.Parent.World.Hall)
+local Texts = require(ReplicatedStorage.Shared.Config.Texts.Notices)
+local Format = require(ReplicatedStorage.Shared.Util.Format)
 
 local Mop = {}
 
@@ -79,7 +81,7 @@ local function stop(player: Player, silent: boolean?): ()
 		worker.Spot:Destroy()
 	end
 	if not silent and player.Parent then
-		notify(player, `Работа закончена: вымыто пятен — {worker.Count}`)
+		notify(player, Format(Texts.mopStopped, { count = worker.Count }))
 	end
 end
 
@@ -130,8 +132,8 @@ local function spawnSpot(player: Player, worker: Worker): ()
 	pulse.Parent = spot
 	spot:SetAttribute("OwnerId", player.UserId)
 	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = "Вымыть"
-	prompt.ObjectText = `Пятно · {player.DisplayName}`
+	prompt.ActionText = Texts.mopWash
+	prompt.ObjectText = Format(Texts.mopSpotObject, { name = player.DisplayName })
 	prompt.HoldDuration = CLEAN_TIME
 	prompt.MaxActivationDistance = 9
 	prompt.RequiresLineOfSight = false
@@ -157,7 +159,7 @@ local function spawnSpot(player: Player, worker: Worker): ()
 			Economy.credit(data, Config.MopReward)
 		end)
 		refresh(actor)
-		notify(actor, `+{Config.MopReward} монет за уборку`)
+		notify(actor, Format(Texts.mopReward, { reward = Config.MopReward }))
 		spawnSpot(actor, current)
 	end)
 	worker.Spot = spot
@@ -173,10 +175,7 @@ local function toggle(player: Player): ()
 	end
 	local worker: Worker = { Spot = nil, Count = 0, LastAt = 0 }
 	workers[player] = worker
-	notify(
-		player,
-		`Вы взяли швабру. Мойте пятна на полу — {Config.MopReward} монет за каждое`
-	)
+	notify(player, Format(Texts.mopStarted, { reward = Config.MopReward }))
 	spawnSpot(player, worker)
 end
 
@@ -222,8 +221,8 @@ function Mop.Start(center: Vector3, notice: (Player, string) -> (), update: (Pla
 		folder
 	)
 	stationPrompt = Instance.new("ProximityPrompt")
-	stationPrompt.ObjectText = "Мытьё полов"
-	stationPrompt.ActionText = "Взять швабру"
+	stationPrompt.ObjectText = Texts.mopStationObject
+	stationPrompt.ActionText = Texts.mopTake
 	stationPrompt.MaxActivationDistance = 9
 	stationPrompt.RequiresLineOfSight = false
 	stationPrompt.Parent = station

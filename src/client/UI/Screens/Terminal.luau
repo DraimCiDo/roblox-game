@@ -6,6 +6,8 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Preview = require(script.Parent.Parent.Parent.Visuals.ContainerPreview)
 local Components = require(script.Parent.Parent.Components)
 local Style = require(script.Parent.Parent.Style)
+local Texts = require(ReplicatedStorage.Shared.Config.Texts.UI)
+local Format = require(ReplicatedStorage.Shared.Util.Format)
 
 local Terminal = {}
 
@@ -21,7 +23,7 @@ function Terminal.render(data: Types.View): ()
 	preview.Position = UDim2.new(1, -6, 0, 4)
 	preview.Size = UDim2.new(0.36, 0, 0, 104)
 	local progress = Components.progressText(data)
-	local queueText = progress or `Заказы  {data.Orders} / {maximum}`
+	local queueText = progress or Format(Texts.ordersSlots, { orders = data.Orders, maximum = maximum })
 	local queue = Components.text(hero, queueText, 13, tint, true)
 	Components.place(queue, 14, 10, UDim.new(0.64, -14), 18)
 	local title = Components.text(hero, name, 22, Style.Text, true)
@@ -41,9 +43,12 @@ function Terminal.render(data: Types.View): ()
 	end
 
 	local caption = if not available
-		then "Очередь заполнена"
-		elseif not canPay then `Не хватает {Components.coin(data.OrderPrice - data.Coins)} монет`
-		else `Заказать  ·  {Components.coin(data.OrderPrice)} монет`
+		then Texts.queueFull
+		elseif not canPay then Format(
+			Texts.missingCoins,
+			{ coins = Components.coin(data.OrderPrice - data.Coins) }
+		)
+		else Format(Texts.orderFor, { price = Components.coin(data.OrderPrice) })
 	Components.command(caption, function()
 		Components.send("buy")
 	end, available and canPay, "primary")
@@ -51,17 +56,17 @@ function Terminal.render(data: Types.View): ()
 	-- Уровень лаборатории: растёт с числом открытых контейнеров, повышает цену заказа и открывает редкие типы.
 	local level, floor, ceiling = Catalog.levelRange(data.Opened)
 	local lab = Components.card(96)
-	local labTitle = Components.text(lab, `Уровень лаборатории {level}`, 20, Style.Text, true)
+	local labTitle = Components.text(lab, Format(Texts.labLevel, { level = level }), 20, Style.Text, true)
 	Components.place(labTitle, 14, 8, UDim.new(1, -28), 26)
 	local detail
 	if ceiling then
-		detail = `Открыто {data.Opened} · до уровня {level + 1} ещё {ceiling - data.Opened}`
+		detail = Format(Texts.openedToNext, { opened = data.Opened, next = level + 1, left = ceiling - data.Opened })
 	else
-		detail = `Открыто {data.Opened} · максимальный уровень`
+		detail = Format(Texts.openedMax, { opened = data.Opened })
 	end
 	for tier, need in Catalog.TierUnlock do
 		if need > level then
-			detail ..= `\nНа уровне {need} появится: {Catalog.Containers[Catalog.Kinds[tier]]}`
+			detail ..= Format(Texts.levelUnlocks, { need = need, name = Catalog.Containers[Catalog.Kinds[tier]] })
 			break
 		end
 	end
@@ -71,7 +76,7 @@ function Terminal.render(data: Types.View): ()
 	local bar = Style.meter(lab, ratio, Style.Violet)
 	Components.place(bar, 14, 76, UDim.new(1, -28), 10)
 
-	Components.heading("Шансы доставки")
+	Components.heading(Texts.deliveryOdds)
 	Components.odds(Catalog.odds(data.Opened, data.Perks), nil, level)
 end
 
@@ -82,8 +87,8 @@ function Terminal.tick(data: Types.View, now: number): ()
 	if label and arrival and data.OrderStage == "delivery" then
 		local seconds = math.max(0, math.ceil(arrival - now))
 		label.Text = if seconds > 0
-			then `Прибытие через {Components.clock(seconds)}`
-			else "Контейнер у шлюза."
+			then Format(Texts.arrivesIn, { time = Components.clock(seconds) })
+			else Texts.atAirlock
 	end
 end
 

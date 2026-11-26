@@ -285,7 +285,7 @@ local function pick(container: Containers.Container, variant: boolean, rarity: n
 			return pool[i].Kind
 		end
 	end
-	error("Пустая таблица добычи")
+	error("Empty loot table")
 end
 
 function Economy.open(order: Types.Order, data: Types.PlayerData): ()

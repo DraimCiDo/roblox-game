@@ -235,13 +235,21 @@ function Catalog.perkLock(perk: Perk, level: number, perks: { [string]: number }
 	return nil
 end
 
-function Catalog.condition(quality: number): string
+local function conditionOf(quality: number)
 	for _, condition in Conditions do
 		if quality <= condition.Max then
-			return condition.Name
+			return condition
 		end
 	end
-	return Conditions[#Conditions].Name
+	return Conditions[#Conditions]
+end
+
+function Catalog.condition(quality: number): string
+	return conditionOf(quality).Name
+end
+
+function Catalog.conditionColor(quality: number): Color3
+	return conditionOf(quality).Color
 end
 
 local effectIndex: { [string]: DropEffect } = {}

@@ -15,6 +15,8 @@ local Tutorial = require(script.Tutorial)
 local ItemAssets = require(script.Parent.Parent.World.ItemAssets)
 local Hall = require(script.Parent.Parent.World.Hall)
 local Mop = require(script.Mop)
+local Texts = require(ReplicatedStorage.Shared.Config.Texts.Notices)
+local Format = require(ReplicatedStorage.Shared.Util.Format)
 
 type Session = {
 	Plot: World.Plot,
@@ -109,10 +111,10 @@ local function updateStats(player: Player, data: Types.PlayerData): ()
 		local folder = Instance.new("Folder")
 		folder.Name = "leaderstats"
 		local coins = Instance.new("IntValue")
-		coins.Name = "Монеты"
+		coins.Name = Texts.statCoins
 		coins.Parent = folder
 		local opened = Instance.new("IntValue")
-		opened.Name = "Открыто"
+		opened.Name = Texts.statOpened
 		opened.Parent = folder
 		folder.Parent = player
 		values = { Coins = coins, Opened = opened }
@@ -152,10 +154,7 @@ local function updateGuide(player: Player, session: Session, data: Types.PlayerD
 		interface:FireClient(player, "guide", nil)
 		-- Поздравление только тем, кто проходил обучение; опытные игроки завершают его молча.
 		if last then
-			tell(
-				player,
-				"Обучение пройдено! Собирайте коллекции и выставляйте находки на витрины."
-			)
+			tell(player, Texts.tutorialDone)
 		end
 		return
 	end
@@ -217,7 +216,7 @@ local function occupy(player: Player): ()
 		end
 	end
 	if not plot then
-		player:Kick("На этом сервере все шесть территорий заняты.")
+		player:Kick(Texts.serverFull)
 		return
 	end
 	local owned = plot
@@ -390,7 +389,7 @@ local function openOrder(
 		or (position - targetPart.Position).Magnitude > (if kind == "cargo" or kind == "crate" then 8 else 11)
 	then
 		if not physical and kind == "safe" and argument == order.Id then
-			tell(player, "Подойдите к сейфу и поверните ручку снова.")
+			tell(player, Texts.turnDialAgain)
 		end
 		return false, false
 	end
@@ -452,7 +451,7 @@ local function openOrder(
 			interface:FireClient(player, "dialEnd", hit)
 			if not hit then
 				World.RotateDial(plot, 0)
-				tell(player, "Штифт сорвался. Начните взлом заново.")
+				tell(player, Texts.dialSlipped)
 			end
 		end
 	elseif not physical then
@@ -500,11 +499,11 @@ local function inventoryAction(
 			return false
 		end
 		if not World.Near(player, stand, 9) then
-			tell(player, "Подойдите к своей витрине.")
+			tell(player, Texts.goToOwnStand)
 			return false
 		end
 		if #data.Inventory >= Economy.capacity(data) then
-			tell(player, "Склад заполнен")
+			tell(player, Texts.storageFull)
 			return false
 		end
 		table.insert(data.Inventory, displayed)
@@ -519,35 +518,30 @@ local function inventoryAction(
 		end
 	end
 	if not itemIndex then
-		tell(player, "Этой находки больше нет на складе.")
+		tell(player, Texts.itemGone)
 		return false
 	end
 	local item = data.Inventory[itemIndex]
 	if action == "sell" then
 		if not World.Near(player, plot.Stations.inventory, 11) then
-			tell(player, "Подойдите к складу, чтобы продать находку.")
+			tell(player, Texts.goToStorageToSell)
 			return false
 		end
 		local total = Economy.payout(data, item)
 		Economy.credit(data, total)
-		tell(player, `Продано · +{total} монет`)
+		tell(player, Format(Texts.sold, { total = total }))
 		Audio.to(player, "sell")
 	elseif action == "collection" then
 		if not Economy.collectible(item.Kind) then
 			return false
 		end
 		if not World.Near(player, plot.Stations.collections, 11) then
-			tell(player, "Подойдите к терминалу коллекций.")
+			tell(player, Texts.goToCollections)
 			return false
 		end
 		local replaced = data.Collections[item.Kind] ~= nil
 		data.Collections[item.Kind] = item
-		tell(
-			player,
-			if replaced
-				then "Экземпляр в коллекции заменён."
-				else "Экземпляр внесён в коллекцию."
-		)
+		tell(player, if replaced then Texts.collectionReplaced else Texts.collectionAdded)
 		Audio.to(player, "deposit")
 	elseif action == "display" and slotKey then
 		local stand = standPart(plot, slotKey)
@@ -559,11 +553,11 @@ local function inventoryAction(
 			return false
 		end
 		if not World.Near(player, stand, 9) then
-			tell(player, "Подойдите к своей витрине.")
+			tell(player, Texts.goToOwnStand)
 			return false
 		end
 		data.Displays[slotKey] = item
-		tell(player, "Находка выставлена.")
+		tell(player, Texts.itemDisplayed)
 		Audio.to(player, "place")
 	else
 		return false
@@ -607,25 +601,25 @@ local function lootAction(
 					Economy.credit(data, value)
 					table.remove(order.Loot, index)
 					finishLoot(order)
-					tell(player, `Утилизатор · {Catalog.Items[loot.Item.Kind].Name} +{value}`)
+					tell(player, Format(Texts.recycled, { name = Catalog.Items[loot.Item.Kind].Name, value = value }))
 					Audio.to(player, "coin")
 					return true
 				end
 				if #data.Inventory >= Economy.capacity(data) then
-					tell(player, "Склад заполнен")
+					tell(player, Texts.storageFull)
 					return false
 				end
 				table.insert(data.Inventory, loot.Item)
 				table.remove(order.Loot, index)
 				finishLoot(order)
-				tell(player, `На складе · {Catalog.Items[loot.Item.Kind].Name}`)
+				tell(player, Format(Texts.stored, { name = Catalog.Items[loot.Item.Kind].Name }))
 				Audio.to(player, "pickup")
 				return true
 			end
 		end
 	elseif (action == "quickSell" or action == "quickCollect") and (data.Perks[action] or 0) > 0 then
 		if not World.Near(player, plot.Button, 11) then
-			tell(player, "Подойдите к пульту добычи.")
+			tell(player, Texts.goToLootPanel)
 			return false
 		end
 		if action == "quickSell" then
@@ -636,7 +630,7 @@ local function lootAction(
 			end
 			table.clear(order.Loot)
 			Economy.credit(data, total)
-			tell(player, `Быстрая продажа · +{total} монет`)
+			tell(player, Format(Texts.quickSold, { total = total }))
 			Audio.to(player, "sell")
 		else
 			local limit = Economy.recycleLimit(data)
@@ -657,17 +651,17 @@ local function lootAction(
 				end
 			end
 			if stored + sold == 0 then
-				tell(player, "Склад заполнен")
+				tell(player, Texts.storageFull)
 				return false
 			end
 			if earned > 0 then
 				Economy.credit(data, earned)
 			end
-			local note = if sold > 0 then ` · утилизировано {sold} (+{earned})` else ""
+			local note = if sold > 0 then Format(Texts.recycledNote, { sold = sold, earned = earned }) else ""
 			if #order.Loot > 0 then
-				tell(player, `Склад заполнен · осталось {#order.Loot}{note}`)
+				tell(player, Format(Texts.storageFullLeft, { left = #order.Loot, note = note }))
 			else
-				tell(player, `Собрано находок · {stored}{note}`)
+				tell(player, Format(Texts.collected, { stored = stored, note = note }))
 				Audio.to(player, "pickup")
 			end
 		end
@@ -710,11 +704,11 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 		local order = data.Orders[1]
 		if action == "buy" then
 			if not World.Near(player, plot.Stations.terminal, 11) then
-				tell(player, "Подойдите к терминалу заказов.")
+				tell(player, Texts.goToTerminal)
 			elseif #data.Orders >= 1 + (data.Perks.orders or 0) then
-				tell(player, "Все слоты заказов заняты.")
+				tell(player, Texts.allSlotsBusy)
 			elseif data.Coins < Economy.orderPrice(data) then
-				tell(player, "Недостаточно монет.")
+				tell(player, Texts.notEnoughCoins)
 			else
 				local price = Economy.orderPrice(data)
 				local refund = Economy.cashback(data, price)
@@ -722,9 +716,9 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 				table.insert(data.Orders, Economy.newOrder(data, false))
 				updated = true
 				local text = if #data.Orders == 1
-					then "Заказ принят."
-					else `Заказ принят · место в очереди {#data.Orders}`
-				tell(player, if refund > 0 then `{text} Кэшбэк +{refund}` else text)
+					then Texts.orderAccepted
+					else Format(Texts.orderQueued, { position = #data.Orders })
+				tell(player, if refund > 0 then Format(Texts.cashback, { text = text, refund = refund }) else text)
 				Audio.to(player, "order")
 			end
 		elseif action == "open" and order then
@@ -753,10 +747,10 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 			if lock then
 				tell(player, lock)
 			elseif data.Coins < cost then
-				tell(player, "Недостаточно монет.")
+				tell(player, Texts.notEnoughCoins)
 			elseif data.Coins - cost < Economy.orderPrice(data) then
 				-- Защита от тупика: после покупки должно хватать на следующий заказ.
-				tell(player, "Оставьте монет на следующий заказ.")
+				tell(player, Texts.keepCoinsForOrder)
 			else
 				data.Coins -= cost
 				data.Perks[base] = step
@@ -786,12 +780,12 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 				local available = Catalog.effectAvailable(effect, data.Opened, data.Effects)
 				if action == "buyEffect" and not available and effect.Price then
 					if data.Coins < effect.Price then
-						tell(player, "Не хватает монет на этот эффект")
+						tell(player, Texts.notEnoughForEffect)
 					else
 						data.Coins -= effect.Price
 						data.Effects[effect.Key] = true
 						data.Effect = effect.Key
-						tell(player, `Эффект «{effect.Name}» куплен и выбран`)
+						tell(player, Format(Texts.effectBought, { name = effect.Name }))
 						updated = true
 					end
 				elseif action == "effect" and available then
@@ -807,15 +801,15 @@ function SimulatorService:Use(player: Player, action: string, argument: string?,
 		elseif action == "daily" then
 			local day = math.floor(now / 86400)
 			if data.DailyClaim >= day then
-				tell(player, "Сегодня награда уже получена.")
+				tell(player, Texts.dailyAlreadyClaimed)
 			elseif now < session.ReadyAt then
-				tell(player, "Награда откроется после 15 минут в игре.")
+				tell(player, Texts.dailyNotReady)
 			else
 				data.DailyClaim = day
 				local reward = Economy.dailyReward(data)
 				Economy.credit(data, reward)
 				updated = true
-				tell(player, `Ежедневная награда · +{reward} монет`)
+				tell(player, Format(Texts.dailyReward, { reward = reward }))
 				Audio.to(player, "claim")
 			end
 		elseif action == "sell" or action == "collection" or action == "display" or action == "removeDisplay" then
@@ -849,10 +843,10 @@ local function startRankings(): ()
 					end
 					table.insert(entries, { Name = names[row.Key] or row.Key, Score = row.Value })
 				end
-				World.Board("global", entries, "Пока нет результатов")
+				World.Board("global", entries, Texts.rankingEmpty)
 				loaded = true
 			elseif not loaded then
-				World.Board("global", {}, "Общий рейтинг сейчас недоступен")
+				World.Board("global", {}, Texts.rankingUnavailable)
 			end
 			task.wait(90)
 		end
@@ -876,7 +870,7 @@ local function startRankings(): ()
 				end
 				return first.Score > second.Score
 			end)
-			World.Board("localLobby", entries, "Ожидание игроков")
+			World.Board("localLobby", entries, Texts.rankingWaiting)
 			task.wait(3)
 		end
 	end)

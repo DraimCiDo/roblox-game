@@ -7,6 +7,8 @@ local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local ItemModels = require(ReplicatedStorage.Shared.Models.ItemModels)
 local Theme = require(ReplicatedStorage.Shared.Config.Theme)
 local Types = require(ReplicatedStorage.Shared.Types)
+local Texts = require(ReplicatedStorage.Shared.Config.Texts.World)
+local Format = require(ReplicatedStorage.Shared.Util.Format)
 
 type MakeMini = (Types.Item, boolean?) -> Model
 
@@ -566,7 +568,7 @@ local function buildCollectionRack(kit: Kit, counter: Part): ()
 		Vector3.new(width, 0.74, 0.58),
 		DEEP
 	)
-	sign(heading, Enum.NormalId.Front, "КОЛЛЕКЦИИ", WARM, 78, 34)
+	sign(heading, Enum.NormalId.Front, Texts.collectionsHeading, WARM, 78, 34)
 	for _, side in { -1, 1 } do
 		local x = side * (width / 2 - 0.21)
 		local height = frame.Position.Y - 1.58
@@ -638,13 +640,13 @@ function Sector.setCollections(kit: Kit, collections: { [string]: Types.Item }):
 			end
 		end
 	end
-	kit.CollectionLabel.Text = `Собрано {everyOwned}/{everything}`
+	kit.CollectionLabel.Text = Format(Texts.collectedCount, { owned = everyOwned, total = everything })
 end
 
 -- ============ Табло и индикация ============
 
 function Sector.setInfo(kit: Kit, level: number, price: number, orders: number, maximum: number): ()
-	kit.Info.Text = `Заказы · ур. {level}\n{price} монет   ·   {orders}/{maximum} в очереди`
+	kit.Info.Text = Format(Texts.orderInfo, { level = level, price = price, orders = orders, maximum = maximum })
 end
 
 function Sector.setDisplay(kit: Kit, slot: number, item: Types.Item?): ()
@@ -663,23 +665,23 @@ end
 
 function Sector.setOrder(kit: Kit, state: string?): ()
 	kit.OrderLabel.Text = if state == "?"
-		then "Доставка"
+		then Texts.stateDelivery
 		elseif state then Catalog.Containers[state] or ""
-		else "Нет активного заказа"
+		else Texts.stateNoOrder
 end
 
 local STAGE_LABELS: { [string]: string } = {
-	queued = "Заказ в очереди",
-	delivery = "Контейнер в пути",
-	sealed = "Открыть контейнер",
-	open = "Соберите добычу",
-	clear = "Выйдите из зоны",
+	queued = Texts.stageQueued,
+	delivery = Texts.stageDelivery,
+	sealed = Texts.stageSealed,
+	open = Texts.stageOpen,
+	clear = Texts.stageClear,
 }
 
 function Sector.setLoot(kit: Kit, stage: string?, remaining: number): ()
-	local text = if stage then STAGE_LABELS[stage] or "" else "Площадка свободна"
+	local text = if stage then STAGE_LABELS[stage] or "" else Texts.padFree
 	if stage == "open" then
-		text ..= `\nОсталось {remaining}`
+		text ..= Format(Texts.lootLeft, { remaining = remaining })
 	end
 	kit.LootLabel.Text = text
 	kit.LootLamp.Color = if stage == "open"
@@ -690,7 +692,7 @@ function Sector.setLoot(kit: Kit, stage: string?, remaining: number): ()
 end
 
 function Sector.setStorageInfo(kit: Kit, count: number, capacity: number): ()
-	kit.StorageLabel.Text = `Склад {count}/{capacity}`
+	kit.StorageLabel.Text = Format(Texts.storageCount, { count = count, capacity = capacity })
 	local ratio = math.clamp(count / math.max(capacity, 1), 0, 1)
 	kit.StorageBar.Size = UDim2.fromScale(ratio, 1)
 	kit.StorageBar.BackgroundColor3 = if ratio >= 1 then RED elseif ratio >= 0.8 then AMBER else CYAN

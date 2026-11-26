@@ -5,6 +5,8 @@ local Config = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Components = require(script.Parent.Parent.Components)
 local Style = require(script.Parent.Parent.Style)
+local Texts = require(ReplicatedStorage.Shared.Config.Texts.UI)
+local Format = require(ReplicatedStorage.Shared.Util.Format)
 
 local Daily = {}
 
@@ -18,7 +20,7 @@ function Daily.render(): ()
 	caption.TextXAlignment = Enum.TextXAlignment.Center
 	local track, fill = Style.meter(summary, 0, Style.Amber)
 	Components.place(track, 24, 136, UDim.new(1, -48), 14)
-	local control = Components.command("Забрать награду", function()
+	local control = Components.command(Texts.claimReward, function()
 		Components.send("daily")
 	end, false, "reward")
 	Components.Live.Daily = { Time = remaining, Caption = caption, Fill = fill, Button = control }
@@ -31,15 +33,12 @@ function Daily.tick(data: Types.View, now: number): ()
 		return
 	end
 	local claimed, remaining, canClaim = Components.dailyState(data, now)
-	widgets.Time.Text = if claimed
-		then "ПОЛУЧЕНО"
-		elseif canClaim then "ГОТОВО"
-		else Components.clock(remaining)
+	widgets.Time.Text = if claimed then Texts.claimed elseif canClaim then Texts.ready else Components.clock(remaining)
 	local reward = Components.coin(data.DailyReward)
 	widgets.Caption.Text = if claimed
-		then "Награда сегодня получена"
-		elseif canClaim then `Награда доступна · +{reward} монет`
-		else `До получения награды · +{reward} монет`
+		then Texts.claimedToday
+		elseif canClaim then Format(Texts.rewardAvailable, { reward = reward })
+		else Format(Texts.rewardPending, { reward = reward })
 	widgets.Fill.Size = UDim2.fromScale(if claimed then 1 else math.clamp(1 - remaining / Config.DailySeconds, 0, 1), 1)
 	Style.setButton(widgets.Button, canClaim, "reward")
 	Components.prefer(widgets.Button)

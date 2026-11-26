@@ -7,6 +7,7 @@ local Components = require(script.Parent.Parent.Components)
 local Sfx = require(script.Parent.Parent.Parent.Audio.Sfx)
 local Style = require(script.Parent.Parent.Style)
 local Types = require(ReplicatedStorage.Shared.Types)
+local Texts = require(ReplicatedStorage.Shared.Config.Texts.UI)
 
 -- Настройки: громкость звуков интерфейса и мира. Значение применяется сразу, а на сервер уходит по отпусканию ползунка.
 local Settings = {}
@@ -74,7 +75,7 @@ local function slider(
 	-- Перетаскивание — своё у каждого ползунка (общий флаг двигал оба сразу, а сохранялся только один).
 	local active = false
 	local function show(): ()
-		percent.Text = if value <= 0 then "Выкл." else `{math.round(value * 100)}%`
+		percent.Text = if value <= 0 then Texts.volumeOff else `{math.round(value * 100)}%`
 		fill.Size = UDim2.fromScale(value, 1)
 		knob.Position = UDim2.fromScale(value, 0.5)
 	end
@@ -139,35 +140,19 @@ end
 
 function Settings.render(data: Types.View): ()
 	disconnect()
-	Components.paragraph(
-		"Звуки можно сделать тише или отключить совсем. Настройки сохраняются в вашем прогрессе."
-	)
-	slider(
-		"Звуки интерфейса",
-		"Клики, уведомления, покупки, награды.",
-		data.VolumeUi,
-		Style.Cyan,
-		function(value)
-			Sfx.setVolumes(value, nil)
-		end,
-		function(value)
-			Components.send("setVolume", "ui", percentText(value))
-			Sfx.play("click")
-		end
-	)
-	slider(
-		"Звуки мира",
-		"Открытие контейнеров, шлюзы, доставка, сейф.",
-		data.VolumeWorld,
-		Style.Amber,
-		function(value)
-			Sfx.setVolumes(nil, value)
-		end,
-		function(value)
-			Components.send("setVolume", "world", percentText(value))
-			Sfx.play("thud")
-		end
-	)
+	Components.paragraph(Texts.soundHelp)
+	slider(Texts.soundUi, Texts.soundUiDetails, data.VolumeUi, Style.Cyan, function(value)
+		Sfx.setVolumes(value, nil)
+	end, function(value)
+		Components.send("setVolume", "ui", percentText(value))
+		Sfx.play("click")
+	end)
+	slider(Texts.soundWorld, Texts.soundWorldDetails, data.VolumeWorld, Style.Amber, function(value)
+		Sfx.setVolumes(nil, value)
+	end, function(value)
+		Components.send("setVolume", "world", percentText(value))
+		Sfx.play("thud")
+	end)
 	Settings.renderEffects(data)
 end
 
@@ -181,10 +166,8 @@ function Settings.effectsSignature(data: Types.View): string
 end
 
 function Settings.renderEffects(data: Types.View): ()
-	Components.heading("Эффекты выпадения")
-	Components.paragraph(
-		"Выбранный эффект играет, когда из вашего контейнера вылетает добыча. Новые открываются за монеты и достижения."
-	)
+	Components.heading(Texts.effectsHeading)
+	Components.paragraph(Texts.effectsHelp)
 	for _, effect in Catalog.DropEffects do
 		local available = Catalog.effectAvailable(effect, data.Opened, data.Effects)
 		local selected = data.Effect == effect.Key
@@ -193,9 +176,9 @@ function Settings.renderEffects(data: Types.View): ()
 		local tone: Style.ButtonTone
 		local callback: () -> () = function() end
 		if selected then
-			caption, enabled, tone = "Выбран", false, "neutral"
+			caption, enabled, tone = Texts.effectSelected, false, "neutral"
 		elseif available then
-			caption, enabled, tone = "Выбрать", true, "primary"
+			caption, enabled, tone = Texts.effectSelect, true, "primary"
 			callback = function()
 				Components.send("effect", effect.Key)
 			end
@@ -206,7 +189,7 @@ function Settings.renderEffects(data: Types.View): ()
 				Components.send("buyEffect", effect.Key)
 			end
 		else
-			caption, enabled, tone = "Закрыт", false, "neutral"
+			caption, enabled, tone = Texts.effectLocked, false, "neutral"
 		end
 		Components.row({
 			Name = effect.Name,

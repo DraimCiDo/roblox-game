@@ -1,6 +1,8 @@
 --!strict
 -- Обучение новичка. Шаг определяется по реальному состоянию игры, поэтому он не зависит от порядка действий
 -- и корректно продолжается после повторного входа.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Texts = require(ReplicatedStorage.Shared.Config.Texts.Tutorial)
 local Economy = require(script.Parent.Parent.Parent.Economy.Economy)
 local Types = require(game:GetService("ReplicatedStorage").Shared.Types)
 local World = require(script.Parent.Parent.Parent.World.World)
@@ -21,11 +23,11 @@ local FIRST_PERK_COINS = 8000
 local OPENED_FOR_PERKS = 2
 
 local OPEN_HELP: { [string]: string } = {
-	box = "Подойдите к коробке и нажимайте E: сорвите ленту, откройте створки и раскройте коробку.",
-	crate = "Сломайте четыре скобы на ящике: подходите к каждой и нажимайте E или F.",
-	safe = "Нажмите E у ручки сейфа и остановите указатель в зелёной зоне. Остановить можно пробелом.",
-	cargo = "Разблокируйте оба фиксатора (E), затем откройте створки у центра контейнера.",
-	secret = "Нажимайте E у контейнера, пока ядро не вспыхнет.",
+	box = Texts.openBox,
+	crate = Texts.openCrate,
+	safe = Texts.openSafe,
+	cargo = Texts.openCargo,
+	secret = Texts.openSecret,
 }
 
 local Tutorial = {}
@@ -42,53 +44,25 @@ function Tutorial.evaluate(data: Types.PlayerData, plot: World.Plot): Step?
 	local order = data.Orders[1]
 	if order then
 		if order.Stage == "queued" or order.Stage == "delivery" then
-			return step(
-				"wait",
-				"Контейнер уже в пути! Дождитесь, пока он опустится на площадку у шахты.",
-				plot.Clear
-			)
+			return step("wait", Texts.waitDelivery, plot.Clear)
 		elseif order.Stage == "sealed" then
-			return step("open", OPEN_HELP[order.Kind] or "Откройте контейнер.", plot.Active)
+			return step("open", OPEN_HELP[order.Kind] or Texts.openAny, plot.Active)
 		elseif order.Stage == "open" then
 			local _, loot = next(plot.Loot)
-			return step(
-				"collect",
-				"Подберите выпавшие предметы: подойдите и нажмите E. Они попадут на склад.",
-				loot
-			)
+			return step("collect", Texts.pickUp, loot)
 		end
-		return step(
-			"leave",
-			"Отойдите от шахты: пустой контейнер уберётся сам, и можно заказывать следующий.",
-			plot.Clear
-		)
+		return step("leave", Texts.leavePad, plot.Clear)
 	end
 	if #data.Inventory > 0 then
-		return step(
-			"sell",
-			"Отнесите находки на склад (справа): нажмите E у стола и продайте предметы за монеты.",
-			plot.Stations.inventory
-		)
+		return step("sell", Texts.sell, plot.Stations.inventory)
 	end
 	if data.Opened >= OPENED_FOR_PERKS and data.Coins >= FIRST_PERK_COINS then
-		return step(
-			"perks",
-			"Монет хватает на первое улучшение! Откройте «Перки» (кнопка справа внизу или клавиша P).",
-			nil,
-			"perks"
-		)
+		return step("perks", Texts.firstPerk, nil, "perks")
 	end
 	if data.Coins >= Economy.orderPrice(data) then
-		return step(
-			"order",
-			"Закажите контейнер: подойдите к терминалу заказов и нажмите «Заказать».",
-			plot.Stations.terminal
-		)
+		return step("order", Texts.order, plot.Stations.terminal)
 	end
-	return step(
-		"money",
-		"Монет на заказ не хватает. Продайте находки или заберите ежедневную награду (кнопка G)."
-	)
+	return step("money", Texts.noCoins)
 end
 
 return Tutorial

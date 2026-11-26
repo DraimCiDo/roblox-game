@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Theme = require(ReplicatedStorage.Shared.Config.Theme)
+local Texts = require(ReplicatedStorage.Shared.Config.Texts.World)
 
 local Hall = {}
 
@@ -271,7 +272,7 @@ function Hall.Gate(floorY: number): ()
 	local caption = Instance.new("TextLabel")
 	caption.Size = UDim2.fromScale(1, 1)
 	caption.BackgroundTransparency = 1
-	caption.Text = "ЗАКРЫТО · СКОРО ОТКРОЕТСЯ"
+	caption.Text = Texts.gateClosed
 	caption.TextColor3 = AMBER
 	caption.FontFace = Theme.Fonts.Display
 	caption.TextScaled = true

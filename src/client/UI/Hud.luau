@@ -11,21 +11,13 @@ local Components = require(script.Parent.Components)
 local Icons = require(script.Parent.Icons)
 local Sfx = require(script.Parent.Parent.Audio.Sfx)
 local Style = require(script.Parent.Style)
+local Texts = require(ReplicatedStorage.Shared.Config.Texts.UI)
+local Format = require(ReplicatedStorage.Shared.Util.Format)
 
 export type Callbacks = { Perks: () -> (), Reward: () -> (), Settings: () -> () }
 
 local MAX_TOASTS = 3
 local TOAST_SECONDS = 3.4
--- Фрагменты без первой буквы, чтобы не зависеть от регистра.
-local WARNING_HINTS = {
-	"аполнен",
-	"едостаточ",
-	"ельзя",
-	"ремя вышло",
-	"е хватает",
-	"лишком",
-	"орвался",
-}
 local BUTTON_SIZE = 84
 
 local Hud = {}
@@ -181,9 +173,9 @@ function Hud.build(gui: GuiBase2d, callbacks: Callbacks): ()
 	card.Position = UDim2.new(0, 12, 0.5, 0)
 	card.Size = UDim2.fromOffset(176, 96)
 	Style.accent(card, Style.Cyan)
-	local caption = label(card, "ЛАБОРАТОРИЯ", 11, Style.Muted)
+	local caption = label(card, Texts.laboratory, 11, Style.Muted)
 	Components.place(caption, 14, 6, UDim.new(1, -24), 14)
-	levelLabel = label(card, "УР. 1", 24, Style.Cyan)
+	levelLabel = label(card, Texts.levelInitial, 24, Style.Cyan)
 	Components.place(levelLabel, 14, 18, UDim.new(1, -24), 26)
 	local track, fill = Style.meter(card, 0, Style.Cyan)
 	Components.place(track, 14, 46, UDim.new(1, -26), 14)
@@ -212,12 +204,7 @@ function Hud.build(gui: GuiBase2d, callbacks: Callbacks): ()
 	keycap(settings, "O")
 
 	-- Подсказка в режиме первого лица: курсор заперт в центре, кнопки HUD доступны с зажатым Alt.
-	cursorHint = label(
-		gui,
-		"Alt — курсор  ·  P перки  ·  G награда  ·  O настройки",
-		13,
-		Style.Muted
-	)
+	cursorHint = label(gui, Texts.cursorHint, 13, Style.Muted)
 	cursorHint.Name = "Подсказка курсора"
 	cursorHint.AnchorPoint = Vector2.new(0.5, 1)
 	cursorHint.Position = UDim2.new(0.5, 0, 1, -8)
@@ -245,7 +232,7 @@ function Hud.build(gui: GuiBase2d, callbacks: Callbacks): ()
 	sideLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	sideLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
 	sideLayout.Parent = side
-	perksButton = iconButton(side, "star", "Перки", "P", callbacks.Perks)
+	perksButton = iconButton(side, "star", Texts.perksButton, "P", callbacks.Perks)
 	perksButton.LayoutOrder = 1
 	perksBadge = Style.frame(perksButton, Style.Signal, 10)
 	perksBadge.AnchorPoint = Vector2.new(1, 0)
@@ -253,7 +240,7 @@ function Hud.build(gui: GuiBase2d, callbacks: Callbacks): ()
 	perksBadge.Size = UDim2.fromOffset(22, 22)
 	perksBadge.Visible = false
 	Style.outline(perksBadge, Style.Edge, 3)
-	rewardButton = iconButton(side, "gift", "Награда", "G", callbacks.Reward)
+	rewardButton = iconButton(side, "gift", Texts.rewardButton, "G", callbacks.Reward)
 	rewardButton.LayoutOrder = 2
 	rewardBadge = Style.frame(rewardButton, Style.Warning, 10)
 	rewardBadge.AnchorPoint = Vector2.new(1, 0)
@@ -290,20 +277,20 @@ function Hud.update(data: Types.View, canClaim: boolean): ()
 	lastCoins = data.Coins
 
 	local level, floor, ceiling = Catalog.levelRange(data.Opened)
-	levelLabel.Text = `УР. {level}`
+	levelLabel.Text = Format(Texts.levelShort, { level = level })
 	if ceiling then
 		Style.setMeter(levelFill, (data.Opened - floor) / (ceiling - floor))
 		levelCount.Text = `{data.Opened} / {ceiling}`
 	else
 		Style.setMeter(levelFill, 1)
-		levelCount.Text = "МАКС."
+		levelCount.Text = Texts.levelMax
 	end
 	if lastLevel and level > lastLevel then
 		Sfx.play("levelup")
-		Hud.notice(`Новый уровень лаборатории: {level}!`)
+		Hud.notice(Format(Texts.levelUp, { level = level }))
 	end
 	lastLevel = level
-	queueLabel.Text = `ЗАКАЗЫ {data.Orders}/{1 + (data.Perks.orders or 0)}`
+	queueLabel.Text = Format(Texts.ordersCount, { orders = data.Orders, maximum = 1 + (data.Perks.orders or 0) })
 	-- Зелёная точка на «Перках», когда есть навык, который можно улучшить.
 	local upgradable = false
 	for _, perk in Catalog.Perks do
@@ -320,7 +307,7 @@ end
 function Hud.notice(message: string): ()
 	toastSerial += 1
 	local tone = Style.Signal
-	for _, fragment in WARNING_HINTS do
+	for _, fragment in Texts.warningHints do
 		if string.find(message, fragment, 1, true) then
 			tone = Style.Warning
 			break

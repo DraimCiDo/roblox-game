@@ -51,7 +51,7 @@ end
 
 -- Вызывается один раз сервером при старте: создаёт все объявленные Remotes.
 function Remotes.init()
-	assert(RunService:IsServer(), "Remotes.init() вызывается только на сервере")
+	assert(RunService:IsServer(), "Remotes.init() is server only")
 	for _, name in pairs(Remotes.Events) do
 		getOrCreate("RemoteEvent", name)
 	end
@@ -61,12 +61,12 @@ function Remotes.init()
 end
 
 function Remotes.event(name: string): RemoteEvent
-	assert((Remotes.Events :: any)[name], `Неизвестный RemoteEvent: {name}`)
+	assert((Remotes.Events :: any)[name], `Unknown RemoteEvent: {name}`)
 	return getOrCreate("RemoteEvent", name) :: RemoteEvent
 end
 
 function Remotes.func(name: string): RemoteFunction
-	assert((Remotes.Functions :: any)[name], `Неизвестный RemoteFunction: {name}`)
+	assert((Remotes.Functions :: any)[name], `Unknown RemoteFunction: {name}`)
 	return getOrCreate("RemoteFunction", name) :: RemoteFunction
 end
 

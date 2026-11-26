@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Texts = require(ReplicatedStorage.Shared.Config.Texts.UI)
+local Format = require(ReplicatedStorage.Shared.Util.Format)
 local Components = require(script.Parent.Parent.Components)
 local Sfx = require(script.Parent.Parent.Parent.Audio.Sfx)
 local Style = require(script.Parent.Parent.Style)
@@ -46,7 +49,13 @@ end
 function Dial.render(round: Round, stop: () -> ()): ()
 	local group = Components.group()
 
-	local caption = Components.line(group, `Штифт {round.Stage} из {round.Total}`, 22, Style.Text, true)
+	local caption = Components.line(
+		group,
+		Format(Texts.dialPin, { stage = round.Stage, total = round.Total }),
+		22,
+		Style.Text,
+		true
+	)
 	caption.TextXAlignment = Enum.TextXAlignment.Center
 	caption.LayoutOrder = 1
 
@@ -109,17 +118,12 @@ function Dial.render(round: Round, stop: () -> ()): ()
 	time.Size = UDim2.fromOffset(120, 24)
 	time.TextXAlignment = Enum.TextXAlignment.Center
 
-	local hint = Components.line(
-		group,
-		"Остановите указатель в зелёной зоне. Пробел или кнопка ниже.",
-		14,
-		Style.Muted
-	)
+	local hint = Components.line(group, Texts.dialHelp, 14, Style.Muted)
 	hint.TextXAlignment = Enum.TextXAlignment.Center
 	hint.LayoutOrder = 4
 
 	Components.Live.Dial = { Needle = needle, Time = time, Glow = glow }
-	Components.command("Остановить", stop, true, "primary")
+	Components.command(Texts.dialStop, stop, true, "primary")
 end
 
 -- Двигает указатель и подсвечивает циферблат, когда указатель в зелёной зоне (подсказка; решает сервер).
@@ -139,7 +143,7 @@ function Dial.update(round: Round, elapsed: number): ()
 	wasInside = inside
 	widgets.Glow.Color = if inside then Style.Signal else Style.Edge
 	widgets.Glow.Thickness = if inside then 7 else 5
-	widgets.Time.Text = `{math.ceil(TIME_LIMIT - elapsed)} с`
+	widgets.Time.Text = Format(Texts.seconds, { seconds = math.ceil(TIME_LIMIT - elapsed) })
 end
 
 function Dial.flash(success: boolean): ()

@@ -25,26 +25,28 @@ local Settings = require(script.Parent.Parent.UI.Screens.Settings)
 local Terminal = require(script.Parent.Parent.UI.Screens.Terminal)
 local Sfx = require(script.Parent.Parent.Audio.Sfx)
 local Style = require(script.Parent.Parent.UI.Style)
+local Texts = require(ReplicatedStorage.Shared.Config.Texts.UI)
+local Format = require(ReplicatedStorage.Shared.Util.Format)
 
 local TITLES: { [string]: string } = {
-	terminal = "Терминал заказов",
-	inventory = "Склад",
-	collections = "Коллекции",
-	loot = "Управление добычей",
-	perks = "Древо перков",
-	daily = "Ежедневная награда",
-	dial = "Взлом сейфа",
-	settings = "Настройки",
+	terminal = Texts.titleTerminal,
+	inventory = Texts.titleInventory,
+	collections = Texts.titleCollections,
+	loot = Texts.titleLoot,
+	perks = Texts.titlePerks,
+	daily = Texts.titleDaily,
+	dial = Texts.titleDial,
+	settings = Texts.titleSettings,
 }
 local CAPTIONS: { [string]: string } = {
-	terminal = "Случайные контейнеры и очередь доставки",
-	inventory = "Выберите предмет, чтобы увидеть цену и продать",
-	collections = "Заполните все слоты, чтобы получить бонус к продаже",
-	loot = "Операции с открытым контейнером",
-	perks = "Выберите узел, чтобы посмотреть улучшение",
-	daily = "Награда за время в лаборатории",
-	dial = "Три штифта: каждый следующий быстрее",
-	settings = "Громкость и эффекты выпадения",
+	terminal = Texts.captionTerminal,
+	inventory = Texts.captionInventory,
+	collections = Texts.captionCollections,
+	loot = Texts.captionLoot,
+	perks = Texts.captionPerks,
+	daily = Texts.captionDaily,
+	dial = Texts.captionDial,
+	settings = Texts.captionSettings,
 }
 local ACCENTS: { [string]: Color3 } = {
 	terminal = Style.Signal,
@@ -210,8 +212,8 @@ local function refresh(preserveScroll: boolean?): ()
 	local oldSelection = GuiService.SelectedObject
 	local selectedName = oldSelection and oldSelection:IsDescendantOf(content) and oldSelection.Name
 	Components.begin()
-	title.Text = TITLES[key] or `Витрина {key}`
-	subtitle.Text = CAPTIONS[key] or "Экспозиция вашего сектора"
+	title.Text = TITLES[key] or Format(Texts.titleShowcase, { slot = key })
+	subtitle.Text = CAPTIONS[key] or Texts.captionShowcase
 	badgeStroke.Color = ACCENTS[key] or Style.Cyan
 	for _, child in badge:GetChildren() do
 		if child:IsA("Frame") then
@@ -221,7 +223,7 @@ local function refresh(preserveScroll: boolean?): ()
 	Icons.draw(badge, ICONS[key] or "grid", ACCENTS[key] or Style.Cyan, Style.Text).Size = UDim2.fromScale(0.62, 0.62)
 
 	if not data then
-		Components.paragraph("Синхронизация данных сектора…")
+		Components.paragraph(Texts.syncing)
 	elseif key == "terminal" then
 		Terminal.render(data)
 	elseif key == "inventory" then
@@ -520,7 +522,7 @@ local function animate(): ()
 	local elapsed = math.max(0, Workspace:GetServerTimeNow() - current.Start)
 	if elapsed > Dial.TimeLimit then
 		selectMenu(nil)
-		Hud.notice("Время вышло. Поверните ручку снова.")
+		Hud.notice(Texts.dialTimeout)
 		return
 	end
 	Dial.update(current, elapsed)
@@ -549,7 +551,7 @@ function SimulatorController:Start(): ()
 			}
 			if (stage or 1) > 1 then
 				Sfx.play("dialOk")
-				Hud.notice(`Штифт {stage - 1} на месте!`)
+				Hud.notice(Format(Texts.dialPinSet, { pin = stage - 1 }))
 			end
 			selectMenu("dial")
 		elseif mode == "sfx" then
@@ -567,7 +569,7 @@ function SimulatorController:Start(): ()
 			Dial.flash(value == true)
 			if value == true then
 				Sfx.play("claim")
-				Hud.notice("Сейф вскрыт!")
+				Hud.notice(Texts.dialOpened)
 			end
 			task.delay(DIAL_CLOSE_DELAY, function()
 				if menu == "dial" then

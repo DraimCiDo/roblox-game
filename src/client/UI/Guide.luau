@@ -1,4 +1,6 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Texts = require(ReplicatedStorage.Shared.Config.Texts.UI)
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
@@ -143,10 +145,10 @@ function Guide.build(gui: GuiBase2d, onSkip: () -> (), onPulse: (string?) -> ())
 	local header = Style.frame(banner)
 	header.LayoutOrder = 1
 	header.Size = UDim2.new(1, 0, 0, 28)
-	local title = Components.text(header, "ОБУЧЕНИЕ", 15, Style.Cyan, true)
+	local title = Components.text(header, Texts.tutorialTitle, 15, Style.Cyan, true)
 	title.Size = UDim2.new(0.6, 0, 1, 0)
 	Style.textStroke(title, 2)
-	local skip = Style.button(header, "Пропустить", onSkip, true, "neutral")
+	local skip = Style.button(header, Texts.tutorialSkip, onSkip, true, "neutral")
 	skip.TextSize = 13
 	skip.AnchorPoint = Vector2.new(1, 0.5)
 	skip.Position = UDim2.new(1, 0, 0.5, 0)

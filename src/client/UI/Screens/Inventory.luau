@@ -6,15 +6,17 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Components = require(script.Parent.Parent.Components)
 local ItemPreview = require(script.Parent.Parent.Parent.Visuals.ItemPreview)
 local Style = require(script.Parent.Parent.Style)
+local Texts = require(ReplicatedStorage.Shared.Config.Texts.UI)
+local Format = require(ReplicatedStorage.Shared.Util.Format)
 
 export type Sort = "recent" | "price" | "quality"
 
 local COLUMNS = 4
 local GAP = 8
 local SORTS: { { Key: Sort, Caption: string } } = {
-	{ Key = "recent", Caption = "Новые" },
-	{ Key = "price", Caption = "По цене" },
-	{ Key = "quality", Caption = "По качеству" },
+	{ Key = "recent", Caption = Texts.sortRecent },
+	{ Key = "price", Caption = Texts.sortPrice },
+	{ Key = "quality", Caption = Texts.sortQuality },
 }
 
 local Inventory = {}
@@ -70,7 +72,7 @@ local function detail(item: Types.Item, price: number?): ()
 	local note = collectionOf(item.Kind)
 	local extra = Components.text(
 		frame,
-		if note then `Коллекция «{note}»` else "Не входит в коллекции",
+		if note then Format(Texts.inCollection, { name = note }) else Texts.noCollection,
 		12,
 		Style.Muted
 	)
@@ -88,7 +90,7 @@ local function detail(item: Types.Item, price: number?): ()
 	local track = Style.meter(frame, item.Quality / 100, tint)
 	Components.place(track, side, if compact then 102 else 57, UDim.new(1, if compact then -22 else -144), 8)
 
-	local caption = if price then `Продать · {Components.coin(price)}` else "Продать"
+	local caption = if price then Format(Texts.sellFor, { price = Components.coin(price) }) else Texts.sell
 	local sell = Style.button(frame, caption, function()
 		Components.send("sell", item.Id)
 		selected = nil
@@ -113,12 +115,7 @@ function Inventory.render(data: Types.View): ()
 	local count =
 		Components.text(header, `{#data.Inventory} / {capacity}`, 26, if full then Style.Amber else Style.Text, true)
 	Components.place(count, 14, 6, UDim.new(0.5, 0), 34)
-	local hint = Components.text(
-		header,
-		if full then "Склад заполнен" else "занятых мест",
-		13,
-		Style.Muted
-	)
+	local hint = Components.text(header, if full then Texts.storageFull else Texts.slotsUsed, 13, Style.Muted)
 	hint.TextXAlignment = Enum.TextXAlignment.Right
 	Components.place(hint, 0, 16, UDim.new(1, -14), 20)
 	local track = Style.meter(header, #data.Inventory / capacity, if full then Style.Amber else Style.Signal)
@@ -136,9 +133,7 @@ function Inventory.render(data: Types.View): ()
 	end
 
 	if #data.Inventory == 0 then
-		Components.paragraph(
-			"Склад пуст. Подберите добычу на площадке и вернитесь сюда."
-		)
+		Components.paragraph(Texts.storageEmpty)
 	end
 
 	local results = sorted(data)

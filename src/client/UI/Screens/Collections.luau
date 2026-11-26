@@ -5,6 +5,8 @@ local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Components = require(script.Parent.Parent.Components)
 local Style = require(script.Parent.Parent.Style)
+local Texts = require(ReplicatedStorage.Shared.Config.Texts.UI)
+local Format = require(ReplicatedStorage.Shared.Util.Format)
 
 local COLUMNS = 4
 local GAP = 8
@@ -29,10 +31,10 @@ local function candidates(data: Types.View, kind: string, saved: Types.Item?): (
 			end
 			Components.row({
 				Name = definition.Name,
-				Details = `Со склада · {note}`,
+				Details = Format(Texts.fromStorage, { note = note }),
 				Tint = Components.qualityColor(item.Quality),
 				Kind = kind,
-				Caption = if saved then "Заменить" else "Внести",
+				Caption = if saved then Texts.replace else Texts.deposit,
 				FocusKey = item.Id,
 				Tone = if delta and delta < 0 then "neutral" else "primary",
 				Callback = function()
@@ -42,14 +44,12 @@ local function candidates(data: Types.View, kind: string, saved: Types.Item?): (
 		end
 	end
 	if not found then
-		Components.paragraph("На складе нет подходящего экземпляра.", Style.Warning)
+		Components.paragraph(Texts.noSuitableItem, Style.Warning)
 	end
 end
 
 function Collections.render(data: Types.View): ()
-	Components.paragraph(
-		"Нужный предмет со склада помечен зелёной подписью: нажмите на слот и внесите его. Внесённый предмет расходуется, но его можно заменить другим экземпляром."
-	)
+	Components.paragraph(Texts.collectionsHelp)
 	-- Лучший экземпляр каждого типа на складе и их количество: по ним слоты показывают, что находка уже есть.
 	local best: { [string]: Types.Item } = {}
 	local amount: { [string]: number } = {}
@@ -81,9 +81,12 @@ function Collections.render(data: Types.View): ()
 		local name = Components.text(top, collection.Name, 19, Style.Text, true)
 		Components.place(name, 2, 0, UDim.new(0.6, 0), 26)
 		local summary = if complete
-			then string.format("+%.1f%% к продаже", total / count / 10)
-			elseif ready > 0 then `Внесено {count} / {#collection.Items} · на складе {ready}`
-			else `Собрано {count} / {#collection.Items}`
+			then string.format(Texts.collectionBonus, total / count / 10)
+			elseif ready > 0 then Format(
+				Texts.collectionProgressReady,
+				{ count = count, total = #collection.Items, ready = ready }
+			)
+			else Format(Texts.collectionProgress, { count = count, total = #collection.Items })
 		local tone = if complete then Style.Signal elseif ready > 0 then Style.Amber else Style.Muted
 		local bonus = Components.text(top, summary, 13, tone, true)
 		bonus.TextXAlignment = Enum.TextXAlignment.Right
@@ -97,11 +100,11 @@ function Collections.render(data: Types.View): ()
 			local held = best[kind]
 			local caption, captionColor = Catalog.Items[kind].Name, Style.Muted
 			if saved and held then
-				caption, captionColor = `Есть ×{amount[kind]}`, Style.Signal
+				caption, captionColor = Format(Texts.haveItems, { amount = amount[kind] }), Style.Signal
 			elseif saved then
 				caption = ""
 			elseif held then
-				caption, captionColor = "Внести", Style.Signal
+				caption, captionColor = Texts.deposit, Style.Signal
 			end
 			Components.tile(grid, kind, saved or held, {
 				Ghost = saved == nil and held == nil,
@@ -119,7 +122,7 @@ function Collections.render(data: Types.View): ()
 		if complete then
 			Components.line(
 				group,
-				`Среднее качество {math.round(total / count)}. Бонус действует на предметы этой коллекции.`,
+				Format(Texts.averageQuality, { quality = math.round(total / count) }),
 				12,
 				Style.Muted
 			)

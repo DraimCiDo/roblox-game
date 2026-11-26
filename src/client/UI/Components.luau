@@ -9,6 +9,8 @@ local Preview = require(script.Parent.Parent.Visuals.ContainerPreview)
 local Sfx = require(script.Parent.Parent.Audio.Sfx)
 local ItemPreview = require(script.Parent.Parent.Visuals.ItemPreview)
 local Style = require(script.Parent.Style)
+local Texts = require(ReplicatedStorage.Shared.Config.Texts.UI)
+local Format = require(ReplicatedStorage.Shared.Util.Format)
 
 export type DailyWidgets = { Time: TextLabel, Caption: TextLabel, Fill: Frame, Button: TextButton }
 export type DialWidgets = { Needle: Frame, Time: TextLabel, Glow: UIStroke }
@@ -35,18 +37,11 @@ export type RowOptions = {
 }
 
 local SEALED_HELP: { [string]: string } = {
-	box = "Подойдите к коробке и снимите скотч.",
-	crate = "Сломайте четыре крепления на ящике.",
-	safe = "Активируйте ручку и остановите её в секторе.",
-	cargo = "Разблокируйте оба фиксатора и откройте створки.",
-	secret = "Активируйте контейнер, пока он не откроется.",
-}
-local CONDITION_COLORS: { [string]: Color3 } = {
-	["Плохое"] = Color3.fromRGB(160, 165, 196),
-	["Изношенное"] = Color3.fromRGB(110, 214, 134),
-	["Нормальное"] = Color3.fromRGB(80, 194, 255),
-	["Хорошее"] = Color3.fromRGB(190, 124, 255),
-	["Идеальное"] = Color3.fromRGB(255, 200, 60),
+	box = Texts.sealedBox,
+	crate = Texts.sealedCrate,
+	safe = Texts.sealedSafe,
+	cargo = Texts.sealedCargo,
+	secret = Texts.sealedSecret,
 }
 local CONTENT_INSET = 108
 -- Ниже этой высоты панели (ландшафтный телефон) нижняя панель уходит вбок, иначе на содержимое не остаётся места.
@@ -173,7 +168,7 @@ function Components.clock(seconds: number): string
 end
 
 function Components.qualityColor(quality: number): Color3
-	return CONDITION_COLORS[Catalog.condition(quality)]
+	return Catalog.conditionColor(quality)
 end
 
 function Components.itemDetails(item: Types.Item): string
@@ -191,12 +186,12 @@ function Components.containerName(data: Types.View): string
 	if kind then
 		return (if data.OrderVariant then Catalog.Variants else Catalog.Containers)[kind]
 	end
-	return "Случайный контейнер"
+	return Texts.randomContainer
 end
 
 function Components.progressText(data: Types.View): string?
 	if data.OrderProgress and data.OrderGoal then
-		return `Шаг {data.OrderProgress} / {data.OrderGoal}`
+		return Format(Texts.openingStep, { progress = data.OrderProgress, goal = data.OrderGoal })
 	end
 	return nil
 end
@@ -204,30 +199,18 @@ end
 function Components.status(data: Types.View): (string, string, Color3)
 	local stage = data.OrderStage
 	if stage == "queued" or stage == "delivery" then
-		return "Контейнер в пути",
-			"Дождитесь доставки у верхнего шлюза.",
-			Style.Amber
+		return Texts.statusDelivery, Texts.statusDeliveryHint, Style.Amber
 	elseif stage == "sealed" then
-		return Components.containerName(data),
-			SEALED_HELP[data.OrderKind or "box"] or "Откройте контейнер.",
-			Style.Cyan
+		return Components.containerName(data), SEALED_HELP[data.OrderKind or "box"] or Texts.openContainer, Style.Cyan
 	elseif stage == "open" then
-		local hint = if data.OrderKind == "cargo"
-			then "Войдите в контейнер за добычей."
-			else "Подберите предметы на площадке."
-		return `Добыча на площадке · {data.RemainingLoot}`, hint, Style.Signal
+		local hint = if data.OrderKind == "cargo" then Texts.hintCargoLoot else Texts.hintPadLoot
+		return Format(Texts.statusLoot, { remaining = data.RemainingLoot }), hint, Style.Signal
 	elseif stage == "clear" then
-		return "Площадка готова к очистке",
-			"Выйдите из зоны шлюза.",
-			Style.Amber
+		return Texts.statusClear, Texts.statusClearHint, Style.Amber
 	elseif #data.Inventory > 0 then
-		return "Сектор готов к приёму",
-			"Продайте находки на складе или оформите заказ.",
-			Style.Signal
+		return Texts.statusReady, Texts.statusReadyHint, Style.Signal
 	end
-	return "Сектор готов к приёму",
-		"Оформите заказ через терминал.",
-		Style.Signal
+	return Texts.statusReady, Texts.statusOrderHint, Style.Signal
 end
 
 function Components.place(gui: GuiObject, x: number, y: number, width: UDim, height: number): ()
@@ -440,11 +423,11 @@ function Components.short(value: number): string
 		return (string.gsub(text, "%.", ","))
 	end
 	if value >= 1e9 then
-		return `{trim(value / 1e9)} Б`
+		return Format(Texts.billions, { value = trim(value / 1e9) })
 	elseif value >= 1e6 then
-		return `{trim(value / 1e6)} М`
+		return Format(Texts.millions, { value = trim(value / 1e6) })
 	elseif value >= 1e5 then
-		return `{math.floor(value / 1e3)} К`
+		return Format(Texts.thousands, { value = math.floor(value / 1e3) })
 	end
 	return Components.coin(value)
 end
@@ -464,7 +447,7 @@ function Components.odds(values: { number }, following: { number }?, level: numb
 			Components.text(summary, Catalog.Containers[kind], 13, if locked then Style.Muted else Style.Text, true)
 		Components.place(name, 12, top, UDim.new(1, -132), 19)
 		local chanceText = if locked
-			then `уровень {Catalog.TierUnlock[index]}`
+			then Format(Texts.unlocksAtLevel, { level = Catalog.TierUnlock[index] })
 			elseif following then `{percent(chance)} → {percent(following[index])}`
 			else percent(chance)
 		local number = Components.text(summary, chanceText, 13, if locked then Style.Warning else Style.Muted, true)

@@ -21,7 +21,7 @@ local LIFETIME = 8
 local function make(name: string, pitch: number?): Sound?
 	local cue = Sounds[name]
 	if not cue then
-		warn(`[Sfx] Неизвестный звук «{name}»`)
+		warn(`[Sfx] Unknown sound «{name}»`)
 		return nil
 	end
 	local sound = Instance.new("Sound")
@@ -109,9 +109,7 @@ function Sfx.preload(): ()
 			ContentProvider:PreloadAsync({ probe }, function(_, status)
 				if status ~= Enum.AssetFetchStatus.Success then
 					failed[name] = true
-					warn(
-						`[Sfx] Звук «{name}» ({cue.Id}) недоступен, используется запасной`
-					)
+					warn(`[Sfx] Sound «{name}» ({cue.Id}) unavailable, using the fallback`)
 				end
 			end)
 			probe:Destroy()
