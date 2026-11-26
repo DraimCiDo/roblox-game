@@ -39,7 +39,8 @@ local function clearRooms(root: Instance): ()
 		local ceiling = sector:FindFirstChild("Потолок сектора", true)
 		if ceiling and ceiling:IsA("BasePart") then
 			local height = ceiling.Position.Y
-			local size = Vector3.new(ceiling.Size.X - 1, height, ceiling.Size.Z - 1)
+			-- A little past the walls: voxels are 4 studs and would otherwise poke through them.
+			local size = Vector3.new(ceiling.Size.X + 6, height + 2, ceiling.Size.Z + 4)
 			local frame = ceiling.CFrame - Vector3.new(0, height / 2, 0)
 			workspace.Terrain:FillBlock(frame, size, Enum.Material.Air)
 		end
