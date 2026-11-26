@@ -274,6 +274,9 @@ function Hud.notice(message: string, warning: boolean?): ()
 		pending[1]:Destroy()
 	end
 
+	-- Below the balance; on a low screen over the window header, so it never hides the content.
+	toasts.Position = UDim2.new(0.5, 0, 0, if Components.compact() then 4 else 128)
+
 	local toast = plate(toasts, Style.Ink, 14)
 	toast.LayoutOrder = toastSerial
 	toast.Size = UDim2.new(1, 0, 0, 50)

@@ -51,7 +51,7 @@ function Perks.reset(): ()
 	scroll = nil
 	tabScroll = Vector2.zero
 	-- Smaller on a short window (phone), so that more of the branch is visible.
-	zoom = if Components.compact() then 0.6 else 1
+	zoom = if Components.compact() then 0.6 elseif Components.panelHeight() > 800 then 1.25 else 1
 	disconnect()
 end
 
