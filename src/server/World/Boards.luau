@@ -5,7 +5,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Theme = require(ReplicatedStorage.Shared.Config.Theme)
 local Texts = require(ReplicatedStorage.Shared.Config.Texts.World)
 local Props = require(script.Parent.Props)
-local INK = Props.INK
 local PAPER = Props.PAPER
 local MUTED = Props.MUTED
 local part = Props.part
@@ -54,7 +53,7 @@ local function rankingBoard(
 		"Экран рейтинга",
 		terminal.CFrame * CFrame.new(0, terminal.Size.Y / 2 + 4.4, 0),
 		Vector3.new(11.4, 8.55, 0.42),
-		INK
+		Theme.Colors.Panel
 	)
 	for _, y in { -4.45, 4.45 } do
 		local frame = part(
@@ -79,7 +78,7 @@ local function rankingBoard(
 
 		local panel = Instance.new("Frame")
 		panel.BorderSizePixel = 0
-		panel.BackgroundColor3 = INK
+		panel.BackgroundColor3 = Theme.Colors.Panel
 		panel.Size = UDim2.fromScale(1, 1)
 		panel.Parent = surface
 
@@ -106,7 +105,7 @@ local function rankingBoard(
 		local step = if rowCount <= 6 then 58 else 34
 		for index = 1, rowCount do
 			local row = Instance.new("Frame")
-			row.BackgroundColor3 = if index % 2 == 1 then Color3.fromRGB(54, 62, 130) else Color3.fromRGB(40, 44, 100)
+			row.BackgroundColor3 = if index % 2 == 1 then Color3.fromRGB(74, 86, 172) else Color3.fromRGB(64, 74, 152)
 			row.BorderSizePixel = 0
 			row.Position = UDim2.fromOffset(16, 122 + (index - 1) * step)
 			row.Size = UDim2.fromOffset(608, step - 3)
