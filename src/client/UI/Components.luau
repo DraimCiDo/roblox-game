@@ -5,9 +5,9 @@ local Workspace = game:GetService("Workspace")
 
 local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
 local Types = require(ReplicatedStorage.Shared.Types)
-local Preview = require(script.Parent.ContainerPreview)
-local Sfx = require(script.Parent.Sfx)
-local ItemPreview = require(script.Parent.ItemPreview)
+local Preview = require(script.Parent.Parent.Visuals.ContainerPreview)
+local Sfx = require(script.Parent.Parent.Audio.Sfx)
+local ItemPreview = require(script.Parent.Parent.Visuals.ItemPreview)
 local Style = require(script.Parent.Style)
 
 export type DailyWidgets = { Time: TextLabel, Caption: TextLabel, Fill: Frame, Button: TextButton }

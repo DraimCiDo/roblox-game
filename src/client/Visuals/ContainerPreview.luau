@@ -1,5 +1,5 @@
 --!strict
-local Style = require(script.Parent.Style)
+local Style = require(script.Parent.Parent.UI.Style)
 
 local Preview = {}
 

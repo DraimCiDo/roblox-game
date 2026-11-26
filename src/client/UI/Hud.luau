@@ -9,7 +9,7 @@ local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Components = require(script.Parent.Components)
 local Icons = require(script.Parent.Icons)
-local Sfx = require(script.Parent.Sfx)
+local Sfx = require(script.Parent.Parent.Audio.Sfx)
 local Style = require(script.Parent.Style)
 
 export type Callbacks = { Perks: () -> (), Reward: () -> (), Settings: () -> () }

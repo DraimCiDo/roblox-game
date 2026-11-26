@@ -4,7 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Components = require(script.Parent.Parent.Components)
-local ItemPreview = require(script.Parent.Parent.ItemPreview)
+local ItemPreview = require(script.Parent.Parent.Parent.Visuals.ItemPreview)
 local Style = require(script.Parent.Parent.Style)
 
 export type Sort = "recent" | "price" | "quality"

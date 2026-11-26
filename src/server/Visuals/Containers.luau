@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
-local Audio = require(script.Parent.Audio)
+local Audio = require(script.Parent.Parent.Network.Audio)
 local Types = require(ReplicatedStorage.Shared.Types)
 
 type Use = (Player, string, string?) -> ()

@@ -1,9 +1,9 @@
 --!strict
 -- Обучение новичка. Шаг определяется по реальному состоянию игры, поэтому он не зависит от порядка действий
 -- и корректно продолжается после повторного входа.
-local Economy = require(script.Parent.Economy)
+local Economy = require(script.Parent.Parent.Parent.Economy.Economy)
 local Types = require(game:GetService("ReplicatedStorage").Shared.Types)
-local World = require(script.Parent.World)
+local World = require(script.Parent.Parent.Parent.World.World)
 
 export type Step = {
 	Id: string,

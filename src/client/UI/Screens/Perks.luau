@@ -8,7 +8,7 @@ local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Components = require(script.Parent.Parent.Components)
 local Icons = require(script.Parent.Parent.Icons)
-local Sfx = require(script.Parent.Parent.Sfx)
+local Sfx = require(script.Parent.Parent.Parent.Audio.Sfx)
 local Style = require(script.Parent.Parent.Style)
 
 -- Карта навыков — «экран прибора»: почти чёрный графит, стальные рельсы связей.

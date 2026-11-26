@@ -9,8 +9,8 @@ local Workspace = game:GetService("Workspace")
 local Config = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Data = require(script.Parent.Parent.PlayerDataService)
-local Economy = require(script.Parent.Economy)
-local Hall = require(script.Parent.Hall)
+local Economy = require(script.Parent.Parent.Parent.Economy.Economy)
+local Hall = require(script.Parent.Parent.Parent.World.Hall)
 
 local Mop = {}
 

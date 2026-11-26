@@ -3,7 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
 local Types = require(ReplicatedStorage.Shared.Types)
-local Preview = require(script.Parent.Parent.ContainerPreview)
+local Preview = require(script.Parent.Parent.Parent.Visuals.ContainerPreview)
 local Components = require(script.Parent.Parent.Components)
 local Style = require(script.Parent.Parent.Style)
 

@@ -2,7 +2,7 @@
 -- Хранит копию данных игрока на клиенте (только для отображения, не для решений!).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Remotes = require(ReplicatedStorage.Shared.Network.Remotes)
 local Types = require(ReplicatedStorage.Shared.Types)
 
 local DataController = {}

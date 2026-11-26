@@ -1,6 +1,6 @@
 --!strict
 local Components = require(script.Parent.Parent.Components)
-local Sfx = require(script.Parent.Parent.Sfx)
+local Sfx = require(script.Parent.Parent.Parent.Audio.Sfx)
 local Style = require(script.Parent.Parent.Style)
 
 export type Round = {

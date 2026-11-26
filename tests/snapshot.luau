@@ -14,7 +14,7 @@ local Catalog = Harness.require("ReplicatedStorage.Shared.Config.Catalog")
 local GameConfig = Harness.require("ReplicatedStorage.Shared.Config.GameConfig")
 local Sounds = Harness.require("ReplicatedStorage.Shared.Config.Sounds")
 local Theme = Harness.require("ReplicatedStorage.Shared.Config.Theme")
-local Economy = Harness.require("ServerScriptService.Server.Services.SimulatorService.Economy")
+local Economy = Harness.require("ServerScriptService.Server.Economy.Economy")
 
 local lines: { string } = {}
 

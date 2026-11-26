@@ -4,7 +4,7 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Components = require(script.Parent.Components)
-local Sfx = require(script.Parent.Sfx)
+local Sfx = require(script.Parent.Parent.Audio.Sfx)
 local Style = require(script.Parent.Style)
 
 -- Подсказка обучения: баннер сверху и подсветка цели в мире (контур, стрелка над целью, луч от персонажа).

@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Theme = require(ReplicatedStorage.Shared.Config.Theme)
-local Sfx = require(script.Parent.Sfx)
+local Sfx = require(script.Parent.Parent.Audio.Sfx)
 
 export type ButtonTone = "primary" | "neutral" | "reward" | "danger"
 

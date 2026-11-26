@@ -4,7 +4,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local Catalog = require(ReplicatedStorage.Shared.Config.Catalog)
 local Components = require(script.Parent.Parent.Components)
-local Sfx = require(script.Parent.Parent.Sfx)
+local Sfx = require(script.Parent.Parent.Parent.Audio.Sfx)
 local Style = require(script.Parent.Parent.Style)
 local Types = require(ReplicatedStorage.Shared.Types)
 

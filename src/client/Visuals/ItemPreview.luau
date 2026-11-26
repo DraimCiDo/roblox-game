@@ -1,8 +1,8 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ItemModels = require(ReplicatedStorage.Shared.ItemModels)
-local Style = require(script.Parent.Style)
+local ItemModels = require(ReplicatedStorage.Shared.Models.ItemModels)
+local Style = require(script.Parent.Parent.UI.Style)
 
 local ItemPreview = {}
 

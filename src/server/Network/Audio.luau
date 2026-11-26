@@ -3,7 +3,7 @@
 -- target: деталь или модель в мире (звук играет у неё); nil — личный звук игрока без позиции.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Remotes = require(ReplicatedStorage.Shared.Network.Remotes)
 
 local Audio = {}
 local interface: RemoteEvent?
