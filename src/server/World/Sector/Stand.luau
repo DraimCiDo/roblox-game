@@ -123,7 +123,7 @@ local function buildStand(kit: Kit, slot: number, stand: Part): ()
 		brick(folder, "Крыша", at(3.9), Vector3.new(halfX * 2 + 0.2, 0.1, halfZ * 2 + 0.2), STEEL)
 		kit.Lift[slot] = 0.2
 	else
-		cylinder(folder, "Поворотный круг", at(0.1), 0.2, 6.0, STEEL)
+		cylinder(folder, "Поворотный круг", at(0.1), 0.2, 6.0, rgb(255, 202, 84), Enum.Material.Metal)
 		cylinder(folder, "Покрытие", at(0.22), 0.06, 5.5, MARBLE, Enum.Material.Marble)
 		local ring = cylinder(folder, "Подсветка", at(0.19), 0.04, 5.8, accent, Enum.Material.Neon)
 		table.insert(accents, ring)

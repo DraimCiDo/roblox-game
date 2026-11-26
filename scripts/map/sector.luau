@@ -41,10 +41,13 @@ local WIDEN = 5 -- how much each side wing is wider than the original 26.6 half 
 local function wing(x)
 	return x + math.sign(x) * WIDEN
 end
-local PIPE_FLOOR = 11.0 -- низ трубы подачи
-local PIPE_TOP = 18.95 -- верх трубы
-local PIPE_HALF = 8.1 -- полуширина трубы (грузовой контейнер 14 в ширину)
-local HOOD_BACK = 10.2 -- задняя грань колпака над шлюзом
+local CHAMBER_FLOOR = 11.0 -- floor of the Backrooms chamber behind the portal
+local CHAMBER_TOP = 18.95
+local PIPE_Y = 14.4 -- axis of the horizontal run, and the middle of the portal
+local PIPE_RADIUS = 3 -- the glass pipe is 6 studs across
+local BEND = 3.5
+local NOZZLE_Y = 8.3 -- mouth of the pipe above the pad
+local PORTAL_HALF = 3.3 -- half of the square opening hidden behind the round frame
 local DOOR_Z = 18.6 -- фасад камеры Backrooms
 local BACK_Z = 30.6 -- внутренняя грань задней стены
 
@@ -199,44 +202,30 @@ local function buildSector(model, F, spawn)
 	-- ===== Шлюз: площадка над шахтой, створки, опора, сигналы =====
 	local bay = folder("Бокс открытия")
 	for _, x in { -4.4, 4.4 } do
-		part(model, "Створка шлюза", V(8.8, 0.65, 17.6), place(V(x, -0.35, 0)), STEEL, Enum.Material.SmoothPlastic)
-		part(model, "Створка шлюза", V(8.8, 0.65, 17.6), place(V(x, 10.63, 0)), STEEL, Enum.Material.SmoothPlastic)
+		part(model, "Створка шлюза", V(8.8, 0.65, 17.6), place(V(x, -0.35, 0)), STEEL, Enum.Material.DiamondPlate)
+	end
+	for _, x in { -1.45, 1.45 } do
+		local iris = part(model, "Створка шлюза", V(2.9, 0.22, 5.8), place(V(x, NOZZLE_Y - 0.35, 0)), GRAPHITE, Enum.Material.Metal)
+		iris.CanCollide = false
 	end
 	local support = part(model, "Опора над шахтой", V(18.4, 1.43, 18.4), place(V(0, -0.69, 0)), DARK, Enum.Material.SmoothPlastic)
 	support.Transparency = 1
 	part(model, "Индикация шлюза", V(3.85, 0.07, 0.21), place(V(0, 0.05, -9.44)), CYAN, Enum.Material.Neon, false)
 	part(model, "Сигнал отвода", V(1.32, 0.13, 0.18), place(V(0, 0.22, -9.62)), AMBER, Enum.Material.Neon, false)
-	part(model, "Сигнал подачи", V(1.32, 0.16, 0.22), place(V(0, 11.35, -9.95)), CYAN, Enum.Material.Neon, false)
-	local outlet = part(model, "Верхняя точка подачи", V(0.25, 0.25, 0.25), place(V(0, 11.3, 0)), DARK, Enum.Material.SmoothPlastic, false)
+	part(model, "Сигнал подачи", V(1.32, 0.3, 0.3), place(V(0, NOZZLE_Y + 0.6, -PIPE_RADIUS - 0.6)), CYAN, Enum.Material.Neon, false)
+	local outlet = part(model, "Верхняя точка подачи", V(0.25, 0.25, 0.25), place(V(0, NOZZLE_Y, 0)), DARK, Enum.Material.SmoothPlastic, false)
 	outlet.Transparency = 1
 	local disposal = part(model, "Нижняя точка отвода", V(0.25, 0.25, 0.25), place(V(0, -12.72, 0)), DARK, Enum.Material.SmoothPlastic, false)
 	disposal.Transparency = 1
-	-- Окантовка площадки: стальная рама и янтарная кромка опасной зоны.
-	for _, side in { -1, 1 } do
-		part(bay, "Рама площадки", V(SHAFT * 2 + 2.4, 0.08, 1.2), place(V(0, 0.0, side * (SHAFT + 0.6))), STEEL, Enum.Material.SmoothPlastic, false)
-		part(bay, "Рама площадки", V(1.2, 0.08, SHAFT * 2), place(V(side * (SHAFT + 0.6), 0.0, 0)), STEEL, Enum.Material.SmoothPlastic, false)
-		glow(bay, "Кромка шлюза", V(SHAFT * 2 + 0.2, 0.05, 0.14), place(V(0, 0.05, side * (SHAFT + 0.05))), AMBER)
-		glow(bay, "Кромка шлюза", V(0.14, 0.05, SHAFT * 2 + 0.2), place(V(side * (SHAFT + 0.05), 0.05, 0)), AMBER)
+	-- Round rim of the pad: amber and graphite segments around the shutters.
+	local RIM = SHAFT * 1.42
+	local SEGMENTS = 48
+	for index = 0, SEGMENTS - 1 do
+		local angle = index / SEGMENTS * math.pi * 2
+		local at = V(math.cos(angle) * RIM, 0.03, math.sin(angle) * RIM)
+		local tint = if index % 4 < 2 then AMBER else GRAPHITE
+		glow(bay, "Обод площадки", V(2 * math.pi * RIM / SEGMENTS + 0.05, 0.1, 0.7), CFrame.lookAt(at, V(0, 0.03, 0)), tint)
 	end
-	-- Колонны колпака и направляющие створок.
-	for _, sx in { -1, 1 } do
-		for _, sz in { -1, 1 } do
-			local at = V(sx * 10.0, CEIL / 2, sz * 10.0)
-			part(bay, "Колонна шлюза", V(1, CEIL, 1), place(at), GRAPHITE, Enum.Material.SmoothPlastic)
-			glow(bay, "Подсветка колонны", V(0.12, CEIL - 2, 0.12), place(at + V(-sx * 0.52, 0, -sz * 0.52)), CYAN)
-		end
-		part(bay, "Рельс створок", V(0.9, 0.8, 20), place(V(sx * 9.6, 11.6, 0)), STEEL, Enum.Material.SmoothPlastic)
-		part(bay, "Рельс створок", V(0.5, 0.5, 20), place(V(sx * 9.6, 0.25, 0)), STEEL, Enum.Material.SmoothPlastic, false)
-	end
-	part(bay, "Поперечина колпака", V(20.6, 0.8, 0.8), place(V(0, 11.6, -10.0)), STEEL, Enum.Material.SmoothPlastic)
-	-- Колпак подачи: стеклянные стенки над площадкой, сзади — стык с трубой.
-	for _, sx in { -1, 1 } do
-		local pane = part(bay, "Стекло колпака", V(0.1, PIPE_TOP - 12, 19.2), place(V(sx * 9.95, (12 + PIPE_TOP) / 2, 0)), GLASS, Enum.Material.Glass, false)
-		pane.Transparency = 0.8
-	end
-	local front = part(bay, "Стекло колпака", V(19.2, PIPE_TOP - 12, 0.1), place(V(0, (12 + PIPE_TOP) / 2, -9.95)), GLASS, Enum.Material.Glass, false)
-	front.Transparency = 0.8
-	part(bay, "Крыша колпака", V(20.6, 0.25, 20.6), place(V(0, PIPE_TOP + 0.1, 0)), GRAPHITE, Enum.Material.SmoothPlastic, false)
 	-- Шахта отвода в стиле Backrooms — видна только при открытых нижних створках.
 	for _, side in { -1, 1 } do
 		part(bay, "Обои шахты", V(0.5, 13.3, 18.5), place(V(side * 9.0, -6.7, 0)), WALLPAPER, Enum.Material.Fabric)
@@ -256,91 +245,118 @@ local function buildSector(model, F, spawn)
 	part(model, "Пульт добычи", V(1.45, 2.2, 1.18), place(V(-7.4, 1.1, -12.6), V(0, 0, -1)), GRAPHITE, Enum.Material.SmoothPlastic)
 	glow(bay, "Подсветка пульта", V(1.5, 0.08, 0.1), place(V(-7.4, 0.12, -13.22)), CYAN)
 
-	-- ===== Конвейер подачи: лента от портала Backrooms к колпаку =====
-	local pipe = folder("Конвейер подачи")
-	local pipeLength = DOOR_Z - HOOD_BACK
-	local pipeMid = (DOOR_Z + HOOD_BACK) / 2
-	local RUBBER = Color3.fromRGB(38, 36, 62)
-	part(pipe, "Настил трубы", V(PIPE_HALF * 2, 0.3, pipeLength), place(V(0, PIPE_FLOOR - 0.35, pipeMid)), RUBBER, Enum.Material.Fabric)
-	for z = HOOD_BACK + 0.6, DOOR_Z - 0.4, 1.15 do
-		local roller = part(pipe, "Ролик", V(PIPE_HALF * 2 + 0.2, 0.55, 0.55), place(V(0, PIPE_FLOOR - 0.28, z)), STEEL, Enum.Material.Metal, false)
-		roller.Shape = Enum.PartType.Cylinder
+	-- ===== Pipe: a round glass tube from the Backrooms portal down to a nozzle above the pad =====
+	local pipe = folder("Труба подачи")
+	local METAL = Color3.fromRGB(70, 66, 128)
+	-- A cylinder lying along the direction from `from` to `to`.
+	local function tube(parent, name, from, to, diameter, color, material, extra)
+		local length = (to - from).Magnitude + (extra or 0)
+		local middle = (from + to) / 2
+		local ahead = (to - from).Unit
+		local side = if math.abs(ahead.Y) > 0.9 then V(1, 0, 0) else V(0, 1, 0)
+		local frame = CFrame.fromMatrix(middle, ahead, side:Cross(ahead).Unit)
+		local piece = part(parent, name, V(length, diameter, diameter), frame, color, material, false)
+		piece.Shape = Enum.PartType.Cylinder
+		return piece
 	end
-	for _, sx in { -1, 1 } do
-		local x = sx * (PIPE_HALF + 0.35)
-		part(pipe, "Борт конвейера", V(0.5, 0.8, pipeLength), place(V(x, PIPE_FLOOR - 0.1, pipeMid)), AMBER, Enum.Material.Metal, false)
-		part(pipe, "Балка конвейера", V(0.7, 0.5, pipeLength), place(V(x, PIPE_FLOOR - 0.75, pipeMid)), GRAPHITE, Enum.Material.DiamondPlate, false)
-		part(pipe, "Опора трубы", V(0.9, PIPE_FLOOR - 1, 0.9), place(V(sx * (PIPE_HALF + 0.4), (PIPE_FLOOR - 1) / 2, pipeMid)), GRAPHITE, Enum.Material.DiamondPlate)
+	-- Plain transparency: Glass would hide the see-through things behind the pipe.
+	local function glass(from, to, extra)
+		local piece = tube(pipe, "Стекло трубы", from, to, PIPE_RADIUS * 2, GLASS, Enum.Material.SmoothPlastic, extra)
+		piece.Transparency = 0.78
+		piece.Reflectance = 0.18
+		piece.CastShadow = false
 	end
+	local function collar(at, along, width, color, material)
+		tube(pipe, "Кольцо трубы", at - along * (width / 2), at + along * (width / 2), PIPE_RADIUS * 2 + 0.7, color, material or Enum.Material.Metal)
+	end
+	local startZ, bendZ = DOOR_Z - 0.4, BEND
+	glass(V(0, PIPE_Y, startZ), V(0, PIPE_Y, bendZ))
+	-- Quarter bend from the horizontal run into the vertical drop.
+	local previous = V(0, PIPE_Y, bendZ)
+	for step = 1, 7 do
+		local angle = step / 7 * math.pi / 2
+		local point = V(0, PIPE_Y - BEND + math.cos(angle) * BEND, BEND - math.sin(angle) * BEND)
+		glass(previous, point, 0.25)
+		previous = point
+	end
+	glass(V(0, PIPE_Y - BEND, 0), V(0, NOZZLE_Y, 0))
+	for z = startZ - 3.2, bendZ + 1, -4.2 do
+		collar(V(0, PIPE_Y, z), V(0, 0, 1), 0.55, STEEL)
+		part(pipe, "Подвес трубы", V(0.22, CEIL - PIPE_Y - PIPE_RADIUS, 0.22), place(V(0, (CEIL + PIPE_Y + PIPE_RADIUS) / 2, z)), METAL, Enum.Material.Metal, false)
+	end
+	collar(V(0, PIPE_Y, bendZ), V(0, 0, 1), 0.7, METAL)
+	collar(V(0, PIPE_Y - BEND, 0), V(0, 1, 0), 0.7, METAL)
+	-- Nozzle: a metal mouth with a glowing lip.
+	collar(V(0, NOZZLE_Y + 0.55, 0), V(0, 1, 0), 1.1, AMBER)
+	collar(V(0, NOZZLE_Y - 0.1, 0), V(0, 1, 0), 0.22, CYAN, Enum.Material.Neon)
+	part(pipe, "Подвес сопла", V(0.22, CEIL - NOZZLE_Y - 1.1, 0.22), place(V(0, (CEIL + NOZZLE_Y + 1.1) / 2, -PIPE_RADIUS - 0.35)), METAL, Enum.Material.Metal, false)
+	part(pipe, "Скоба сопла", V(0.3, 0.3, 0.8), place(V(0, NOZZLE_Y + 1, -PIPE_RADIUS - 0.2)), METAL, Enum.Material.Metal, false)
 
 	-- ===== Камера Backrooms: глухая, открывается порталом только при доставке =====
 	local rooms = folder("Камера Backrooms")
-	local METAL = Color3.fromRGB(70, 66, 128)
-	for _, sx in { -1, 1 } do
-		local width = 26.6 + WIDEN - 8.1
-		part(rooms, "Фасад камеры", V(width, CEIL - PIPE_FLOOR + 0.4, 0.6), place(V(sx * (8.1 + width / 2), (PIPE_FLOOR - 0.4 + CEIL) / 2, DOOR_Z)), WALL, Enum.Material.Plaster)
-		glow(rooms, "Кромка фасада", V(width, 0.35, 0.2), place(V(sx * (8.1 + width / 2), PIPE_FLOOR - 0.25, DOOR_Z - 0.36)), AMBER)
-	end
-	part(rooms, "Фасад камеры", V(16.2, CEIL - PIPE_TOP, 0.6), place(V(0, (PIPE_TOP + CEIL) / 2, DOOR_Z)), WALL, Enum.Material.Plaster)
-	-- The portal frame: chunky metal, a glowing contour and an energy orb in each corner.
-	local mid = (PIPE_FLOOR + PIPE_TOP) / 2
-	local height = PIPE_TOP - PIPE_FLOOR
-	local function neon(name, size, at, color)
-		local piece = glow(rooms, name, size, place(at), color)
-		piece.Material = Enum.Material.Neon
-		return piece
+	local half = 26.6 + WIDEN
+	local bottom, top = CHAMBER_FLOOR - 0.4, CEIL + 0.4
+	local function wall(width, height, x, y)
+		part(rooms, "Фасад камеры", V(width, height, 0.6), place(V(x, y, DOOR_Z)), WALL, Enum.Material.Plaster)
 	end
 	for _, sx in { -1, 1 } do
-		part(rooms, "Стойка портала", V(1.8, height + 1.6, 1.4), place(V(sx * 9.3, mid + 0.2, DOOR_Z - 0.8)), STEEL, Enum.Material.Metal, false)
-		neon("Контур затвора", V(0.35, height, 0.35), V(sx * 8.25, mid, DOOR_Z - 1.35), VIOLET)
-		for z = 0, 3 do
-			part(rooms, "Катушка портала", V(2.4, 0.4, 1.8), place(V(sx * 9.3, PIPE_FLOOR + 0.9 + z * 2, DOOR_Z - 0.8)), METAL, Enum.Material.Metal, false)
-		end
-		for _, y in { PIPE_FLOOR + 0.2, PIPE_TOP + 0.9 } do
-			local orb = neon("Сфера портала", V(2, 2, 2), V(sx * 9.4, y, DOOR_Z - 1.6), VIOLET)
-			orb.Shape = Enum.PartType.Ball
+		wall(half - PORTAL_HALF, top - bottom, sx * (PORTAL_HALF + (half - PORTAL_HALF) / 2), (top + bottom) / 2)
+		glow(rooms, "Кромка фасада", V(half - 1, 0.35, 0.2), place(V(sx * (half / 2 + 0.5), CHAMBER_FLOOR - 0.25, DOOR_Z - 0.36)), AMBER)
+	end
+	wall(PORTAL_HALF * 2, top - PIPE_Y - PORTAL_HALF, 0, (top + PIPE_Y + PORTAL_HALF) / 2)
+	wall(PORTAL_HALF * 2, PIPE_Y - PORTAL_HALF - bottom, 0, (bottom + PIPE_Y - PORTAL_HALF) / 2)
+	-- Round frame of the portal: wide enough to hide the corners of the square membrane.
+	local function ring(radius, thickness, depth, z, color, material, name)
+		local count = 28
+		for index = 0, count - 1 do
+			local angle = index / count * math.pi * 2
+			local at = V(math.cos(angle) * radius, PIPE_Y + math.sin(angle) * radius, z)
+			local frame = CFrame.new(at) * CFrame.Angles(0, 0, angle)
+			local piece = part(rooms, name, V(thickness, 2 * math.pi * radius / count + 0.12, depth), frame, color, material, false)
+			piece.CastShadow = false
 		end
 	end
-	part(rooms, "Балка портала", V(20.6, 1.6, 1.4), place(V(0, PIPE_TOP + 0.9, DOOR_Z - 0.8)), STEEL, Enum.Material.Metal, false)
-	neon("Контур затвора", V(16.8, 0.35, 0.35), V(0, PIPE_TOP + 0.05, DOOR_Z - 1.35), VIOLET)
-	local plaque = part(rooms, "Табличка портала", V(15, 1.8, 0.4), place(V(0, PIPE_TOP + 2.9, DOOR_Z - 0.8), V(0, 0, -1)), DARK, Enum.Material.Metal, false)
+	ring(4.35, 2.1, 0.9, DOOR_Z - 0.55, STEEL, Enum.Material.Metal, "Рама портала")
+	ring(3.25, 0.35, 0.5, DOOR_Z - 1.05, VIOLET, Enum.Material.Neon, "Контур затвора")
+	ring(5.55, 0.35, 0.6, DOOR_Z - 0.7, VIOLET, Enum.Material.Neon, "Контур затвора")
+	for index = 0, 7 do
+		local angle = (index + 0.5) / 8 * math.pi * 2
+		local bolt = part(rooms, "Заклёпка портала", V(0.8, 0.8, 0.8), place(V(math.cos(angle) * 4.4, PIPE_Y + math.sin(angle) * 4.4, DOOR_Z - 1.1)), AMBER, Enum.Material.Metal, false)
+		bolt.Shape = Enum.PartType.Ball
+	end
+	local plaque = part(rooms, "Табличка портала", V(11, 1.5, 0.3), place(V(0, PIPE_Y + 7.2, DOOR_Z - 0.5), V(0, 0, -1)), DARK, Enum.Material.Metal, false)
 	label(plaque, Enum.NormalId.Front, { { "ПОРТАЛ · УРОВЕНЬ 0", AMBER, 0.75 } }, 40)
 	local light = Instance.new("PointLight")
 	light.Color = VIOLET
-	light.Range = 18
-	light.Brightness = 1.4
+	light.Range = 14
+	light.Brightness = 1.2
 	light.Parent = plaque
-	-- The two halves of the energy membrane (the server slides them apart by their width).
+	-- Two halves of the membrane behind the wall: the server slides them apart by their width.
 	for _, sx in { -1, 1 } do
-		local door = part(model, "Затвор Backrooms", V(8, height, 0.4), place(V(sx * 4, mid, DOOR_Z - 0.6), V(0, 0, -1)), Color3.fromRGB(92, 44, 160), Enum.Material.SmoothPlastic)
+		local door = part(model, "Затвор Backrooms", V(PORTAL_HALF, PORTAL_HALF * 2, 0.2), place(V(sx * PORTAL_HALF / 2, PIPE_Y, DOOR_Z + 0.42), V(0, 0, -1)), Color3.fromRGB(104, 52, 180), Enum.Material.SmoothPlastic)
 		door.CanCollide = false
-		label(door, Enum.NormalId.Front, {
-			{ if sx < 0 then "◢◤◢◤◢◤" else "◥◣◥◣◥◣", Color3.fromRGB(52, 20, 104), 0.22 },
-			{ if sx < 0 then "НЕ ВХОДИТЬ" else "ОЖИДАНИЕ ГРУЗА", Color3.fromRGB(40, 12, 86), 0.2, BOLD },
-			{ if sx < 0 then "◥◣◥◣◥◣" else "◢◤◢◤◢◤", Color3.fromRGB(52, 20, 104), 0.22 },
-		}, 30)
 	end
 	-- Корпус камеры: пол (ковролин сверху, тёмный потолок лаборатории снизу), стены, потолок.
 	local depth = BACK_Z - DOOR_Z - 0.3
 	local roomMid = (DOOR_Z + 0.3 + BACK_Z) / 2
-	part(rooms, "Ковролин", V(24, 0.2, depth), place(V(0, PIPE_FLOOR + 0.1, roomMid)), CARPET, Enum.Material.Fabric)
-	part(rooms, "Перекрытие лаборатории", V(25, 0.5, depth + 0.6), place(V(0, PIPE_FLOOR - 0.25, roomMid)), GRAPHITE, Enum.Material.SmoothPlastic)
+	part(rooms, "Ковролин", V(24, 0.2, depth), place(V(0, CHAMBER_FLOOR + 0.1, roomMid)), CARPET, Enum.Material.Fabric)
+	part(rooms, "Перекрытие лаборатории", V(25, 0.5, depth + 0.6), place(V(0, CHAMBER_FLOOR - 0.25, roomMid)), GRAPHITE, Enum.Material.SmoothPlastic)
 	for _, sx in { -1, 1 } do
-		part(rooms, "Обшивка камеры", V(0.4, CEIL - PIPE_FLOOR, depth), place(V(sx * 12.3, (PIPE_FLOOR + CEIL) / 2, roomMid)), WALL, Enum.Material.SmoothPlastic)
-		part(rooms, "Обои", V(0.1, PIPE_TOP - PIPE_FLOOR, depth), place(V(sx * 12.05, (PIPE_FLOOR + PIPE_TOP) / 2, roomMid)), WALLPAPER, Enum.Material.Fabric)
+		part(rooms, "Обшивка камеры", V(0.4, CEIL - CHAMBER_FLOOR, depth), place(V(sx * 12.3, (CHAMBER_FLOOR + CEIL) / 2, roomMid)), WALL, Enum.Material.SmoothPlastic)
+		part(rooms, "Обои", V(0.1, CHAMBER_TOP - CHAMBER_FLOOR, depth), place(V(sx * 12.05, (CHAMBER_FLOOR + CHAMBER_TOP) / 2, roomMid)), WALLPAPER, Enum.Material.Fabric)
 	end
-	part(rooms, "Обои", V(24, PIPE_TOP - PIPE_FLOOR, 0.1), place(V(0, (PIPE_FLOOR + PIPE_TOP) / 2, BACK_Z - 0.05)), WALLPAPER, Enum.Material.Fabric)
+	part(rooms, "Обои", V(24, CHAMBER_TOP - CHAMBER_FLOOR, 0.1), place(V(0, (CHAMBER_FLOOR + CHAMBER_TOP) / 2, BACK_Z - 0.05)), WALLPAPER, Enum.Material.Fabric)
 	for _, x in { -6.5, 5.5 } do
-		part(rooms, "Проём", V(3.2, 5.6, 0.05), place(V(x, PIPE_FLOOR + 3, BACK_Z - 0.12)), WALLPAPER:Lerp(Color3.new(0, 0, 0), 0.55), Enum.Material.Fabric, false)
+		part(rooms, "Проём", V(3.2, 5.6, 0.05), place(V(x, CHAMBER_FLOOR + 3, BACK_Z - 0.12)), WALLPAPER:Lerp(Color3.new(0, 0, 0), 0.55), Enum.Material.Fabric, false)
 	end
-	part(rooms, "Простенок", V(2.6, PIPE_TOP - PIPE_FLOOR, 2.6), place(V(-7, (PIPE_FLOOR + PIPE_TOP) / 2, roomMid + 2)), WALLPAPER, Enum.Material.Fabric)
-	part(rooms, "Потолок «Армстронг»", V(24, 0.15, depth), place(V(0, PIPE_TOP, roomMid)), TILE)
+	part(rooms, "Простенок", V(2.6, CHAMBER_TOP - CHAMBER_FLOOR, 2.6), place(V(-7, (CHAMBER_FLOOR + CHAMBER_TOP) / 2, roomMid + 2)), WALLPAPER, Enum.Material.Fabric)
+	part(rooms, "Потолок «Армстронг»", V(24, 0.15, depth), place(V(0, CHAMBER_TOP, roomMid)), TILE)
 	for z = DOOR_Z + 2, BACK_Z - 1, 2.8 do
-		part(rooms, "Профиль потолка", V(24, 0.05, 0.1), place(V(0, PIPE_TOP - 0.1, z)), TILE:Lerp(Color3.new(0, 0, 0), 0.25), Enum.Material.SmoothPlastic, false)
+		part(rooms, "Профиль потолка", V(24, 0.05, 0.1), place(V(0, CHAMBER_TOP - 0.1, z)), TILE:Lerp(Color3.new(0, 0, 0), 0.25), Enum.Material.SmoothPlastic, false)
 	end
 	for _, x in { -5, 5 } do
 		for _, z in { DOOR_Z + 3.5, BACK_Z - 3.5 } do
-			local lamp = part(model, "Лампа Backrooms", V(2.6, 0.08, 1.3), place(V(x, PIPE_TOP - 0.12, z)), LAMP_OFF, Enum.Material.SmoothPlastic, false)
+			local lamp = part(model, "Лампа Backrooms", V(2.6, 0.08, 1.3), place(V(x, CHAMBER_TOP - 0.12, z)), LAMP_OFF, Enum.Material.SmoothPlastic, false)
 			lamp.CastShadow = false
 			if x < 0 then
 				local light = Instance.new("PointLight")
@@ -353,14 +369,14 @@ local function buildSector(model, F, spawn)
 		end
 	end
 	-- Контейнер появляется в центре камеры на уровне трубы (тот же поворот, что у точки подачи — без разворота в полёте).
-	local entry = part(model, "Точка входа в трубу", V(0.25, 0.25, 0.25), place(V(0, 11.3, roomMid + 0.5)), DARK, Enum.Material.SmoothPlastic, false)
+	local entry = part(model, "Точка входа в трубу", V(0.25, 0.25, 0.25), place(V(0, PIPE_Y, roomMid + 0.5)), DARK, Enum.Material.SmoothPlastic, false)
 	entry.Transparency = 1
 
 	-- ===== Лаборатория коллекций под камерой =====
 	local lab = folder("Лаборатория коллекций")
 	for _, sx in { -1, 1 } do
-		part(lab, "Колонна лаборатории", V(0.9, PIPE_FLOOR - 0.5, 0.9), place(V(sx * 12.3, (PIPE_FLOOR - 0.5) / 2, DOOR_Z)), GRAPHITE, Enum.Material.SmoothPlastic)
-		glow(lab, "Подсветка колонны", V(0.1, PIPE_FLOOR - 2, 0.1), place(V(sx * 12.3 - sx * 0.47, (PIPE_FLOOR - 0.5) / 2, DOOR_Z - 0.47)), VIOLET)
+		part(lab, "Колонна лаборатории", V(0.9, CHAMBER_FLOOR - 0.5, 0.9), place(V(sx * 12.3, (CHAMBER_FLOOR - 0.5) / 2, DOOR_Z)), GRAPHITE, Enum.Material.SmoothPlastic)
+		glow(lab, "Подсветка колонны", V(0.1, CHAMBER_FLOOR - 2, 0.1), place(V(sx * 12.3 - sx * 0.47, (CHAMBER_FLOOR - 0.5) / 2, DOOR_Z - 0.47)), VIOLET)
 	end
 	glow(lab, "Контур лаборатории", V(24, 0.03, 0.14), place(V(0, 0.02, DOOR_Z - 0.2)), VIOLET)
 	local counter = part(model, "Коллекции", V(4.6, 2.24, 2.5), place(V(0, 1.12, 23.4), V(0, 0, -1)), GRAPHITE, Enum.Material.SmoothPlastic)
@@ -368,7 +384,7 @@ local function buildSector(model, F, spawn)
 	local catalog = part(counter, "Панель каталогизации", V(1.9, 0.6, 0.2), place(V(-0.9, 2.75, 22.7), V(0, 0, -1)) * CFrame.Angles(math.rad(22), 0, 0), DARK, Enum.Material.SmoothPlastic, false)
 	catalog.CanQuery = false
 	part(lab, "Ковёр коллекций", V(23, 0.04, 7.4), place(V(0, -0.02, 26.4)), Color3.fromRGB(128, 78, 164), Enum.Material.Fabric, false)
-	downlight(part(model, "Светильник рабочей зоны", V(7.3, 0.14, 1.3), place(V(0, PIPE_FLOOR - 0.6, 24)), LAMP, Enum.Material.Neon, false), 1.3, 14, 120)
+	downlight(part(model, "Светильник рабочей зоны", V(7.3, 0.14, 1.3), place(V(0, CHAMBER_FLOOR - 0.6, 24)), LAMP, Enum.Material.Neon, false), 1.3, 14, 120)
 
 	-- ===== Левое крыло: автоматизированный склад =====
 	-- Не «Склад»: так называется деталь-станция, которую сервер ищет через FindFirstChild.
@@ -479,7 +495,17 @@ local function buildSector(model, F, spawn)
 	local orderPanel = part(model, "Панель заказов", V(6.8, 1.4, 0.3), place(V(wing(21.4), 7.7, -24.2), V(-1, 0, 0)), DARK, Enum.Material.SmoothPlastic, false)
 	orderPanel.CanQuery = false
 	downlight(part(model, "Рассеиватель сервисного поста", V(0.4, 0.1, 5), place(V(wing(22.6), 7.2, -24.2)), LAMP, Enum.Material.Neon, false), 1.1, 12, 100)
-	part(model, "Витрина 8", V(8, 1.3, 5.94), place(V(wing(-17), 0.65, -22.5), V(1, 0, 0)), GRAPHITE, Enum.Material.SmoothPlastic)
+	local WOOD8, BRASS8 = Color3.fromRGB(150, 96, 58), Color3.fromRGB(255, 202, 84)
+	part(model, "Витрина 8", V(8, 1.3, 5.94), place(V(wing(-17), 0.65, -22.5), V(1, 0, 0)), WOOD8, Enum.Material.WoodPlanks)
+	for _, y in { 0.08, 1.27 } do
+		part(desk, "Кант витрины", V(6.2, 0.12, 8.2), place(V(wing(-17), y, -22.5)), BRASS8, Enum.Material.Metal, false)
+	end
+	-- A curtain between brass posts on the wall side, as in the gallery.
+	part(desk, "Бархат", V(0.3, 7, 9), place(V(wing(-24.6), 3.5, -22.5)), Color3.fromRGB(122, 46, 104), Enum.Material.Fabric)
+	for _, z in { -27, -18 } do
+		part(desk, "Стойка задника", V(0.5, 7.2, 0.3), place(V(wing(-24.4), 3.6, z)), BRASS8, Enum.Material.Metal, false)
+	end
+	part(desk, "Карниз задника", V(0.8, 0.45, 9.4), place(V(wing(-24.4), 7.2, -22.5)), WOOD8, Enum.Material.WoodPlanks, false)
 	glow(desk, "Контур автостенда", V(6.6, 0.03, 0.14), place(V(wing(-17), 0.02, -27.3)), AMBER)
 	glow(desk, "Контур автостенда", V(6.6, 0.03, 0.14), place(V(wing(-17), 0.02, -17.7)), AMBER)
 
@@ -491,7 +517,7 @@ local function buildSector(model, F, spawn)
 	for _, side in { -1, 1 } do
 		local inward = V(-side, 0, 0)
 		local x = wing(side * 25.9)
-		local panels = if side == 1 then { 29 } else { -24, -13, 25 }
+		local panels = if side == 1 then { 29 } else { -13, 25 }
 		for _, z in panels do
 			Kit.place(kit, "wall", foot(V(x - side * 0.3, 0, z), inward), 13)
 		end
@@ -500,7 +526,8 @@ local function buildSector(model, F, spawn)
 		for _, px in { 17, 24 } do
 			Kit.place(kit, "wall", foot(V(side * px, 0, 30.2), V(0, 0, -1)), 11)
 		end
-		for _, px in { 15, 23 } do
+		-- None in the left corner: the turntable stands there.
+		for _, px in if side == 1 then { 15, 23 } else { 15 } do
 			Kit.place(kit, "wall", foot(V(side * px, 0, -29.7), V(0, 0, 1)), 11)
 		end
 	end
