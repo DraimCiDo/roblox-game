@@ -214,12 +214,18 @@ function Hall.Gate(floorY: number): ()
 			part(folder, "Полоса", block, Vector3.new(0.45, 0.7, 29), at(y, side * 0.1), AMBER)
 		end
 		part(folder, "Стойка", block, Vector3.new(1.2, 15.6, 1.6), at(7.8, side * 15.6), CHROME)
-		Decor.place(
+		local at2 = Vector3.new(x + 2.4, floorY, side * 10.5)
+		local stack = part(
 			folder,
-			"crates",
-			CFrame.lookAt(Vector3.new(x + 2.4, floorY, side * 10.5), Vector3.new(0, floorY, side * 10.5)),
-			5.5
+			"Основание",
+			block,
+			Vector3.new(3.4, 5.5, 3.4),
+			CFrame.new(at2.X, floorY + 2.75, at2.Z),
+			DARK
 		)
+		stack.Transparency = 1
+		stack.CanCollide = true
+		Decor.place(folder, "crates", CFrame.lookAt(at2, Vector3.new(0, floorY, at2.Z)), 5.5)
 	end
 	part(folder, "Верхняя балка", block, Vector3.new(1.2, 1, 32.8), at(15.6, 0), CHROME)
 	-- Круглая дверь хранилища: задняя часть утоплена в проём.

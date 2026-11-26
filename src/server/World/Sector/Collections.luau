@@ -76,6 +76,10 @@ local function buildPanel(
 		return brick(folder, name, frame * CFrame.new(x, y, z), size, tint, material)
 	end
 	local wood, metal = Enum.Material.WoodPlanks, Enum.Material.Metal
+	-- One invisible box keeps players out of the whole cabinet.
+	local solid = box("Преграда", 0, HEIGHT / 2, 0, Vector3.new(WIDTH + 0.2, HEIGHT, 1.95), WOOD, wood)
+	solid.Transparency = 1
+	solid.CanCollide = true
 	box("Цоколь", 0, 0.62, 0, Vector3.new(WIDTH, 1.24, 1.9), DARK_WOOD, wood).CanCollide = true
 	box("Кант цоколя", 0, 1.29, 0, Vector3.new(WIDTH + 0.1, 0.1, 2), BRASS, metal)
 	for _, x in { -1.1, 1.1 } do

@@ -48,6 +48,7 @@ local function buildStand(kit: Kit, slot: number, stand: Part): ()
 		cylinder(folder, "Кольцо колпака", at(0.28), 0.1, 2.85, brass)
 		local case = cylinder(folder, "Колпак", at(1.65), 2.7, 2.75, GLASS, Enum.Material.Glass)
 		case.Transparency = 0.86
+		case.CanCollide = true
 		cylinder(folder, "Крышка колпака", at(3.1), 0.2, 2.9, brass)
 		cylinder(folder, "Шишка", at(3.35), 0.3, 0.5, brass)
 		kit.Lift[slot] = 0.26
@@ -107,6 +108,7 @@ local function buildStand(kit: Kit, slot: number, stand: Part): ()
 				Enum.Material.Glass
 			)
 			wall.Transparency = 0.88
+			wall.CanCollide = true
 			local back = brick(
 				folder,
 				"Стекло",
@@ -116,6 +118,7 @@ local function buildStand(kit: Kit, slot: number, stand: Part): ()
 				Enum.Material.Glass
 			)
 			back.Transparency = 0.88
+			back.CanCollide = true
 		end
 		brick(folder, "Крыша", at(3.9), Vector3.new(halfX * 2 + 0.2, 0.1, halfZ * 2 + 0.2), STEEL)
 		kit.Lift[slot] = 0.2

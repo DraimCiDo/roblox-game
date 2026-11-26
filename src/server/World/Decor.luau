@@ -59,7 +59,14 @@ local function template(data: Mesh): MeshPart?
 end
 
 -- Builds all meshes of a piece around `center`, stretched to `size`. Nothing appears unless all have loaded.
-local function assemble(parent: Instance, name: string, piece: string, center: CFrame, size: Vector3): boolean
+local function assemble(
+	parent: Instance,
+	name: string,
+	piece: string,
+	center: CFrame,
+	size: Vector3,
+	solid: boolean?
+): boolean
 	local entry = (Kit :: any)[piece]
 	if not entry then
 		warn(`[Decor] Unknown kit piece «{piece}»`)
@@ -84,6 +91,7 @@ local function assemble(parent: Instance, name: string, piece: string, center: C
 	for index, data in list do
 		local mesh = sources[index]:Clone()
 		mesh.Name = name
+		mesh.CanCollide = solid == true
 		mesh.Size = vector(data.Size) * scale
 		mesh.CFrame = center * CFrame.new((vector(data.At) - Vector3.new(0, native.Y / 2, 0)) * scale)
 		mesh.Parent = parent
@@ -136,7 +144,8 @@ function Decor.build(root: Instance): number
 		if not mark:IsA("BasePart") or type(piece) ~= "string" then
 			continue
 		end
-		if assemble(mark.Parent :: Instance, mark.Name, piece, mark.CFrame, mark.Size) then
+		-- Pieces of the scene are solid: nobody walks into them and the camera stays outside.
+		if assemble(mark.Parent :: Instance, mark.Name, piece, mark.CFrame, mark.Size, true) then
 			mark:Destroy()
 			built += 1
 		end

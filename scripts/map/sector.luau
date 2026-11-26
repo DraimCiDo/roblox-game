@@ -410,6 +410,8 @@ local function buildSector(model, F, spawn)
 	end
 	glow(store, "Свет козырька", V(0.12, 0.12, 18), place(V(wing(-23.4), 6.84, 7.7)), LAMP).Material = Enum.Material.Neon
 	downlight(part(model, "Рассеиватель сервисного поста", V(0.4, 0.1, 6), place(V(wing(-22.8), 6.8, 7.7)), LAMP, Enum.Material.Neon, false), 1.1, 12, 100)
+	-- One invisible box keeps players out of the rack.
+	plate("Преграда стеллажа", V(2.3, 7.2, 18.6), V(wing(-24.7), 3.6, 7.7), PLATE, Enum.Material.Metal).Transparency = 1
 	-- Floor of the zone: tread plate with a hazard border.
 	plate("Настил склада", V(10, 0.05, 20), V(wing(-20.6), -0.01, 7.7), Color3.fromRGB(122, 134, 196), Enum.Material.DiamondPlate, false)
 	glow(store, "Контур склада", V(0.4, 0.04, 20.4), place(V(wing(-15.5), 0.03, 7.7)), AMBER)
@@ -428,7 +430,7 @@ local function buildSector(model, F, spawn)
 	-- A curtain panel between brass posts behind one stand.
 	local function backdrop(z, width, height)
 		local x = wing(25.4)
-		part(gallery, "Бархат", V(0.3, height, width - 0.5), place(V(x + 0.2, height / 2, z)), VELVET, Enum.Material.Fabric, false)
+		part(gallery, "Бархат", V(0.3, height, width - 0.5), place(V(x + 0.2, height / 2, z)), VELVET, Enum.Material.Fabric)
 		for _, side in { -1, 1 } do
 			part(gallery, "Стойка задника", V(0.5, height + 0.2, 0.3), place(V(x, height / 2, z + side * (width / 2 - 0.15))), BRASS, Enum.Material.Metal, false)
 		end
