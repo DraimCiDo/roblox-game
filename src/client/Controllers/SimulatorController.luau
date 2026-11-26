@@ -168,6 +168,7 @@ local function refresh(preserveScroll: boolean?): ()
 	local canvas = content.CanvasPosition
 	local oldSelection = GuiService.SelectedObject
 	local selectedName = oldSelection and oldSelection:IsDescendantOf(content) and oldSelection.Name
+	window.SetCompact(Components.compact())
 	Components.begin()
 	window.SetHeader(
 		TITLES[key] or Format(Texts.titleShowcase, { slot = key }),
@@ -240,7 +241,7 @@ local function refresh(preserveScroll: boolean?): ()
 			local scale = math.max(window.Scale.Scale, 0.5)
 			local used = (if list then list.AbsoluteContentSize.Y else content.AbsoluteCanvasSize.Y) / scale + 16
 			local dockHeight = dock.AbsoluteSize.Y / scale
-			local needed = used + 116 + (if docked then dockHeight + 10 else 0)
+			local needed = used + Components.inset() + 8 + (if docked then dockHeight + 10 else 0)
 			if dock.Visible and not docked then
 				-- Боковая панель (телефон) не должна вылезать за низ окна.
 				needed = math.max(needed, dockHeight + 104)

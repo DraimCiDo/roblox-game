@@ -23,6 +23,7 @@ local Perks = {}
 local COLUMN = 142
 local ROW = 140
 local MARGIN = 84
+local COMPACT_MARGIN = 64
 local TAB_HEIGHT = 52
 local TAB_WIDTH = 150
 local MOBILE_DOCK = 200
@@ -50,7 +51,7 @@ function Perks.reset(): ()
 	scroll = nil
 	tabScroll = Vector2.zero
 	-- Smaller on a short window (phone), so that more of the branch is visible.
-	zoom = if Components.compact() then 0.65 else 1
+	zoom = if Components.compact() then 0.6 else 1
 	disconnect()
 end
 
@@ -110,12 +111,12 @@ local function firstSelection(infos: { [string]: Node.Info }): string?
 	return nil
 end
 
-local function drawTabs(parent: Frame, data: Types.View, current: string): TextButton?
+local function drawTabs(parent: Frame, data: Types.View, current: string, height: number): TextButton?
 	local strip = Instance.new("ScrollingFrame")
 	strip.Name = "Branches"
 	strip.BackgroundTransparency = 1
 	strip.BorderSizePixel = 0
-	strip.Size = UDim2.new(1, 0, 0, TAB_HEIGHT)
+	strip.Size = UDim2.new(1, 0, 0, height)
 	strip.CanvasSize = UDim2.new()
 	strip.AutomaticCanvasSize = Enum.AutomaticSize.X
 	strip.ScrollingDirection = Enum.ScrollingDirection.X
@@ -145,7 +146,7 @@ local function drawTabs(parent: Frame, data: Types.View, current: string): TextB
 		end, true, "neutral")
 		tab.Name = `Branch:{branch.Key}`
 		tab.LayoutOrder = index
-		tab.Size = UDim2.fromOffset(TAB_WIDTH, TAB_HEIGHT - 6)
+		tab.Size = UDim2.fromOffset(TAB_WIDTH, height - 6)
 		tab.TextSize = 16
 		local color = Look.BranchColors[branch.Key] or Style.Cyan
 		tab.BackgroundColor3 = if locked then Style.Track else color
@@ -224,11 +225,13 @@ function Perks.render(data: Types.View, _wide: boolean): ()
 	end
 	local infos = branchInfo(branch, data)
 
+	local compact = Components.compact()
+	local tabHeight = if compact then Style.TouchSize else TAB_HEIGHT
 	local shell = Components.strip(Components.fillHeight())
-	local activeTab = drawTabs(shell, data, branch)
+	local activeTab = drawTabs(shell, data, branch, tabHeight)
 	local view = Style.frame(shell, Style.Track, 14)
-	view.Position = UDim2.fromOffset(0, TAB_HEIGHT + 4)
-	view.Size = UDim2.new(1, 0, 1, -(TAB_HEIGHT + 4))
+	view.Position = UDim2.fromOffset(0, tabHeight + 4)
+	view.Size = UDim2.new(1, 0, 1, -(tabHeight + 4))
 	view.ClipsDescendants = true
 	Style.outline(view, Style.Edge, 3)
 
@@ -246,6 +249,7 @@ function Perks.render(data: Types.View, _wide: boolean): ()
 	summary.Position = UDim2.new(0, 10, 1, -6)
 	summary.Size = UDim2.fromOffset(260, 18)
 	summary.ZIndex = 10
+	summary.Visible = not compact
 	Style.textStroke(summary, 2)
 
 	if next(infos) == nil then
@@ -289,11 +293,12 @@ function Perks.render(data: Types.View, _wide: boolean): ()
 		states[key] = info.State
 	end
 	local cells, columns, rows = PerkTree.layout(branch, states)
-	local content = Vector2.new((columns - 1) * COLUMN, (rows - 1) * ROW) + Vector2.one * MARGIN * 2
+	local margin = if compact then COMPACT_MARGIN else MARGIN
+	local content = Vector2.new((columns - 1) * COLUMN, (rows - 1) * ROW) + Vector2.one * margin * 2
 	chart.Size = UDim2.fromOffset(content.X, content.Y)
 	local function pointOf(key: string): Vector2
 		local cell = cells[key]
-		return Vector2.new(MARGIN + cell.Column * COLUMN, MARGIN + cell.Row * ROW)
+		return Vector2.new(margin + cell.Column * COLUMN, margin + cell.Row * ROW)
 	end
 
 	-- Centers a small tree in the window and sizes the canvas of a big one.
@@ -395,6 +400,7 @@ function Perks.render(data: Types.View, _wide: boolean): ()
 	toolbar.Position = UDim2.new(1, -8, 0, 8)
 	toolbar.Size = UDim2.fromOffset(Style.TouchSize, Style.TouchSize * 2 + 8)
 	toolbar.ZIndex = 10
+	toolbar.Visible = not (compact and UserInputService.TouchEnabled)
 	for index, tool in { { Caption = "+", Factor = 1.2 }, { Caption = "-", Factor = 1 / 1.2 } } do
 		local control = Style.button(toolbar, tool.Caption, function()
 			setZoom(zoom * tool.Factor)

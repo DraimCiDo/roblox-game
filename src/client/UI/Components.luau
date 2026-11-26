@@ -52,10 +52,10 @@ export type RowOptions = {
 	Tone: Style.ButtonTone?,
 }
 local CONTENT_INSET = 108
+local COMPACT_INSET = 76
 -- Ниже этой высоты панели (ландшафтный телефон) нижняя панель уходит вбок, иначе на содержимое не остаётся места.
 local COMPACT_BELOW = 420
 local SIDE_DOCK_WIDTH = 220
-local SIDE_DOCK_TOP = 96
 Components.Live = {} :: LiveWidgets
 
 local content: ScrollingFrame
@@ -82,13 +82,18 @@ function Components.redraw(): ()
 	redraw()
 end
 
+-- Height taken by the window header above the content.
+function Components.inset(): number
+	return if Components.compact() then COMPACT_INSET else CONTENT_INSET
+end
+
 -- Очищает область содержимого перед отрисовкой нового экрана.
 function Components.begin(): ()
 	order = 0
 	focus = nil
 	table.clear(Components.Live)
 	dockFrame.Visible = false
-	content.Size = UDim2.new(1, -26, 1, -CONTENT_INSET)
+	content.Size = UDim2.new(1, -26, 1, -Components.inset())
 	for _, object in content:GetChildren() do
 		if object:IsA("GuiObject") then
 			object:Destroy()
@@ -114,12 +119,12 @@ function Components.viewHeight(preferred: number): number
 	if not Components.compact() then
 		return preferred
 	end
-	return math.clamp(Components.panelHeight() - CONTENT_INSET - 12, 120, preferred)
+	return math.clamp(Components.panelHeight() - Components.inset() - 12, 120, preferred)
 end
 
 -- Высота области содержимого, когда окно растянуто на весь экран (карта перков).
 function Components.fillHeight(): number
-	return math.max(160, Components.panelHeight() - CONTENT_INSET - 12)
+	return math.max(100, Components.panelHeight() - Components.inset() - 12)
 end
 
 -- Нижняя панель вне прокрутки: остаётся на виду при выборе предмета в длинном списке.
@@ -135,14 +140,14 @@ function Components.dock(height: number, side: boolean?, sideWidth: number?): Fr
 	if side and (Components.compact() or sideWidth) then
 		local width = if Components.compact() then SIDE_DOCK_WIDTH else sideWidth or SIDE_DOCK_WIDTH
 		dockFrame.AnchorPoint = Vector2.new(1, 0)
-		dockFrame.Position = UDim2.new(1, -12, 0, SIDE_DOCK_TOP)
-		dockFrame.Size = UDim2.new(0, width, 1, -(SIDE_DOCK_TOP + 10))
-		content.Size = UDim2.new(1, -(26 + width + 8), 1, -CONTENT_INSET)
+		dockFrame.Position = UDim2.new(1, -12, 0, Components.inset() - 12)
+		dockFrame.Size = UDim2.new(0, width, 1, -(Components.inset() - 2))
+		content.Size = UDim2.new(1, -(26 + width + 8), 1, -Components.inset())
 	else
 		dockFrame.AnchorPoint = Vector2.new(0.5, 1)
 		dockFrame.Position = UDim2.new(0.5, 0, 1, -12)
 		dockFrame.Size = UDim2.new(1, -32, 0, height)
-		content.Size = UDim2.new(1, -26, 1, -(CONTENT_INSET + height + 10))
+		content.Size = UDim2.new(1, -26, 1, -(Components.inset() + height + 10))
 	end
 	return dockFrame
 end

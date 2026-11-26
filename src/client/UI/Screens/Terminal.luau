@@ -17,6 +17,23 @@ function Terminal.render(data: Types.View): ()
 	local canPay = data.Coins >= data.OrderPrice
 	local name, hint, tint = Components.status(data)
 
+	local function orderButton(): ()
+		local caption = if not available
+			then Texts.queueFull
+			elseif not canPay then Format(
+				Texts.missingCoins,
+				{ coins = Components.coin(data.OrderPrice - data.Coins) }
+			)
+			else Format(Texts.orderFor, { price = Components.coin(data.OrderPrice) })
+		local order = Components.command(caption, function()
+			Components.send("buy")
+		end, available and canPay, "primary")
+		order.Size = UDim2.new(1, -9, 0, if Components.compact() then 56 else 72)
+		order.TextSize = 26
+	end
+	if Components.compact() then
+		orderButton()
+	end
 	local hero = Components.card(152)
 	local preview = Preview.draw(hero, data.OrderKind or "cargo")
 	preview.AnchorPoint = Vector2.new(1, 0)
@@ -42,18 +59,9 @@ function Terminal.render(data: Types.View): ()
 		Style.outline(marker, Style.Edge, 1)
 	end
 
-	local caption = if not available
-		then Texts.queueFull
-		elseif not canPay then Format(
-			Texts.missingCoins,
-			{ coins = Components.coin(data.OrderPrice - data.Coins) }
-		)
-		else Format(Texts.orderFor, { price = Components.coin(data.OrderPrice) })
-	local order = Components.command(caption, function()
-		Components.send("buy")
-	end, available and canPay, "primary")
-	order.Size = UDim2.new(1, -9, 0, 72)
-	order.TextSize = 26
+	if not Components.compact() then
+		orderButton()
+	end
 
 	-- Уровень лаборатории: растёт с числом открытых контейнеров, повышает цену заказа и открывает редкие типы.
 	local level, floor, ceiling = Catalog.levelRange(data.Opened)

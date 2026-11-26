@@ -7,6 +7,7 @@ local Icons = require(script.Parent.Icons)
 local Style = require(script.Parent.Style)
 
 local HEADER_HEIGHT = 84
+local COMPACT_HEADER_HEIGHT = 52
 local DEFAULT_SIZE = Vector2.new(620, 660)
 
 export type Window = {
@@ -17,6 +18,8 @@ export type Window = {
 	Close: TextButton,
 	Content: ScrollingFrame,
 	Dock: Frame,
+	-- A low screen gets a thin header without the caption.
+	SetCompact: (compact: boolean) -> (),
 	-- Header color, icon, title and caption of the menu being shown.
 	SetHeader: (title: string, caption: string, accent: Color3, icon: Icons.IconName) -> (),
 }
@@ -128,6 +131,18 @@ function Window.build(gui: Instance, onClose: () -> ()): Window
 		Close = close,
 		Content = content,
 		Dock = dock,
+		SetCompact = function(compact: boolean): ()
+			local height = if compact then COMPACT_HEADER_HEIGHT else HEADER_HEIGHT
+			local icon = height - 22
+			header.Size = UDim2.new(1, -16, 0, height)
+			Components.place(badge, 12, 11, UDim.new(0, icon), icon)
+			Components.place(title, icon + 24, if compact then 9 else 12, UDim.new(1, -(icon + 92)), 34)
+			title.TextSize = if compact then 22 else 28
+			caption.Visible = not compact
+			close.Size = UDim2.fromOffset(height - if compact then 8 else 28, height - if compact then 8 else 28)
+			close.Position = UDim2.new(1, if compact then -4 else -12, 0.5, 0)
+			content.Position = UDim2.fromOffset(16, height + 18)
+		end,
 		SetHeader = function(text: string, note: string, accent: Color3, icon: Icons.IconName): ()
 			title.Text = text
 			caption.Text = note
