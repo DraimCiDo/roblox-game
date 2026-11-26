@@ -60,7 +60,7 @@ docs/                docs, GDD, decisions (ADR); docs/CONFIG.md says what to edi
 | Полная проверка (как в CI) | `./scripts/check.sh` или `./scripts/check.ps1` |
 | Собрать place-файл | `rojo build default.project.json -o build/game.rbxl` |
 | Пересобрать оформление карты в `assets/` | `lune run scripts/map/build.luau` |
-| Link check and rules snapshot | `lune run tests/requires.luau`, `lune run tests/snapshot.luau` |
+| Link check and rules snapshot | `lune run tests/requires.luau`, `lune run tests/snapshot.luau`, `lune run tests/perktree.luau` |
 | Progression pace | `lune run scripts/balance.luau` |
 
 ## 5. Стиль кода
