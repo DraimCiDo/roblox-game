@@ -11,6 +11,19 @@ local ItemPreview = require(script.Parent.Parent.Visuals.ItemPreview)
 local Style = require(script.Parent.Style)
 local Texts = require(ReplicatedStorage.Shared.Config.Texts.UI)
 local Format = require(ReplicatedStorage.Shared.Util.Format)
+local Formatting = require(script.Parent.Format)
+
+local Components = {}
+
+Components.coin = Formatting.coin
+Components.clock = Formatting.clock
+Components.qualityColor = Formatting.qualityColor
+Components.itemDetails = Formatting.itemDetails
+Components.dailyState = Formatting.dailyState
+Components.containerName = Formatting.containerName
+Components.progressText = Formatting.progressText
+Components.status = Formatting.status
+Components.short = Formatting.short
 
 export type DailyWidgets = { Time: TextLabel, Caption: TextLabel, Fill: Frame, Button: TextButton }
 export type DialWidgets = { Needle: Frame, Time: TextLabel, Glow: UIStroke }
@@ -35,21 +48,11 @@ export type RowOptions = {
 	FocusKey: string?,
 	Tone: Style.ButtonTone?,
 }
-
-local SEALED_HELP: { [string]: string } = {
-	box = Texts.sealedBox,
-	crate = Texts.sealedCrate,
-	safe = Texts.sealedSafe,
-	cargo = Texts.sealedCargo,
-	secret = Texts.sealedSecret,
-}
 local CONTENT_INSET = 108
 -- Ниже этой высоты панели (ландшафтный телефон) нижняя панель уходит вбок, иначе на содержимое не остаётся места.
 local COMPACT_BELOW = 420
 local SIDE_DOCK_WIDTH = 220
 local SIDE_DOCK_TOP = 96
-
-local Components = {}
 Components.Live = {} :: LiveWidgets
 
 local content: ScrollingFrame
@@ -155,62 +158,6 @@ function Components.append(gui: GuiObject): ()
 	order += 1
 	gui.LayoutOrder = order
 	gui.Parent = content
-end
-
-function Components.coin(value: number): string
-	local reversed = string.reverse(tostring(value))
-	local grouped = string.gsub(reversed, "(%d%d%d)", "%1 ")
-	return (string.gsub(string.reverse(grouped), "^ ", ""))
-end
-
-function Components.clock(seconds: number): string
-	return string.format("%02d:%02d", seconds // 60, seconds % 60)
-end
-
-function Components.qualityColor(quality: number): Color3
-	return Catalog.conditionColor(quality)
-end
-
-function Components.itemDetails(item: Types.Item): string
-	return `{Catalog.condition(item.Quality)} · {item.Quality}/100`
-end
-
-function Components.dailyState(data: Types.View, now: number): (boolean, number, boolean)
-	local claimed = data.DailyClaim >= math.floor(now / 86400)
-	local remaining = math.max(0, math.ceil(data.DailyReadyAt - now))
-	return claimed, remaining, not claimed and remaining == 0
-end
-
-function Components.containerName(data: Types.View): string
-	local kind = data.OrderKind
-	if kind then
-		return (if data.OrderVariant then Catalog.Variants else Catalog.Containers)[kind]
-	end
-	return Texts.randomContainer
-end
-
-function Components.progressText(data: Types.View): string?
-	if data.OrderProgress and data.OrderGoal then
-		return Format(Texts.openingStep, { progress = data.OrderProgress, goal = data.OrderGoal })
-	end
-	return nil
-end
-
-function Components.status(data: Types.View): (string, string, Color3)
-	local stage = data.OrderStage
-	if stage == "queued" or stage == "delivery" then
-		return Texts.statusDelivery, Texts.statusDeliveryHint, Style.Amber
-	elseif stage == "sealed" then
-		return Components.containerName(data), SEALED_HELP[data.OrderKind or "box"] or Texts.openContainer, Style.Cyan
-	elseif stage == "open" then
-		local hint = if data.OrderKind == "cargo" then Texts.hintCargoLoot else Texts.hintPadLoot
-		return Format(Texts.statusLoot, { remaining = data.RemainingLoot }), hint, Style.Signal
-	elseif stage == "clear" then
-		return Texts.statusClear, Texts.statusClearHint, Style.Amber
-	elseif #data.Inventory > 0 then
-		return Texts.statusReady, Texts.statusReadyHint, Style.Signal
-	end
-	return Texts.statusReady, Texts.statusOrderHint, Style.Signal
 end
 
 function Components.place(gui: GuiObject, x: number, y: number, width: UDim, height: number): ()
@@ -412,24 +359,6 @@ function Components.pips(parent: Instance, total: number, filled: number, color:
 		pip.Size = UDim2.new(1 / total, -3, 1, 0)
 	end
 	return holder
-end
-
--- Крупные числа для узких мест (плашка баланса, кнопки): 12 345, 480 К, 1,9 М, 2,4 Б.
-function Components.short(value: number): string
-	local function trim(number: number): string
-		local text = string.format("%.2f", number)
-		text = string.gsub(text, "0+$", "")
-		text = string.gsub(text, "%.$", "")
-		return (string.gsub(text, "%.", ","))
-	end
-	if value >= 1e9 then
-		return Format(Texts.billions, { value = trim(value / 1e9) })
-	elseif value >= 1e6 then
-		return Format(Texts.millions, { value = trim(value / 1e6) })
-	elseif value >= 1e5 then
-		return Format(Texts.thousands, { value = math.floor(value / 1e3) })
-	end
-	return Components.coin(value)
 end
 
 local function percent(value: number): string
