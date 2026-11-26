@@ -18,10 +18,6 @@ return {
 		Texture = "rbxassetid://81507311520159",
 		Size = { 4.079, 7, 3.635 },
 	},
-	pedestal = {
-		Mesh = "rbxassetid://114929213359813",
-		Texture = "rbxassetid://99417088462608",
-		Size = { 4.999, 2.77, 5 },
 	},
 	reactor = {
 		Mesh = "rbxassetid://92208032363128",

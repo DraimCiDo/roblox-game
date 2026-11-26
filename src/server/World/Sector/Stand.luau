@@ -14,6 +14,7 @@ local VIOLET = Common.VIOLET
 local WARM = Common.WARM
 local GLASS = Common.GLASS
 local brick = Common.brick
+local rgb = Common.rgb
 local cylinder = Common.cylinder
 local hideChildren = Common.hideChildren
 
@@ -43,10 +44,12 @@ local function buildStand(kit: Kit, slot: number, stand: Part): ()
 		table.insert(accents, ring)
 		glow.Parent = ring
 		cylinder(folder, "Диск", at(0.2), 0.12, 2.5, MARBLE, Enum.Material.Marble)
-		cylinder(folder, "Кольцо колпака", at(0.28), 0.06, 2.7, CHROME)
-		local dome = brick(folder, "Колпак", at(0.28 + 0.9), Vector3.one * 3.2, GLASS, Enum.Material.Glass)
-		dome.Shape = Enum.PartType.Ball
-		dome.Transparency = 0.82
+		local brass = rgb(255, 202, 84)
+		cylinder(folder, "Кольцо колпака", at(0.28), 0.1, 2.85, brass)
+		local case = cylinder(folder, "Колпак", at(1.65), 2.7, 2.75, GLASS, Enum.Material.Glass)
+		case.Transparency = 0.86
+		cylinder(folder, "Крышка колпака", at(3.1), 0.2, 2.9, brass)
+		cylinder(folder, "Шишка", at(3.35), 0.3, 0.5, brass)
 		kit.Lift[slot] = 0.26
 	elseif size == "large" then
 		brick(folder, "Основание", at(0.07), Vector3.new(stand.Size.X - 0.3, 0.14, stand.Size.Z - 0.3), STEEL)

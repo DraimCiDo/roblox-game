@@ -344,11 +344,11 @@ local function buildSector(model, F, spawn)
 		glow(lab, "Подсветка колонны", V(0.1, PIPE_FLOOR - 2, 0.1), place(V(sx * 12.3 - sx * 0.47, (PIPE_FLOOR - 0.5) / 2, DOOR_Z - 0.47)), VIOLET)
 	end
 	glow(lab, "Контур лаборатории", V(24, 0.03, 0.14), place(V(0, 0.02, DOOR_Z - 0.2)), VIOLET)
-	local counter = part(model, "Коллекции", V(8.1, 2.24, 2.7), place(V(0, 1.12, 23.4), V(0, 0, -1)), GRAPHITE, Enum.Material.SmoothPlastic)
-	part(counter, "Столешница", V(8.3, 0.18, 2.9), place(V(0, 2.3, 23.4), V(0, 0, -1)), STEEL, Enum.Material.SmoothPlastic)
-	glow(counter, "Подсветка прилавка", V(8.1, 0.08, 0.1), place(V(0, 0.15, 22.03)), VIOLET)
-	local catalog = part(counter, "Панель каталогизации", V(1.5, 0.5, 0.28), place(V(-2.6, 2.75, 22.6), V(0, 0, -1)) * CFrame.Angles(math.rad(22), 0, 0), DARK, Enum.Material.SmoothPlastic, false)
+	local counter = part(model, "Коллекции", V(4.6, 2.24, 2.5), place(V(0, 1.12, 23.4), V(0, 0, -1)), GRAPHITE, Enum.Material.SmoothPlastic)
+	counter.Transparency = 1
+	local catalog = part(counter, "Панель каталогизации", V(1.9, 0.6, 0.2), place(V(-0.9, 2.75, 22.7), V(0, 0, -1)) * CFrame.Angles(math.rad(22), 0, 0), DARK, Enum.Material.SmoothPlastic, false)
 	catalog.CanQuery = false
+	part(lab, "Ковёр коллекций", V(23, 0.04, 7.4), place(V(0, -0.02, 26.4)), Color3.fromRGB(128, 78, 164), Enum.Material.Fabric, false)
 	downlight(part(model, "Светильник рабочей зоны", V(7.3, 0.14, 1.3), place(V(0, PIPE_FLOOR - 0.6, 24)), LAMP, Enum.Material.Neon, false), 1.3, 14, 120)
 
 	-- ===== Левое крыло: автоматизированный склад =====
@@ -403,29 +403,59 @@ local function buildSector(model, F, spawn)
 
 	-- ===== Правое крыло: галерея витрин =====
 	local gallery = folder("Галерея витрин")
+	local WOOD = Color3.fromRGB(150, 96, 58)
+	local BRASS = Color3.fromRGB(255, 202, 84)
+	local VELVET = Color3.fromRGB(122, 46, 104)
+	-- A curtain panel between brass posts behind one stand.
+	local function backdrop(z, width, height)
+		local x = wing(25.4)
+		part(gallery, "Бархат", V(0.3, height, width - 0.5), place(V(x + 0.2, height / 2, z)), VELVET, Enum.Material.Fabric, false)
+		for _, side in { -1, 1 } do
+			part(gallery, "Стойка задника", V(0.5, height + 0.2, 0.3), place(V(x, height / 2, z + side * (width / 2 - 0.15))), BRASS, Enum.Material.Metal, false)
+		end
+		part(gallery, "Карниз задника", V(0.8, 0.45, width), place(V(x, height + 0.2, z)), WOOD, Enum.Material.WoodPlanks, false)
+		glow(gallery, "Свет задника", V(0.2, 0.1, width - 1), place(V(x - 0.4, height - 0.1, z)), LAMP).Material = Enum.Material.Neon
+	end
 	for slot = 1, 6 do
 		local z = -15 + (slot - 1) * 5.6
-		part(model, `Витрина {slot}`, V(3.4, 1.3, 3.5), place(V(wing(22.6), 0.65, z), V(-1, 0, 0)), GRAPHITE, Enum.Material.SmoothPlastic)
-		part(gallery, "Ниша витрины", V(0.3, 6, 4.6), place(V(wing(25.9), 3.6, z)), DARK, Enum.Material.SmoothPlastic)
-		glow(gallery, "Подсветка ниши", V(0.08, 5.6, 0.08), place(V(wing(25.7), 3.6, z - 2.35)), CYAN)
+		part(model, `Витрина {slot}`, V(3.4, 1.3, 3.5), place(V(wing(22.6), 0.65, z), V(-1, 0, 0)), WOOD, Enum.Material.WoodPlanks)
+		for _, y in { 0.08, 1.27 } do
+			part(gallery, "Кант витрины", V(3.7, 0.12, 3.6), place(V(wing(22.6), y, z)), BRASS, Enum.Material.Metal, false)
+		end
+		backdrop(z, 5.5, 6.4)
 	end
-	part(model, "Витрина 7", V(5, 1.3, 5.5), place(V(wing(21.6), 0.65, 21.5), V(-1, 0, 0)), GRAPHITE, Enum.Material.SmoothPlastic)
+	part(model, "Витрина 7", V(5, 1.3, 5.5), place(V(wing(21.6), 0.65, 21.5), V(-1, 0, 0)), WOOD, Enum.Material.WoodPlanks)
+	for _, y in { 0.08, 1.27 } do
+		part(gallery, "Кант витрины", V(5.7, 0.12, 5.2), place(V(wing(21.6), y, 21.5)), BRASS, Enum.Material.Metal, false)
+	end
+	backdrop(21.5, 7.4, 7.2)
+	part(gallery, "Ковровая дорожка", V(7.5, 0.04, 45), place(V(wing(21.6), -0.02, 3.5)), VELVET, Enum.Material.Fabric, false)
 	for _, z in { -12.2, -1, 10.2, 21.5 } do
 		downlight(part(model, "Рассеиватель витрин", V(0.5, 0.12, 6.9), place(V(wing(22.7), 7.2, z)), LAMP, Enum.Material.Neon, false), 1.0, 12, 100)
 	end
-	part(gallery, "Карниз галереи", V(1.4, 0.3, 46), place(V(wing(25.4), 7.4, 3.5)), GRAPHITE, Enum.Material.SmoothPlastic, false)
-	glow(gallery, "Контур галереи", V(0.14, 0.03, 44), place(V(wing(19.6), 0.02, 3.5)), CYAN)
-	local displayPanel = part(model, "Панель экспозиции", V(11, 1.8, 0.3), place(V(wing(25.4), 14.9, 3.5), V(-1, 0, 0)), DARK, Enum.Material.SmoothPlastic, false)
+	glow(gallery, "Контур галереи", V(0.2, 0.03, 45), place(V(wing(17.8), 0.02, 3.5)), BRASS)
+	local displayPanel = part(model, "Панель экспозиции", V(11, 1.8, 0.3), place(V(wing(25), 8.3, 3.5), V(-1, 0, 0)), DARK, Enum.Material.SmoothPlastic, false)
 	displayPanel.CanQuery = false
 
 	-- ===== Вход: терминал заказов справа, автостенд слева =====
 	local desk = folder("Пост заказов")
 	local terminal = part(model, "Заказы", V(4.55, 2.36, 2.35), place(V(wing(20.2), 1.18, -24.2), V(-1, 0, 0)), GRAPHITE, Enum.Material.SmoothPlastic)
-	local screenCF = place(V(wing(20.6), 3.75, -24.2), V(-1, 0, 0)) * CFrame.Angles(math.rad(19), 0, 0)
-	part(terminal, "Рама экрана заказа", V(3.9, 1.3, 0.3), screenCF * CFrame.new(0, 0, 0.18), STEEL, Enum.Material.SmoothPlastic, false)
-	part(terminal, "Матовый экран заказа", V(3.47, 0.96, 0.07), screenCF, DARK, Enum.Material.SmoothPlastic, false)
-	glow(desk, "Подсветка поста", V(0.1, 0.08, 4.5), place(V(wing(19.0), 0.15, -24.2)), CYAN)
-	local orderPanel = part(model, "Панель заказов", V(8, 1.8, 0.3), place(V(wing(25.4), 14.9, -21), V(-1, 0, 0)), DARK, Enum.Material.SmoothPlastic, false)
+	terminal.Transparency = 1
+	local screenCF = place(V(wing(21.6), 4.1, -24.2), V(-1, 0, 0))
+	part(terminal, "Рама экрана заказа", V(5.4, 2, 0.3), screenCF * CFrame.new(0, 0, 0.18), Color3.fromRGB(150, 96, 58), Enum.Material.WoodPlanks, false)
+	part(terminal, "Матовый экран заказа", V(5, 1.65, 0.07), screenCF, DARK, Enum.Material.SmoothPlastic, false)
+	for _, z in { -27.6, -20.8 } do
+		part(desk, "Стойка навеса", V(0.45, 6.4, 0.45), place(V(wing(22), 3.2, z)), Color3.fromRGB(150, 96, 58), Enum.Material.WoodPlanks)
+	end
+	-- Striped canvas, sloping down towards the customer.
+	for index = 0, 7 do
+		local z = -27.6 + 0.425 + index * 0.85
+		local tint = if index % 2 == 0 then AMBER else STEEL
+		part(desk, "Навес", V(4.6, 0.2, 0.85), place(V(wing(20.4), 6.35, z)) * CFrame.Angles(0, 0, math.rad(14)), tint, Enum.Material.Fabric, false)
+		part(desk, "Фестон", V(0.15, 0.55, 0.85), place(V(wing(18.18), 5.5, z)), tint, Enum.Material.Fabric, false)
+	end
+	glow(desk, "Подсветка поста", V(0.1, 0.08, 6.8), place(V(wing(18.6), 0.15, -24.2)), CYAN)
+	local orderPanel = part(model, "Панель заказов", V(6.8, 1.4, 0.3), place(V(wing(21.4), 7.7, -24.2), V(-1, 0, 0)), DARK, Enum.Material.SmoothPlastic, false)
 	orderPanel.CanQuery = false
 	downlight(part(model, "Рассеиватель сервисного поста", V(0.4, 0.1, 5), place(V(wing(22.6), 7.2, -24.2)), LAMP, Enum.Material.Neon, false), 1.1, 12, 100)
 	part(model, "Витрина 8", V(8, 1.3, 5.94), place(V(wing(-17), 0.65, -22.5), V(1, 0, 0)), GRAPHITE, Enum.Material.SmoothPlastic)
@@ -440,13 +470,13 @@ local function buildSector(model, F, spawn)
 	for _, side in { -1, 1 } do
 		local inward = V(-side, 0, 0)
 		local x = wing(side * 25.9)
-		local panels = if side == 1 then { -13, 17.5, 27 } else { -24, -13, 25 }
+		local panels = if side == 1 then { 29 } else { -24, -13, 25 }
 		for _, z in panels do
 			Kit.place(kit, "wall", foot(V(x - side * 0.3, 0, z), inward), 13)
 		end
 		Kit.place(kit, "column", foot(V(wing(side * 25), 0, -29.5), V(0, 0, 1)), 14)
 		Kit.place(kit, "column", foot(V(wing(side * 25), 0, 29.5), V(0, 0, -1)), 14)
-		for _, px in { 13, 20 } do
+		for _, px in { 17, 24 } do
 			Kit.place(kit, "wall", foot(V(side * px, 0, 30.2), V(0, 0, -1)), 11)
 		end
 		for _, px in { 15, 23 } do
@@ -468,16 +498,17 @@ local function buildSector(model, F, spawn)
 		pipeRun(x, 19, 0.8)
 	end
 
-	-- Order terminal beside its desk, shelves by the storage, pedestals under the displays.
-	Kit.place(kit, "terminal", foot(V(wing(20.2), 0, -19.6), V(-1, 0, 0)), 7)
+	-- Counters of the stations and the props beside them.
+	Kit.place(kit, "counter", foot(V(wing(20.2), 0, -24.2), V(-1, 0, 0)), 2.9)
+	part(kit, "Столешница", V(2.2, 0.16, 3.9), place(V(wing(20.2), 2.2, -24.2)), Color3.fromRGB(196, 132, 74), Enum.Material.WoodPlanks, false)
+	Kit.place(kit, "counter", foot(V(0, 0, 23.4), V(0, 0, -1)), 2.9)
+	part(kit, "Столешница", V(3.9, 0.16, 2.2), place(V(0, 2.2, 23.4)), Color3.fromRGB(196, 132, 74), Enum.Material.WoodPlanks, false)
+	Kit.place(kit, "terminal", foot(V(wing(20.2), 0, -18.4), V(-1, 0, 0)), 5.5)
 	Kit.place(kit, "counter", foot(V(wing(-19.6), 0, 7.7), V(1, 0, 0)), 2.9)
 	-- The generated counter has only a rim on top: close it with a wooden board.
 	part(kit, "Столешница", V(2.2, 0.16, 3.9), place(V(wing(-19.6), 2.2, 7.7)), Color3.fromRGB(196, 132, 74), Enum.Material.WoodPlanks, false)
 	Kit.place(kit, "arm", foot(V(wing(-22.8), 0, -5), V(1, 0, 0.6).Unit), 6.5)
 	Kit.place(kit, "crates", foot(V(wing(-22.8), 0, 20.4), V(1, 0, -0.3).Unit), 4.5)
-	for slot = 1, 6 do
-		Kit.place(kit, "pedestal", foot(V(wing(22.6), 0, -15 + (slot - 1) * 5.6), V(-1, 0, 0)), 1.5)
-	end
 end
 
 local report = {}
