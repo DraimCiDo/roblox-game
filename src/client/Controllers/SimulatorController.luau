@@ -399,14 +399,12 @@ local function build(): ()
 	panelBounds.Parent = panel
 	panelScale = Instance.new("UIScale")
 	panelScale.Parent = panel
-	Style.brackets(panel, Style.Cyan, 16, 2)
 
 	local banner = Style.frame(panel, Style.Card, 16)
 	banner.Position = UDim2.fromOffset(8, 8)
 	banner.Size = UDim2.new(1, -16, 0, 84)
 	Style.outline(banner, Style.Edge, 2)
 	Style.soft(banner, 0.1)
-	Style.accent(banner, Style.Cyan)
 	badge = Style.frame(banner, Style.Track, 14)
 	Components.place(badge, 12, 12, UDim.new(0, 60), 60)
 	badgeStroke = Style.outline(badge, Style.Signal, 3)

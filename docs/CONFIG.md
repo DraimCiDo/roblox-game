@@ -17,7 +17,8 @@ diff of `tests/snapshot.txt`: it lists exactly what changed in prices, odds and 
 | Drop effects and their prices | `src/shared/Config/DropEffects.luau` |
 | Quality condition names and colors | `src/shared/Config/Conditions.luau` |
 | Sounds | `src/shared/Config/Sounds.luau` |
-| Fonts and main colors | `src/shared/Config/Theme.luau` |
+| Interface colors, fonts, corners, outlines | `src/shared/Config/UiTheme.luau` |
+| Fonts and colors of world signs | `src/shared/Config/Theme.luau` |
 | Interface texts | `src/shared/Config/Texts/UI.luau` |
 | Server notifications and kick reasons | `src/shared/Config/Texts/Notices.luau` |
 | Tutorial hints | `src/shared/Config/Texts/Tutorial.luau` |

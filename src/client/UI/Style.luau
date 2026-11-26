@@ -1,49 +1,44 @@
 --!strict
--- Дизайн-система интерфейса «Лаборатория CORPA»: графит и сталь, неоновые циан и янтарь,
--- тонкие техничные рамки, малые скругления и угловые маркеры, как на экранах оборудования.
+-- Cartoon UI kit: thick dark outlines, rounded corners, bright buttons and bouncy presses.
+-- Colors, fonts and sizes come from Config/UiTheme.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
-local Theme = require(ReplicatedStorage.Shared.Config.Theme)
+local Theme = require(ReplicatedStorage.Shared.Config.UiTheme)
 local Sfx = require(script.Parent.Parent.Audio.Sfx)
 
 export type ButtonTone = "primary" | "neutral" | "reward" | "danger"
 
 local Style = {}
 
--- Поверхности: от самой тёмной (затемнение) к самой светлой (карточка).
-Style.Ink = Color3.fromRGB(6, 9, 14)
-Style.Panel = Color3.fromRGB(14, 19, 27)
-Style.Card = Color3.fromRGB(22, 30, 41)
-Style.Track = Color3.fromRGB(9, 13, 19)
-Style.Neutral = Color3.fromRGB(30, 42, 57)
--- Линии и рамки.
-Style.Edge = Color3.fromRGB(48, 68, 88)
--- Текст.
-Style.Text = Color3.fromRGB(232, 242, 250)
-Style.Muted = Color3.fromRGB(134, 154, 175)
--- Акценты.
-Style.Cyan = Color3.fromRGB(72, 222, 255)
-Style.Amber = Color3.fromRGB(255, 184, 64)
-Style.Signal = Color3.fromRGB(74, 232, 152)
-Style.Warning = Color3.fromRGB(255, 86, 106)
-Style.Violet = Color3.fromRGB(170, 132, 255)
+Style.Ink = Theme.Colors.Ink
+Style.Panel = Theme.Colors.Panel
+Style.Card = Theme.Colors.Card
+Style.Track = Theme.Colors.Track
+Style.Edge = Theme.Colors.Edge
+Style.Text = Theme.Colors.Text
+Style.Muted = Theme.Colors.Muted
+Style.Cyan = Theme.Colors.Blue
+Style.Amber = Theme.Colors.Yellow
+Style.Signal = Theme.Colors.Green
+Style.Warning = Theme.Colors.Red
+Style.Violet = Theme.Colors.Purple
 
--- Шрифты общие с надписями в мире (Shared/Config/Theme).
 Style.Display = Theme.Fonts.Display
 Style.Body = Theme.Fonts.Body
 Style.Bold = Theme.Fonts.Bold
-Style.Mono = Theme.Fonts.Mono
+Style.Mono = Theme.Fonts.Numbers
 
--- Скругления в этом стиле малые: крупные радиусы старой вёрстки сводятся к 2–6 пикселям.
-local MAX_RADIUS = 6
+Style.TouchSize = Theme.TouchSize
 
-local TONES: { [ButtonTone]: { Fill: Color3, Text: Color3, Line: Color3 } } = {
-	primary = { Fill = Style.Cyan, Text = Style.Ink, Line = Color3.fromRGB(170, 242, 255) },
-	reward = { Fill = Style.Amber, Text = Style.Ink, Line = Color3.fromRGB(255, 222, 150) },
-	-- Опасное действие (закрыть, отменить): тёмная плашка с красным контуром, без сплошной заливки.
-	danger = { Fill = Color3.fromRGB(46, 18, 26), Text = Style.Warning, Line = Style.Warning },
-	neutral = { Fill = Style.Neutral, Text = Style.Text, Line = Color3.fromRGB(70, 110, 140) },
+local OUTLINE = "Outline"
+local TEXT_OUTLINE = "TextOutline"
+
+local TONES: { [ButtonTone]: Color3 } = {
+	primary = Theme.Colors.Green,
+	reward = Theme.Colors.Orange,
+	danger = Theme.Colors.Red,
+	neutral = Theme.Colors.Blue,
 }
 
 function Style.tween(object: Instance, goal: { [string]: any }, duration: number?, easing: Enum.EasingStyle?): Tween
@@ -53,39 +48,44 @@ function Style.tween(object: Instance, goal: { [string]: any }, duration: number
 	return tween
 end
 
-function Style.round(parent: GuiObject, radius: number): ()
+-- size is a hint: small chips, cards or large windows.
+function Style.round(parent: GuiObject, size: number): ()
 	local corner = parent:FindFirstChildOfClass("UICorner") or Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, math.clamp(math.floor(radius * 0.3 + 0.5), 2, MAX_RADIUS))
+	local radius = if size <= 6
+		then Theme.Radius.Small
+		elseif size <= 14 then Theme.Radius.Medium
+		else Theme.Radius.Large
+	corner.CornerRadius = UDim.new(0, radius)
 	corner.Parent = parent
 end
 
--- Тонкая рамка: толщины старой вёрстки (3–5) сводятся к 1–2 пикселям.
 function Style.outline(parent: GuiObject, color: Color3?, thickness: number?): UIStroke
 	local line = Instance.new("UIStroke")
-	line.Name = "Рамка"
+	line.Name = OUTLINE
 	line.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	line.Color = color or Style.Edge
-	line.Thickness = math.clamp(math.floor((thickness or 2) * 0.5 + 0.5), 1, 2)
+	line.Thickness = if (thickness or 2) >= 3 then Theme.Stroke.Thick else Theme.Stroke.Thin
 	line.Parent = parent
 	return line
 end
 
--- Свечение снизу вверх у кнопок и шкал: металлический отлив.
+-- Candy look of buttons and bars: a lighter face and a darker bottom lip.
 function Style.gloss(parent: GuiObject): ()
 	local gradient = Instance.new("UIGradient")
 	gradient.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(226, 232, 238)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(176, 186, 196)),
+		ColorSequenceKeypoint.new(0.72, Color3.fromRGB(232, 232, 238)),
+		ColorSequenceKeypoint.new(0.74, Color3.fromRGB(190, 190, 205)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(190, 190, 205)),
 	})
 	gradient.Rotation = 90
 	gradient.Parent = parent
 end
 
--- Едва заметный градиент для панелей и карточек: сверху светлее, снизу темнее.
+-- Gentle top-to-bottom shading of panels and cards.
 function Style.soft(parent: GuiObject, strength: number?): ()
 	local gradient = Instance.new("UIGradient")
-	local low = 1 - (strength or 0.18)
+	local low = 1 - (strength or 0.14)
 	gradient.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.new(low, low, low))
 	gradient.Rotation = 90
 	gradient.Parent = parent
@@ -119,59 +119,16 @@ function Style.label(parent: Instance, value: string, size: number, color: Color
 	return label
 end
 
--- Тень у букв: светлый текст отделяется от подсвеченного фона, не превращаясь в «мультяшную» обводку.
+-- Dark outline around letters, for headings, numbers and button captions.
 function Style.textStroke(label: GuiObject, thickness: number?, color: Color3?): UIStroke
 	local line = Instance.new("UIStroke")
-	line.Name = "ТекстОбводка"
+	line.Name = TEXT_OUTLINE
 	line.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+	line.LineJoinMode = Enum.LineJoinMode.Round
 	line.Color = color or Style.Ink
-	line.Thickness = if (thickness or 2) >= 3 then 1.5 else 1
-	line.Transparency = 0.45
+	line.Thickness = if (thickness or 2) >= 3 then 2.5 else 1.8
 	line.Parent = label
 	return line
-end
-
--- Угловые маркеры, как на прицеле или экране прибора. size — длина плеча, thickness — толщина линии.
--- Не вешать на кадры с UIListLayout/UIGridLayout: раскладка примет маркеры за элемент списка.
-function Style.brackets(parent: GuiObject, color: Color3?, size: number?, thickness: number?): Frame
-	local holder = Instance.new("Frame")
-	holder.Name = "Маркеры"
-	holder.BackgroundTransparency = 1
-	holder.Size = UDim2.fromScale(1, 1)
-	holder.ZIndex = parent.ZIndex + 1
-	local arm = size or 10
-	local width = thickness or 2
-	local tint = color or Style.Cyan
-	for _, corner in { Vector2.new(0, 0), Vector2.new(1, 0), Vector2.new(0, 1), Vector2.new(1, 1) } do
-		for _, horizontal in { true, false } do
-			local bar = Instance.new("Frame")
-			bar.BorderSizePixel = 0
-			bar.BackgroundColor3 = tint
-			bar.AnchorPoint = corner
-			bar.Position = UDim2.fromScale(corner.X, corner.Y)
-			bar.Size = if horizontal then UDim2.fromOffset(arm, width) else UDim2.fromOffset(width, arm)
-			bar.ZIndex = holder.ZIndex
-			bar.Parent = holder
-		end
-	end
-	holder.Parent = parent
-	return holder
-end
-
--- Полоса-акцент у края карточки (слева или сверху): знак статуса или категории.
-function Style.accent(parent: GuiObject, color: Color3, vertical: boolean?): Frame
-	local bar = Instance.new("Frame")
-	bar.Name = "Акцент"
-	bar.BorderSizePixel = 0
-	bar.BackgroundColor3 = color
-	bar.ZIndex = parent.ZIndex + 1
-	if vertical == false then
-		bar.Size = UDim2.new(1, 0, 0, 3)
-	else
-		bar.Size = UDim2.new(0, 3, 1, 0)
-	end
-	bar.Parent = parent
-	return bar
 end
 
 function Style.setButton(control: TextButton, enabled: boolean, tone: ButtonTone): ()
@@ -179,28 +136,11 @@ function Style.setButton(control: TextButton, enabled: boolean, tone: ButtonTone
 	control.Selectable = enabled
 	control.AutoButtonColor = false
 	control:SetAttribute("Tone", tone)
-	local outline = control:FindFirstChild("ТекстОбводка") :: UIStroke?
-	local frame = control:FindFirstChild("Рамка") :: UIStroke?
-	if not enabled then
-		control.BackgroundColor3 = Style.Track
-		control.TextColor3 = Style.Muted
-		if frame then
-			frame.Color = Style.Edge
-		end
-		if outline then
-			outline.Transparency = 1
-		end
-		return
-	end
-	local palette = TONES[tone] or TONES.primary
-	control.BackgroundColor3 = palette.Fill
-	control.TextColor3 = palette.Text
-	if frame then
-		frame.Color = palette.Line
-	end
-	if outline then
-		-- Тёмный текст на ярком фоне читается без тени.
-		outline.Transparency = if tone == "neutral" or tone == "danger" then 0.45 else 1
+	local letters = control:FindFirstChild(TEXT_OUTLINE) :: UIStroke?
+	control.BackgroundColor3 = if enabled then TONES[tone] or TONES.primary else Style.Track
+	control.TextColor3 = if enabled then Style.Text else Style.Muted
+	if letters then
+		letters.Enabled = enabled
 	end
 end
 
@@ -219,37 +159,38 @@ function Style.button(
 	control.TextWrapped = true
 	control.Text = caption
 	Style.round(control, 12)
-	local frame = Style.outline(control, Style.Edge, 2)
+	local frame = Style.outline(control, Style.Edge, 3)
 	Style.textStroke(control, 2)
 	Style.setButton(control, enabled ~= false, tone or "primary")
 	Style.gloss(control)
 
 	local scale = Instance.new("UIScale")
 	scale.Parent = control
+	local function highlight(active: boolean): ()
+		frame.Color = if active then Style.Text else Style.Edge
+	end
 	control.MouseEnter:Connect(function()
 		if control.Interactable then
-			Style.tween(scale, { Scale = 1.03 }, 0.1)
-			frame.Thickness = 2
+			Style.tween(scale, { Scale = 1.05 }, 0.12, Enum.EasingStyle.Back)
 			Sfx.play("hover")
 		end
 	end)
 	control.MouseLeave:Connect(function()
 		Style.tween(scale, { Scale = 1 }, 0.1)
-		frame.Thickness = 1
 	end)
 	control.SelectionGained:Connect(function()
-		frame.Thickness = 2
+		highlight(true)
 	end)
 	control.SelectionLost:Connect(function()
-		frame.Thickness = 1
+		highlight(false)
 	end)
 	control.MouseButton1Down:Connect(function()
 		if control.Interactable then
-			Style.tween(scale, { Scale = 0.96 }, 0.06)
+			Style.tween(scale, { Scale = 0.92 }, 0.06)
 		end
 	end)
 	control.MouseButton1Up:Connect(function()
-		Style.tween(scale, { Scale = 1 }, 0.1)
+		Style.tween(scale, { Scale = 1 }, 0.18, Enum.EasingStyle.Back)
 	end)
 	control.Activated:Connect(function()
 		if control.Interactable then
@@ -261,7 +202,7 @@ function Style.button(
 	return control
 end
 
--- Шкала: тёмный жёлоб с тонкой рамкой и светящаяся заливка.
+-- Progress bar: dark groove and a glossy fill.
 function Style.meter(parent: Instance, ratio: number, color: Color3): (Frame, Frame)
 	local track = Style.frame(parent, Style.Track, 4)
 	Style.outline(track, Style.Edge, 1)
