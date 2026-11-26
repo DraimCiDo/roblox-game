@@ -24,7 +24,7 @@ function Orders.buy(player: Player, plot: World.Plot, data: Types.PlayerData): b
 	elseif #data.Orders >= 1 + (data.Perks.orders or 0) then
 		State.tell(player, Texts.allSlotsBusy)
 	elseif data.Coins < Economy.orderPrice(data) then
-		State.tell(player, Texts.notEnoughCoins)
+		State.warn(player, Texts.notEnoughCoins)
 	else
 		local price = Economy.orderPrice(data)
 		local refund = Economy.cashback(data, price)

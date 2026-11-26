@@ -64,7 +64,7 @@ function Loot.act(
 					return true
 				end
 				if #data.Inventory >= Economy.capacity(data) then
-					State.tell(player, Texts.storageFull)
+					State.warn(player, Texts.storageFull)
 					return false
 				end
 				table.insert(data.Inventory, loot.Item)
@@ -109,7 +109,7 @@ function Loot.act(
 				end
 			end
 			if stored + sold == 0 then
-				State.tell(player, Texts.storageFull)
+				State.warn(player, Texts.storageFull)
 				return false
 			end
 			if earned > 0 then
@@ -117,7 +117,7 @@ function Loot.act(
 			end
 			local note = if sold > 0 then Format(Texts.recycledNote, { sold = sold, earned = earned }) else ""
 			if #order.Loot > 0 then
-				State.tell(player, Format(Texts.storageFullLeft, { left = #order.Loot, note = note }))
+				State.warn(player, Format(Texts.storageFullLeft, { left = #order.Loot, note = note }))
 			else
 				State.tell(player, Format(Texts.collected, { stored = stored, note = note }))
 				Audio.to(player, "pickup")

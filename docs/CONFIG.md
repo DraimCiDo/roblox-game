@@ -27,7 +27,4 @@ diff of `tests/snapshot.txt`: it lists exactly what changed in prices, odds and 
 
 Words in braces in texts, such as `{coins}`, are filled in by code: keep them.
 
-`warningHints` in `Texts/UI.luau` decides which notifications look like warnings: if you reword a
-warning in `Texts/Notices.luau`, make sure one of the fragments still matches it.
-
 Quality chances in `Balance.luau` must add up to 100.

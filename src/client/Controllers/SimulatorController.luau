@@ -13,7 +13,7 @@ local Data = require(script.Parent.DataController)
 local Components = require(script.Parent.Parent.UI.Components)
 local Guide = require(script.Parent.Parent.UI.Guide)
 local Hud = require(script.Parent.Parent.UI.Hud)
-local Icons = require(script.Parent.Parent.UI.Icons)
+local Window = require(script.Parent.Parent.UI.Window)
 local Collections = require(script.Parent.Parent.UI.Screens.Collections)
 local Daily = require(script.Parent.Parent.UI.Screens.Daily)
 local Dial = require(script.Parent.Parent.UI.Screens.Dial)
@@ -46,17 +46,9 @@ local signature = ""
 local stopLocked = false
 
 local action: RemoteEvent
-local title: TextLabel
-local subtitle: TextLabel
-local badge: Frame
-local badgeStroke: UIStroke
-local panel: Frame
-local panelScale: UIScale
-local panelBounds: UISizeConstraint
 local perksWide = false
-local backdrop: TextButton
 local cursorFree: TextButton
-local close: TextButton
+local window: Window.Window
 local selectMenu: (string?) -> ()
 
 local function sortedKeys(map: { [string]: any }): { string }
@@ -165,27 +157,24 @@ end
 
 local function refresh(preserveScroll: boolean?): ()
 	local key, data = menu, state
-	panel.Visible, backdrop.Visible = key ~= nil, key ~= nil
+	window.Panel.Visible, window.Backdrop.Visible = key ~= nil, key ~= nil
 	if not key then
 		return
 	end
 	perksWide = key == "perks" and widePerks()
 	-- Дерево навыков — на весь экран, чтобы карта помещалась целиком; остальные меню — компактное окно.
-	panelBounds.MaxSize = if key == "perks" then Vector2.new(10000, 10000) else Vector2.new(600, 660)
-	local content = panel:FindFirstChild("Содержимое") :: ScrollingFrame
+	window.Bounds.MaxSize = if key == "perks" then Vector2.new(10000, 10000) else Window.DefaultSize
+	local content = window.Content
 	local canvas = content.CanvasPosition
 	local oldSelection = GuiService.SelectedObject
 	local selectedName = oldSelection and oldSelection:IsDescendantOf(content) and oldSelection.Name
 	Components.begin()
-	title.Text = TITLES[key] or Format(Texts.titleShowcase, { slot = key })
-	subtitle.Text = CAPTIONS[key] or Texts.captionShowcase
-	badgeStroke.Color = ACCENTS[key] or Style.Cyan
-	for _, child in badge:GetChildren() do
-		if child:IsA("Frame") then
-			child:Destroy()
-		end
-	end
-	Icons.draw(badge, ICONS[key] or "grid", ACCENTS[key] or Style.Cyan, Style.Text).Size = UDim2.fromScale(0.62, 0.62)
+	window.SetHeader(
+		TITLES[key] or Format(Texts.titleShowcase, { slot = key }),
+		CAPTIONS[key] or Texts.captionShowcase,
+		ACCENTS[key] or Style.Cyan,
+		ICONS[key] or "grid"
+	)
 
 	if not data then
 		Components.paragraph(Texts.syncing)
@@ -224,10 +213,10 @@ local function refresh(preserveScroll: boolean?): ()
 	else
 		content.CanvasPosition = Vector2.zero
 	end
-	if gamepadActive() and oldSelection ~= close then
-		local nextFocus = Components.preferred() or close
+	if gamepadActive() and oldSelection ~= window.Close then
+		local nextFocus = Components.preferred() or window.Close
 		if selectedName then
-			for _, descendant in panel:GetDescendants() do
+			for _, descendant in window.Panel:GetDescendants() do
 				if descendant:IsA("GuiButton") and descendant.Name == selectedName and descendant.Selectable then
 					nextFocus = descendant
 					break
@@ -243,12 +232,12 @@ local function refresh(preserveScroll: boolean?): ()
 			if menu ~= key then
 				return
 			end
-			local dock = panel:FindFirstChild("Нижняя панель") :: Frame
+			local dock = window.Dock
 			local docked = dock.Visible and dock.AnchorPoint.Y == 1
 			-- Высота самого списка (AbsoluteCanvasSize не бывает меньше видимой области прокрутки).
 			local list = content:FindFirstChildOfClass("UIListLayout")
 			-- Замер может попасть на анимацию открытия (UIScale < 1): переводим в размеры без масштаба.
-			local scale = math.max(panelScale.Scale, 0.5)
+			local scale = math.max(window.Scale.Scale, 0.5)
 			local used = (if list then list.AbsoluteContentSize.Y else content.AbsoluteCanvasSize.Y) / scale + 16
 			local dockHeight = dock.AbsoluteSize.Y / scale
 			local needed = used + 116 + (if docked then dockHeight + 10 else 0)
@@ -256,7 +245,7 @@ local function refresh(preserveScroll: boolean?): ()
 				-- Боковая панель (телефон) не должна вылезать за низ окна.
 				needed = math.max(needed, dockHeight + 104)
 			end
-			panelBounds.MaxSize = Vector2.new(panelBounds.MaxSize.X, math.clamp(needed, 220, 660))
+			window.Bounds.MaxSize = Vector2.new(window.Bounds.MaxSize.X, math.clamp(needed, 220, Window.DefaultSize.Y))
 		end)
 	end
 end
@@ -281,10 +270,10 @@ selectMenu = function(key: string?): ()
 	refresh(previous == key)
 	if key and not previous then
 		Sfx.play("menuOpen")
-		panelScale.Scale = 0.9
-		Style.tween(panelScale, { Scale = 1 }, 0.2, Enum.EasingStyle.Back)
-		backdrop.BackgroundTransparency = 1
-		Style.tween(backdrop, { BackgroundTransparency = 0.35 }, 0.2)
+		window.Scale.Scale = 0.85
+		Style.tween(window.Scale, { Scale = 1 }, 0.2, Enum.EasingStyle.Back)
+		window.Backdrop.BackgroundTransparency = 1
+		Style.tween(window.Backdrop, { BackgroundTransparency = 0.45 }, 0.2)
 	end
 	if not key and previous then
 		Sfx.play("menuClose")
@@ -326,7 +315,6 @@ local function build(): ()
 		local scale = math.clamp(height / 760, 0.68, 1)
 		hudScale.Scale = scale
 		hudLayer.Size = UDim2.fromScale(1 / scale, 1 / scale)
-		Hud.setScale(scale)
 	end
 	fitHud()
 	local hudCamera = Workspace.CurrentCamera
@@ -351,21 +339,6 @@ local function build(): ()
 		Guide.hide()
 	end, Hud.pulse)
 
-	backdrop = Instance.new("TextButton")
-	backdrop.Name = "Затемнение"
-	backdrop.Size = UDim2.fromScale(1, 1)
-	backdrop.BackgroundColor3 = Style.Ink
-	backdrop.BackgroundTransparency = 0.35
-	backdrop.BorderSizePixel = 0
-	backdrop.Text = ""
-	backdrop.AutoButtonColor = false
-	backdrop.Selectable = false
-	backdrop.Visible = false
-	-- Modal освобождает курсор, пока меню открыто: иначе в режиме первого лица мышь заперта в центре экрана.
-	backdrop.Modal = true
-	backdrop.ZIndex = 2
-	backdrop.Parent = gui
-
 	-- Невидимая модальная кнопка: пока зажат Alt, курсор в первом лице свободен и кнопки HUD нажимаются.
 	cursorFree = Instance.new("TextButton")
 	cursorFree.Name = "Свободный курсор"
@@ -376,84 +349,10 @@ local function build(): ()
 	cursorFree.Modal = true
 	cursorFree.Visible = false
 	cursorFree.Parent = gui
-	-- Окно закрывается только крестиком (и клавишей/кнопкой геймпада): нажатие рядом с окном ничего не делает,
-	-- иначе на телефоне меню закрывается от случайного касания мимо кнопки.
-
-	panel = Style.frame(gui, Style.Panel, 20)
-	panel.Name = "Меню сектора"
-	panel.AnchorPoint = Vector2.new(0.5, 0.5)
-	panel.Position = UDim2.fromScale(0.5, 0.5)
-	panel.Size = UDim2.new(1, -20, 1, -22)
-	panel.Visible = false
-	panel.Active = true
-	panel.SelectionGroup = true
-	panel.SelectionBehaviorUp = Enum.SelectionBehavior.Stop
-	panel.SelectionBehaviorDown = Enum.SelectionBehavior.Stop
-	panel.SelectionBehaviorLeft = Enum.SelectionBehavior.Stop
-	panel.SelectionBehaviorRight = Enum.SelectionBehavior.Stop
-	panel.ZIndex = 3
-	Style.outline(panel, Style.Edge, 4)
-	Style.soft(panel, 0.16)
-	panelBounds = Instance.new("UISizeConstraint")
-	panelBounds.MaxSize = Vector2.new(600, 660)
-	panelBounds.Parent = panel
-	panelScale = Instance.new("UIScale")
-	panelScale.Parent = panel
-
-	local banner = Style.frame(panel, Style.Card, 16)
-	banner.Position = UDim2.fromOffset(8, 8)
-	banner.Size = UDim2.new(1, -16, 0, 84)
-	Style.outline(banner, Style.Edge, 2)
-	Style.soft(banner, 0.1)
-	badge = Style.frame(banner, Style.Track, 14)
-	Components.place(badge, 12, 12, UDim.new(0, 60), 60)
-	badgeStroke = Style.outline(badge, Style.Signal, 3)
-	title = Components.text(banner, "", 26, Style.Text, true)
-	Components.place(title, 84, 8, UDim.new(1, -148), 38)
-	title.TextTruncate = Enum.TextTruncate.AtEnd
-	subtitle = Components.text(banner, "", 13, Style.Muted)
-	Components.place(subtitle, 84, 46, UDim.new(1, -148), 34)
-	subtitle.TextYAlignment = Enum.TextYAlignment.Top
-	close = Style.button(banner, "×", function()
+	window = Window.build(gui, function()
 		selectMenu(nil)
-	end, true, "danger")
-	close.TextSize = 28
-	close.AnchorPoint = Vector2.new(1, 0.5)
-	close.Position = UDim2.new(1, -12, 0.5, 0)
-	close.Size = UDim2.fromOffset(52, 52)
-
-	local content = Instance.new("ScrollingFrame")
-	content.Name = "Содержимое"
-	content.Position = UDim2.fromOffset(16, 102)
-	content.Size = UDim2.new(1, -26, 1, -112)
-	content.BackgroundTransparency = 1
-	content.BorderSizePixel = 0
-	content.ScrollBarThickness = 6
-	content.ScrollBarImageColor3 = Style.Amber
-	content.CanvasSize = UDim2.new()
-	content.AutomaticCanvasSize = Enum.AutomaticSize.Y
-	content.ScrollingDirection = Enum.ScrollingDirection.Y
-	content.Selectable = false
-	content.Parent = panel
-
-	local layout = Instance.new("UIListLayout")
-	layout.Padding = UDim.new(0, 10)
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Parent = content
-	local margin = Instance.new("UIPadding")
-	margin.PaddingLeft = UDim.new(0, 2)
-	margin.PaddingTop = UDim.new(0, 2)
-	margin.PaddingBottom = UDim.new(0, 6)
-	margin.PaddingRight = UDim.new(0, 2)
-	margin.Parent = content
-
-	local dock = Style.frame(panel, Style.Panel, 14)
-	dock.Name = "Нижняя панель"
-	dock.AnchorPoint = Vector2.new(0.5, 1)
-	dock.Position = UDim2.new(0.5, 0, 1, -12)
-	dock.Visible = false
-	dock.ZIndex = 4
-	Components.setup(content, dock, send, function()
+	end)
+	Components.setup(window.Content, window.Dock, send, function()
 		refresh(true)
 	end)
 	local camera = Workspace.CurrentCamera
@@ -485,7 +384,7 @@ local function animate(): ()
 	local elapsed = math.max(0, Workspace:GetServerTimeNow() - current.Start)
 	if elapsed > Dial.TimeLimit then
 		selectMenu(nil)
-		Hud.notice(Texts.dialTimeout)
+		Hud.notice(Texts.dialTimeout, true)
 		return
 	end
 	Dial.update(current, elapsed)
@@ -499,7 +398,7 @@ function SimulatorController:Start(): ()
 		if mode == "menu" then
 			selectMenu(value)
 		elseif mode == "notice" then
-			Hud.notice(value)
+			Hud.notice(value, (...) == "warning")
 		elseif mode == "dial" then
 			local start, target, period, tolerance, stage, total = ...
 			stopLocked = false

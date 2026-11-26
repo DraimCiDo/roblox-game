@@ -39,7 +39,7 @@ function Settings.effect(player: Player, data: Types.PlayerData, action: string,
 		local available = Catalog.effectAvailable(effect, data.Opened, data.Effects)
 		if action == "buyEffect" and not available and effect.Price then
 			if data.Coins < effect.Price then
-				State.tell(player, Texts.notEnoughForEffect)
+				State.warn(player, Texts.notEnoughForEffect)
 			else
 				data.Coins -= effect.Price
 				data.Effects[effect.Key] = true

@@ -60,6 +60,7 @@ return {
 	cursorHint = "Alt — курсор  ·  P перки  ·  G награда  ·  O настройки",
 	perksButton = "Перки",
 	rewardButton = "Награда",
+	settingsButton = "Настройки",
 	levelShort = "УР. {level}",
 	levelMax = "МАКС.",
 	levelUp = "Новый уровень лаборатории: {level}!",
@@ -165,16 +166,4 @@ return {
 	deliveryOdds = "Шансы доставки",
 	arrivesIn = "Прибытие через {time}",
 	atAirlock = "Контейнер у шлюза.",
-
-	-- A notification containing any of these fragments is styled as a warning.
-	-- Keep them in step with Notices.luau; the first letter is left out so case does not matter.
-	warningHints = {
-		"аполнен",
-		"едостаточ",
-		"ельзя",
-		"ремя вышло",
-		"е хватает",
-		"лишком",
-		"орвался",
-	},
 }

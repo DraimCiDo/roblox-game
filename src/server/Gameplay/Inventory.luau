@@ -34,7 +34,7 @@ function Inventory.act(
 			return false
 		end
 		if #data.Inventory >= Economy.capacity(data) then
-			State.tell(player, Texts.storageFull)
+			State.warn(player, Texts.storageFull)
 			return false
 		end
 		table.insert(data.Inventory, displayed)

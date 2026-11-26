@@ -34,7 +34,7 @@ function Perks.buy(player: Player, data: Types.PlayerData, key: string): boolean
 	if lock then
 		State.tell(player, lock)
 	elseif data.Coins < cost then
-		State.tell(player, Texts.notEnoughCoins)
+		State.warn(player, Texts.notEnoughCoins)
 	elseif data.Coins - cost < Economy.orderPrice(data) then
 		-- Защита от тупика: после покупки должно хватать на следующий заказ.
 		State.tell(player, Texts.keepCoinsForOrder)
