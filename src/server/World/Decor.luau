@@ -6,39 +6,51 @@ local Kit = require(script.Parent.Parent.Config.Kit)
 
 local Decor = {}
 
-local templates: { [string]: MeshPart | false } = {}
+local ATTEMPTS = 3
 
+local templates: { [string]: MeshPart } = {}
+
+-- A failed download is not cached: the next request for the piece tries again.
 local function template(piece: string): MeshPart?
 	local cached = templates[piece]
-	if cached ~= nil then
-		return if cached then cached else nil
+	if cached then
+		return cached
 	end
 	local entry = (Kit :: any)[piece]
-	local ok, result = pcall(function()
-		return AssetService:CreateMeshPartAsync(Content.fromUri(entry.Mesh), {
-			CollisionFidelity = Enum.CollisionFidelity.Box,
-		})
-	end)
-	if not ok then
-		warn(`[Decor] Failed to load the «{piece}» mesh: {result}`)
-		templates[piece] = false
+	if not entry then
+		warn(`[Decor] Unknown kit piece «{piece}»`)
 		return nil
 	end
-	result.TextureID = entry.Texture
-	if entry.Color then
-		result.Color = entry.Color
-		result.Material = entry.Material
+	for attempt = 1, ATTEMPTS do
+		local ok, result = pcall(function()
+			return AssetService:CreateMeshPartAsync(Content.fromUri(entry.Mesh), {
+				CollisionFidelity = Enum.CollisionFidelity.Box,
+			})
+		end)
+		if ok then
+			result.TextureID = entry.Texture
+			if entry.Color then
+				result.Color = entry.Color
+				result.Material = entry.Material
+			end
+			result.Anchored = true
+			result.CanCollide = false
+			result.CanTouch = false
+			result.CanQuery = false
+			templates[piece] = result
+			return result
+		end
+		if attempt == ATTEMPTS then
+			warn(`[Decor] Failed to load the «{piece}» mesh: {result}`)
+		else
+			task.wait(attempt * 2)
+		end
 	end
-	result.Anchored = true
-	result.CanCollide = false
-	result.CanTouch = false
-	result.CanQuery = false
-	templates[piece] = result
-	return result
+	return nil
 end
 
 -- Puts a piece with its bottom centre at `foot`, scaled to `height`. The mesh appears once downloaded.
-function Decor.place(parent: Instance, piece: string, foot: CFrame, height: number): ()
+function Decor.place(parent: Instance, piece: string, foot: CFrame, height: number, placed: (() -> ())?): ()
 	task.spawn(function()
 		local source = template(piece)
 		if source then
@@ -48,6 +60,9 @@ function Decor.place(parent: Instance, piece: string, foot: CFrame, height: numb
 			mesh.Size = Vector3.new(native[1], native[2], native[3]) * (height / native[2])
 			mesh.CFrame = foot * CFrame.new(0, height / 2, 0)
 			mesh.Parent = parent
+			if placed then
+				placed()
+			end
 		end
 	end)
 end

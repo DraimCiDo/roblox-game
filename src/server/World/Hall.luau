@@ -97,7 +97,11 @@ local function prop(parent: Instance, name: string, piece: string, foot: CFrame,
 	local solid = part(model, "Основание", Enum.PartType.Block, box, frame, STEEL)
 	solid.Transparency = 1
 	solid.CastShadow = false
-	Decor.place(model, piece, foot, height)
+	-- Nothing to bump into until there is something to see.
+	solid.CanCollide = false
+	Decor.place(model, piece, foot, height, function()
+		solid.CanCollide = true
+	end)
 end
 
 local PROPS = {

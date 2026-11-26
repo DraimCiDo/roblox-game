@@ -251,7 +251,9 @@ for k = 0, 7 do
 	local a = math.rad(45 * k)
 	local out = Vector3.new(math.cos(a), 0, math.sin(a))
 	local along = Vector3.new(-out.Z, 0, out.X)
-	for _, offset in { -27, -18, 18, 27 } do
+	-- Clear of the sector pointers beside the portals; on the east wall also clear of the logo.
+	local offsets = if k == 0 then { -29.3, 29.3 } else { -29.3, -21.5, 21.5, 29.3 }
+	for _, offset in offsets do
 		local at = out * 81 + along * offset
 		Kit.place(panels, "wall", CFrame.lookAt(Vector3.new(at.X, FLOOR_Y, at.Z), Vector3.new(at.X - out.X, FLOOR_Y, at.Z - out.Z)), 11)
 	end

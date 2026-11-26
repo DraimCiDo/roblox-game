@@ -187,10 +187,10 @@ local function buildSector(model, F, spawn)
 	end
 
 	-- ===== Вход: табло владельца, спавн =====
-	local board = part(model, "Табло сектора", V(7.6, 2.52, 0.39), place(V(0, 10.25, -30.9), V(0, 0, 1)), DARK, Enum.Material.SmoothPlastic)
+	local board = part(model, "Табло сектора", V(7.6, 2.52, 0.39), place(V(0, 9, -30.9), V(0, 0, 1)), DARK, Enum.Material.SmoothPlastic)
 	board.CanCollide = false
-	glow(shell, "Рамка табло", V(7.9, 0.12, 0.45), place(V(0, 11.55, -30.9)), CYAN)
-	glow(shell, "Рамка табло", V(7.9, 0.12, 0.45), place(V(0, 8.95, -30.9)), CYAN)
+	glow(shell, "Рамка табло", V(7.9, 0.12, 0.45), place(V(0, 10.3, -30.9)), CYAN)
+	glow(shell, "Рамка табло", V(7.9, 0.12, 0.45), place(V(0, 7.7, -30.9)), CYAN)
 	spawn.CFrame = world(place(V(0, 0.2, -25.5), V(0, 0, 1)))
 	spawn.Transparency = 1
 	spawn.CanCollide = false
@@ -372,7 +372,7 @@ local function buildSector(model, F, spawn)
 	glow(store, "Контур склада", V(11, 0.03, 0.14), place(V(wing(-20.3), 0.02, 15)), AMBER)
 	part(model, "Склад", V(5.8, 2.04, 2.55), place(V(wing(-20.6), 1.02, 7.97), V(1, 0, 0)), GRAPHITE, Enum.Material.SmoothPlastic)
 	glow(store, "Подсветка стола", V(0.1, 0.08, 5.8), place(V(wing(-19.3), 0.15, 7.97)), AMBER)
-	local storagePanel = part(model, "Панель склада", V(7, 1.3, 0.3), place(V(wing(-25.9), 10.6, 7.97), V(1, 0, 0)), DARK, Enum.Material.SmoothPlastic, false)
+	local storagePanel = part(model, "Панель склада", V(9, 1.8, 0.3), place(V(wing(-25.4), 14.9, 7.97), V(1, 0, 0)), DARK, Enum.Material.SmoothPlastic, false)
 	storagePanel.CanQuery = false
 	downlight(part(model, "Рассеиватель сервисного поста", V(0.4, 0.1, 6), place(V(wing(-22.6), 7.2, 7.97)), LAMP, Enum.Material.Neon, false), 1.1, 12, 100)
 
@@ -390,7 +390,7 @@ local function buildSector(model, F, spawn)
 	end
 	part(gallery, "Карниз галереи", V(1.4, 0.3, 46), place(V(wing(25.4), 7.4, 3.5)), GRAPHITE, Enum.Material.SmoothPlastic, false)
 	glow(gallery, "Контур галереи", V(0.14, 0.03, 44), place(V(wing(19.6), 0.02, 3.5)), CYAN)
-	local displayPanel = part(model, "Панель экспозиции", V(10, 1.3, 0.3), place(V(wing(25.9), 10.6, 3.5), V(-1, 0, 0)), DARK, Enum.Material.SmoothPlastic, false)
+	local displayPanel = part(model, "Панель экспозиции", V(11, 1.8, 0.3), place(V(wing(25.4), 14.9, 3.5), V(-1, 0, 0)), DARK, Enum.Material.SmoothPlastic, false)
 	displayPanel.CanQuery = false
 
 	-- ===== Вход: терминал заказов справа, автостенд слева =====
@@ -400,7 +400,7 @@ local function buildSector(model, F, spawn)
 	part(terminal, "Рама экрана заказа", V(3.9, 1.3, 0.3), screenCF * CFrame.new(0, 0, 0.18), STEEL, Enum.Material.SmoothPlastic, false)
 	part(terminal, "Матовый экран заказа", V(3.47, 0.96, 0.07), screenCF, DARK, Enum.Material.SmoothPlastic, false)
 	glow(desk, "Подсветка поста", V(0.1, 0.08, 4.5), place(V(wing(19.0), 0.15, -24.2)), CYAN)
-	local orderPanel = part(model, "Панель заказов", V(6, 1.3, 0.3), place(V(wing(25.9), 10.6, -24.2), V(-1, 0, 0)), DARK, Enum.Material.SmoothPlastic, false)
+	local orderPanel = part(model, "Панель заказов", V(8, 1.8, 0.3), place(V(wing(25.4), 14.9, -21), V(-1, 0, 0)), DARK, Enum.Material.SmoothPlastic, false)
 	orderPanel.CanQuery = false
 	downlight(part(model, "Рассеиватель сервисного поста", V(0.4, 0.1, 5), place(V(wing(22.6), 7.2, -24.2)), LAMP, Enum.Material.Neon, false), 1.1, 12, 100)
 	part(model, "Витрина 8", V(8, 1.3, 5.94), place(V(wing(-17), 0.65, -22.5), V(1, 0, 0)), GRAPHITE, Enum.Material.SmoothPlastic)
@@ -415,7 +415,8 @@ local function buildSector(model, F, spawn)
 	for _, side in { -1, 1 } do
 		local inward = V(-side, 0, 0)
 		local x = wing(side * 25.9)
-		for _, z in { -24, -13, 17.5, 27 } do
+		local panels = if side == 1 then { -13, 17.5, 27 } else { -24, -13, 17.5, 27 }
+		for _, z in panels do
 			Kit.place(kit, "wall", foot(V(x - side * 0.3, 0, z), inward), 13)
 		end
 		Kit.place(kit, "column", foot(V(wing(side * 25), 0, -29.5), V(0, 0, 1)), 14)
