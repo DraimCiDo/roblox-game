@@ -13,20 +13,10 @@ return {
 		Texture = "rbxassetid://77947076056682",
 		Size = { 3.994, 7.479, 4 },
 	},
-	shelf = {
-		Mesh = "rbxassetid://107123260222124",
-		Texture = "rbxassetid://112777548451550",
-		Size = { 8.559, 6.608, 4 },
-	},
 	terminal = {
 		Mesh = "rbxassetid://129775451727305",
 		Texture = "rbxassetid://81507311520159",
 		Size = { 4.079, 7, 3.635 },
-	},
-	pedestal = {
-		Mesh = "rbxassetid://114929213359813",
-		Texture = "rbxassetid://99417088462608",
-		Size = { 4.999, 2.77, 5 },
 	},
 	reactor = {
 		Mesh = "rbxassetid://92208032363128",
@@ -68,5 +58,46 @@ return {
 		Color = Color3.fromRGB(118, 80, 50),
 		Material = Enum.Material.Mud,
 		Size = { 1.6, 0.6, 1.5 },
+	},
+	-- Pieces of several meshes: `At` is the centre of a mesh above the bottom centre of the piece.
+	counter = {
+		Size = { 4.749, 3.2, 2.822 },
+		Parts = {
+			{
+				Mesh = "rbxassetid://102019052078116",
+				Texture = "rbxassetid://87820524277039",
+				Size = { 4.687, 3.2, 2.779 },
+				At = { -0.007, 1.6, -0.016 },
+			},
+			{
+				Mesh = "rbxassetid://139542725271168",
+				Texture = "rbxassetid://138916334306435",
+				Size = { 4.749, 0.421, 2.822 },
+				At = { 0, 2.361, 0 },
+			},
+		},
+	},
+	arm = {
+		Size = { 2.764, 5.163, 4 },
+		Parts = {
+			{
+				Mesh = "rbxassetid://126397535397492",
+				Texture = "rbxassetid://105489271632508",
+				Size = { 2.764, 1.067, 2.791 },
+				At = { 0, 0.534, 0.333 },
+			},
+			{
+				Mesh = "rbxassetid://72564723184329",
+				Texture = "rbxassetid://74853238897328",
+				Size = { 1.631, 4.711, 3.034 },
+				At = { 0.002, 2.808, 0.483 },
+			},
+			{
+				Mesh = "rbxassetid://74619867443782",
+				Texture = "rbxassetid://101623512574341",
+				Size = { 1.021, 2.647, 1.284 },
+				At = { 0, 2.68, -1.358 },
+			},
+		},
 	},
 }

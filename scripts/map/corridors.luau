@@ -25,7 +25,6 @@ local PORTALS = {
 -- Перекраска по имени детали: {материал, цвет}.
 local RESTYLE = {
 	["Стена соединительного перехода"] = { Enum.Material.SmoothPlastic, WALL },
-	["Матовая панель перехода"] = { Enum.Material.SmoothPlastic, PANEL },
 	["Простенок прохода"] = { Enum.Material.SmoothPlastic, WALL },
 	["Настил соединительной галереи"] = { Enum.Material.SmoothPlastic, FLOOR },
 	["Перекрытие соединительной галереи"] = { Enum.Material.SmoothPlastic, DARK },
@@ -76,6 +75,24 @@ local old = LAB:FindFirstChild("Оформление переходов")
 if old then
 	old:Destroy()
 end
+-- Small industrial leftovers that read as crooked plates and boxes in the passages.
+local REMOVED = {
+	["Матовая панель перехода"] = true,
+	["Герметичный ввод связи перехода"] = true,
+	["Паспорт ввода связи перехода"] = true,
+	["Рукав кабеля в переходе"] = true,
+	["Люк доступа к кабелю портала"] = true,
+	["Рамка люка портала"] = true,
+	["Окрашенная дверца люка портала"] = true,
+	["Ручка люка портала"] = true,
+	["Пломба люка портала"] = true,
+}
+for _, piece in LAB:GetChildren() do
+	if REMOVED[piece.Name] then
+		piece:Destroy()
+	end
+end
+
 local routes = Instance.new("Folder")
 routes.Name = "Оформление переходов"
 local changed = 0

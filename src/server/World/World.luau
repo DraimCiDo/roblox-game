@@ -472,6 +472,8 @@ function World.Sync(plot: Plot, order: Types.Order?, use: Use, scatter: boolean,
 		if plot.DeliveryMotion then
 			plot.DeliveryMotion:Cancel()
 			plot.DeliveryMotion = nil
+			-- Cut short inside the pipe, where the container is shrunk.
+			model:ScaleTo(1)
 			model:PivotTo(base)
 		end
 		plot.PipeLight.Enabled = false

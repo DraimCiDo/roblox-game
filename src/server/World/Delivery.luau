@@ -16,6 +16,9 @@ local GATE_MOVE_TIME = 0.36
 local DISPOSAL_TRAVEL_TIME = 1.05
 local PIPE_TRAVEL_FRACTION = 0.55
 local CONTAINER_PIVOT_HEIGHT = 1.05
+-- Largest side of a container while it is inside the pipe, and the radius of the bend.
+local PIPE_FIT = 4.2
+local PIPE_BEND = 3.5
 export type Plot = {
 	Model: Model,
 	Pad: CFrame,
@@ -223,19 +226,34 @@ local function setBackrooms(plot: Plot, open: boolean): ()
 	end
 end
 
+-- Point at `share` of the way from the portal through the bend down to the nozzle.
+local function pipePoint(entry: Vector3, outlet: Vector3, share: number): Vector3
+	local corner = Vector3.new(outlet.X, entry.Y, outlet.Z)
+	local ahead = (corner - entry).Unit
+	local before, after = corner - ahead * PIPE_BEND, corner - Vector3.yAxis * PIPE_BEND
+	local run, bend, drop = (before - entry).Magnitude, PIPE_BEND * 1.6, (after - outlet).Magnitude
+	local distance = math.clamp(share, 0, 1) * (run + bend + drop)
+	if distance <= run then
+		return entry:Lerp(before, distance / run)
+	elseif distance <= run + bend then
+		local t = (distance - run) / bend
+		return before:Lerp(corner, t):Lerp(corner:Lerp(after, t), t)
+	end
+	return after:Lerp(outlet, (distance - run - bend) / drop)
+end
+
 local function deliverThroughPipe(plot: Plot, model: Model, base: CFrame, remaining: number): Tween?
 	if remaining <= 0 then
 		model:PivotTo(base)
 		return nil
 	end
-	local entry = plot.PipeEntry.CFrame
-	local outlet = plot.DeliveryPoint.CFrame
+	local entry = plot.PipeEntry.Position
+	local outlet = plot.DeliveryPoint.Position
 	plot.PipeLight.Enabled = true
 	plot.GateLights.upper.Enabled = true
-	-- Точка входа лежит на уровне пола трубы: разрыв — в центре камеры Backrooms по высоте.
-	backroomsRift(entry * CFrame.new(0, 3.8, 0), remaining * PIPE_TRAVEL_FRACTION + 0.4)
+	backroomsRift(plot.PipeEntry.CFrame, remaining * PIPE_TRAVEL_FRACTION + 0.4)
 	setBackrooms(plot, true)
-	-- Затвор закрывается, когда контейнер прошёл трубу и опускается в шлюз.
+	-- The portal closes when the container has left the pipe.
 	task.delay(remaining * PIPE_TRAVEL_FRACTION + BACKROOMS_DOOR_TIME, function()
 		if plot.Active == model then
 			setBackrooms(plot, false)
@@ -248,14 +266,29 @@ local function deliverThroughPipe(plot: Plot, model: Model, base: CFrame, remain
 			moveGate(plot, "upper", true, gateLead)
 		end
 	end)
+
+	-- The container travels by its middle, shrunk to fit the pipe.
+	model:PivotTo(base)
+	local box, size = model:GetBoundingBox()
+	local middle = base:PointToObjectSpace(box.Position)
+	local small = math.min(1, PIPE_FIT / math.max(size.X, size.Y, size.Z))
+	local landed = base:PointToWorldSpace(middle)
+	local scale = 1
 	return animatePath(model, remaining, function(alpha)
+		local grow, center = 0, outlet
 		if alpha < PIPE_TRAVEL_FRACTION then
-			return entry:Lerp(outlet, alpha / PIPE_TRAVEL_FRACTION)
-		elseif alpha < descentStart then
-			return outlet
+			center = pipePoint(entry, outlet, alpha / PIPE_TRAVEL_FRACTION)
+		elseif alpha >= descentStart then
+			local down = (alpha - descentStart) / (1 - descentStart)
+			center = outlet:Lerp(landed, down * (2 - down))
+			grow = math.min(1, down * 1.35)
 		end
-		local down = (alpha - descentStart) / (1 - descentStart)
-		return outlet:Lerp(base, down * (2 - down))
+		local wanted = small + (1 - small) * grow
+		if math.abs(wanted - scale) > 0.001 then
+			scale = wanted
+			model:ScaleTo(scale)
+		end
+		return CFrame.new(center) * base.Rotation * CFrame.new(-middle * scale)
 	end, Enum.EasingStyle.Linear)
 end
 
